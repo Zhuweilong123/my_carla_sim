@@ -759,7 +759,7 @@ class Lateral_MPC__with_feedforward_controller(object):
 
         # 初始化
         self.cal_vehicle_info()
-        self.cal_A_B_fun()
+        self.cal_A_B_C_fun()
 
     def cal_vehicle_info(self):
         """
@@ -780,7 +780,7 @@ class Lateral_MPC__with_feedforward_controller(object):
         self._vehicle_state = (x, y, fi, Vy, fi_dao)
         self._vehicle_Vx = Vx
 
-    def cal_A_B_fun(self):
+    def cal_A_B_C_fun(self):
         """
         根据整车参数vehicle_para和V_x,通过公式计算A,B; 具体公式间第八讲总结
               vehicle_para: vehicle_para = (a, b, Cf, Cr, m, Iz)
@@ -790,7 +790,7 @@ class Lateral_MPC__with_feedforward_controller(object):
                             Iz是车的转动惯量
 
               V_x: V_x是车辆速度在车轴方向的分量
-        :return: 矩阵A和B, np.array type
+        :return: 矩阵A,B和C, np.array type
         A的维度4*4
         B的维度4*1
         """
@@ -816,40 +816,18 @@ class Lateral_MPC__with_feedforward_controller(object):
         self.C[1][0] = (a*Cf + b*Cr)/(m*V_x) - V_x
         self.C[3][0] = (a**2*Cf + b**2*Cr)/(Iz*V_x)
 
-    def cal_K_use_LQR_fun(self, Q, R):
+    def cal_discretized_matrix(self):
         """
-        根据Q,R和A,B计算K, 通过迭代黎卡提方程求解， P = Q + A^PA - A^PB(R+B^PB)'B^PA.其中A^是求转置，A'是求逆
-        :param Q: 是误差代价的权重对应的对角矩阵4*4,Q越大算法的性能越好，但是会牺牲算法稳定性导致最终控制量u很大
-        :param R: 控制代价的权重对应的对角矩阵1*1， R越大越平稳，变化越小
-        :param A: cal_A_B_fun模块的输出4*4
-        :param B:
-        :return: K, np.array类型
+        calculate the discrete form of matrix A, B, C after the state equation is discretized.
+        计算矩阵A、B、C的离散形式
         """
-        P = Q
-        P_pre = Q
-        max_itr = 5000
-        eps = 0.1
         ts = 0.1  # 连续lqr离散化的时间间隔
         # 连续lqr离散化的时候， 系数矩阵相应发生变化，采用的是双线性变换
         temp = np.linalg.inv(np.eye(4) - (ts * self.A) / 2)
         self.A_bar = temp @ (np.eye(4) + (ts * self.A) / 2)
         self.B_bar = temp @ self.B * ts
         self.C_bar = temp @ self.C * ts * self.k_r * self._vehicle_Vx  # 这里将theta_r_dao看做常数，无飘移假设下theta_r_dao = k_r * Vx
-        print("self.C_bar.shape", self.C_bar)
-        # A = self.A_bar
-        # B = self.B_bar
-        # i = 0
-        # AT = A.T  # 4*4
-        # BT = B.T  # 1*4
-        # for i in range(max_itr):
-        #     P = AT @ P @ A - (AT @ P @ B) @ np.linalg.inv(R + BT @ P @ B) @ (BT @ P @ A) + Q  # 要不断迭代
-        #     if abs(P - P_pre).max() < eps:
-        #         break
-        #     P_pre = P
-        # if print_flag:
-        #     print("黎卡提方程爹迭代次数：", i)  # 输出迭代的次数
-        #
-        # self.K = np.linalg.inv(BT @ P @ B + R) @ (BT @ P @ A)
+        # print("self.C_bar.shape", self.C_bar)
 
     def cal_error_k_fun(self, ts=0.01):
         """
@@ -934,22 +912,6 @@ class Lateral_MPC__with_feedforward_controller(object):
         if print_flag:
             print("error-e_d-e_fi:", e_d, e_fi)
 
-    def forward_control_fun(self):
-        """
-        计算前馈控制量delta_f
-        :param vehicle_para: vehicle_para = (a, b, Cf, Cr, m, Iz)
-        :param K: LQR的输出结果
-        :param k_r: 投影点曲率
-        :param V_x: 速度在车轴方向的分量
-        :return: 前馈控制量delta_f
-        """
-        a, b, Cf, Cr, m, Iz = self._vehicle_para
-        # print(self.K.shape)
-        K_3 = self.K[0][2]
-        V_x = self._vehicle_Vx
-        self.delta_f = self.k_r * (a + b - b * K_3 - (b / Cf + a * K_3 / Cr - a / Cr) * (m * V_x * V_x) / (a + b))
-        self.delta_f = self.delta_f * np.pi / 180  # 由于之前输入的误差形式弧度，所以这里也要将前馈量转化为弧度形式
-
     def cal_control_para_fun(self, Q, R, F):
         """
         根据A_bac, B_bar, C_bar计算X_k
@@ -1023,10 +985,9 @@ class Lateral_MPC__with_feedforward_controller(object):
         F = 10 * np.eye(4)
         R = b
         self.cal_vehicle_info()
-        self.cal_A_B_fun()
+        self.cal_A_B_C_fun()
         self.cal_error_k_fun(ts=0.1)
-        self.cal_K_use_LQR_fun(Q=Q, R=R)
-        # self.forward_control_fun()
+        self.cal_discretized_matrix(Q=Q, R=R)
         # print("**********", self.K)
         # print("**********", self.delta_f)
         # print("**********", self.k_r)

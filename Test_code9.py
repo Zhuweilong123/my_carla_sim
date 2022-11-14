@@ -323,8 +323,8 @@ if __name__ == '__main__':
     spectator = world.get_spectator()
     count = 1  # 控制规划器和控制器相对频率
     main_process_start_time = time.time()
-    plan_count = 10
-    control_count = 1
+    plan_count = 100
+    control_count = 10
     pred_ts = 0.2
     # plan_count = 250
     # pred_ts = 0.4
