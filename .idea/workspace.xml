@@ -2,14 +2,7 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="92098641-30e4-4e3d-b4d5-c4623df731a0" name="Changes" comment="optimize some methods and annotations">
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Test_code1.py" beforeDir="false" afterPath="$PROJECT_DIR$/test_code1.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Test_code2.py" beforeDir="false" afterPath="$PROJECT_DIR$/test_code2.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Test_code3.py" beforeDir="false" afterPath="$PROJECT_DIR$/test_code3.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Test_code3_1.py" beforeDir="false" afterPath="$PROJECT_DIR$/test_code3_1.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Test_code9.py" beforeDir="false" afterPath="$PROJECT_DIR$/test_code9.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/controller/Controller.py" beforeDir="false" afterPath="$PROJECT_DIR$/controller/Controller.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/planner/global_path_plan.py" beforeDir="false" afterPath="$PROJECT_DIR$/planner/global_path_plan.py" afterDir="false" />
+      <changelist_data name="zhuwl" email="18214821114@163.com" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -76,7 +69,14 @@
       <option name="project" value="LOCAL" />
       <updated>1668418117161</updated>
     </task>
-    <option name="localTasksCounter" value="4" />
+    <task id="LOCAL-00004" summary="optimize some methods and annotations">
+      <created>1668419166448</created>
+      <option name="number" value="00004" />
+      <option name="presentableId" value="LOCAL-00004" />
+      <option name="project" value="LOCAL" />
+      <updated>1668419166448</updated>
+    </task>
+    <option name="localTasksCounter" value="5" />
     <servers />
   </component>
   <component name="Vcs.Log.Tabs.Properties">
