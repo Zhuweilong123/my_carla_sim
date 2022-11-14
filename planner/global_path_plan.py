@@ -13,8 +13,7 @@ from planner import planner_utiles
 
 class RoadOption(Enum):
     """
-    RoadOption represents the possible topological configurations when moving from a segment of lane to other.
-
+    RoadOption represents the possible topological configurations when moving from a segment of lane to others.
     """
     VOID = -1
     LEFT = 1

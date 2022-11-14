@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="ChangeListManager">
+    <list default="true" id="92098641-30e4-4e3d-b4d5-c4623df731a0" name="Changes" comment="optimize some methods and annotations">
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Test_code1.py" beforeDir="false" afterPath="$PROJECT_DIR$/test_code1.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Test_code2.py" beforeDir="false" afterPath="$PROJECT_DIR$/test_code2.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Test_code3.py" beforeDir="false" afterPath="$PROJECT_DIR$/test_code3.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Test_code3_1.py" beforeDir="false" afterPath="$PROJECT_DIR$/test_code3_1.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Test_code9.py" beforeDir="false" afterPath="$PROJECT_DIR$/test_code9.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/controller/Controller.py" beforeDir="false" afterPath="$PROJECT_DIR$/controller/Controller.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/planner/global_path_plan.py" beforeDir="false" afterPath="$PROJECT_DIR$/planner/global_path_plan.py" afterDir="false" />
+    </list>
+    <option name="SHOW_DIALOG" value="false" />
+    <option name="HIGHLIGHT_CONFLICTS" value="true" />
+    <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
+    <option name="LAST_RESOLUTION" value="IGNORE" />
+  </component>
+  <component name="Git.Settings">
+    <option name="PREVIOUS_COMMIT_AUTHORS">
+      <list>
+        <option value="zhuwl &lt;18214821114@163.com&gt;" />
+      </list>
+    </option>
+    <option name="PUSH_TAGS">
+      <GitPushTagMode>
+        <option name="argument" value="--follow-tags" />
+        <option name="title" value="Current Branch" />
+      </GitPushTagMode>
+    </option>
+    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
+  </component>
+  <component name="MarkdownSettingsMigration">
+    <option name="stateVersion" value="1" />
+  </component>
+  <component name="ProjectId" id="2HWzKPC1HYfbcCFsLQwAm9A0Ocw" />
+  <component name="ProjectViewState">
+    <option name="hideEmptyMiddlePackages" value="true" />
+    <option name="showLibraryContents" value="true" />
+  </component>
+  <component name="PropertiesComponent"><![CDATA[{
+  "keyToString": {
+    "RunOnceActivity.OpenProjectViewOnStart": "true",
+    "RunOnceActivity.ShowReadmeOnStart": "true",
+    "last_opened_file_path": "/opt/carla-0.9.12/PythonAPI/carla",
+    "settings.editor.selected.configurable": "com.jetbrains.python.configuration.PythonContentEntriesConfigurable"
+  }
+}]]></component>
+  <component name="SpellCheckerSettings" RuntimeDictionaries="0" Folders="0" CustomDictionaries="0" DefaultDictionary="application-level" UseSingleDictionary="true" transferred="true" />
+  <component name="TaskManager">
+    <task active="true" id="Default" summary="Default task">
+      <changelist id="92098641-30e4-4e3d-b4d5-c4623df731a0" name="Changes" comment="" />
+      <created>1668415562622</created>
+      <option name="number" value="Default" />
+      <option name="presentableId" value="Default" />
+      <updated>1668415562622</updated>
+    </task>
+    <task id="LOCAL-00001" summary="optimize some methods and annotations">
+      <created>1668417370086</created>
+      <option name="number" value="00001" />
+      <option name="presentableId" value="LOCAL-00001" />
+      <option name="project" value="LOCAL" />
+      <updated>1668417370086</updated>
+    </task>
+    <task id="LOCAL-00002" summary="optimize some methods and annotations">
+      <created>1668417408425</created>
+      <option name="number" value="00002" />
+      <option name="presentableId" value="LOCAL-00002" />
+      <option name="project" value="LOCAL" />
+      <updated>1668417408425</updated>
+    </task>
+    <task id="LOCAL-00003" summary="optimize some methods and annotations">
+      <created>1668418117161</created>
+      <option name="number" value="00003" />
+      <option name="presentableId" value="LOCAL-00003" />
+      <option name="project" value="LOCAL" />
+      <updated>1668418117161</updated>
+    </task>
+    <option name="localTasksCounter" value="4" />
+    <servers />
+  </component>
+  <component name="Vcs.Log.Tabs.Properties">
+    <option name="TAB_STATES">
+      <map>
+        <entry key="MAIN">
+          <value>
+            <State />
+          </value>
+        </entry>
+      </map>
+    </option>
+  </component>
+  <component name="VcsManagerConfiguration">
+    <MESSAGE value="optimize some methods and annotations" />
+    <option name="LAST_COMMIT_MESSAGE" value="optimize some methods and annotations" />
+  </component>
+</project>
