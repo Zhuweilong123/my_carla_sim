@@ -113,7 +113,7 @@ def Quadratic_planning(l_min, l_max, plan_start_l, plan_start_dl, plan_start_ddl
     H_L = np.zeros(shape=(3 * n, 3 * n))
     H_DL = np.zeros(shape=(3 * n, 3 * n))
     H_DDL = np.zeros(shape=(3 * n, 3 * n))
-    H_CENTRE = np.zeros(shape=(3 * n, 3 * n))
+    # H_CENTRE = np.zeros(shape=(3 * n, 3 * n))
     for i in range(n):
         H_L[3 * i, 3 * i] = 1
         H_DL[3 * i + 1, 3 * i + 1] = 1
@@ -134,7 +134,7 @@ def Quadratic_planning(l_min, l_max, plan_start_l, plan_start_dl, plan_start_ddl
     H_DDL_END[3 * n - 1, 3 * n - 1] = 1
     """生成二次规划的H"""
     H = w_cost_l * (H_L.T @ H_L) + w_cost_dl * (H_DL.T @ H_L) + w_cost_ddl * (H_DDL.T @ H_DDL) + w_cost_dddl * (
-                H_DDDL.T @ H_DDDL) \
+            H_DDDL.T @ H_DDDL) \
         + w_cost_centre * (H_CENTRE.T @ H_CENTRE) + w_cost_end_l * (H_L_END.T @ H_L_END) \
         + w_cost_end_dl * (H_DL_END.T @ H_DL_END) + w_cost_end_ddl * (H_DDL_END.T @ H_DDL_END)
     H = 2 * H
@@ -175,8 +175,6 @@ def cal_lmin_lmax(dp_path_s, dp_path_l, obs_s_list, obs_l_list, obs_length, obs_
     """
     lmin = -6 * np.ones(len(dp_path_s))
     lmax = 6 * np.ones(len(dp_path_s))
-    # print("dp_path_s", dp_path_s)
-    # print("obs_s_list", obs_s_list)
     # 先对障碍物进行处理
     for i in range(len(obs_s_list)):
         obs_s_min = obs_s_list[i] - obs_length / 2
@@ -332,19 +330,14 @@ def enrich_DP_s_l(DP_s_list, DP_l_list, plan_start_s, plan_start_l, plan_start_d
     end_dl = 0
     end_ddl = 0
     coeffi = cal_quintic_coefficient(start_l, start_dl, start_ddl, end_l, end_dl, end_ddl, start_s, end_s)
-    # s = np.ones(int(end_s-start_s))  # 采样间隔为一米时， 采样的个数就是终点和起点的差值取整
-    # l = np.ones(int(end_s-start_s))
-    # for i in range(1, int(end_s, start_s)):
-    #     s[i] = start_s + i  # 采样间隔为一米
-    #     l[i] = coeffi[0] + coeffi[1]*s[i] + coeffi[2]*(s[i]**2) + \
-    #            coeffi[3]*(s[i]**3) + coeffi[4]*(s[i]**4) + coeffi[5]*(s[i]**5)
-    """下面用矩阵运算，加快速度"""
+
+    """ 采样间隔为resolution， 采样的个数就是终点和起点的差值取整,下面用矩阵运算，加快速度"""
     # 考虑规划起点
     s = start_s + np.arange(0, int(end_s - start_s), resolution)  # 采样间隔为resolution米时， 采样的个数就是终点和起点的差值取整
-    l = coeffi[0] + coeffi[1] * s + coeffi[2] * (s ** 2) + coeffi[3] * (s ** 3) + coeffi[4] * (s ** 4) + coeffi[5] * (
-            s ** 5)
+    l0 = coeffi[0] + coeffi[1] * s + coeffi[2] * (s ** 2) + coeffi[3] * (s ** 3) + coeffi[4] * (s ** 4) + \
+        coeffi[5] * (s ** 5)
     enriched_s_list = enriched_s_list + list(s)
-    enriched_l_list = enriched_l_list + list(l)
+    enriched_l_list = enriched_l_list + list(l0)
     # 规划起点后的其他点
     for i in range(1, len(DP_s_list)):
         start_s = DP_s_list[i - 1]
@@ -359,10 +352,10 @@ def enrich_DP_s_l(DP_s_list, DP_l_list, plan_start_s, plan_start_l, plan_start_d
         coeffi = cal_quintic_coefficient(start_l, start_dl, start_ddl, end_l, end_dl, end_ddl, start_s, end_s)
 
         s = start_s + np.arange(0, int(end_s - start_s), resolution)  # 采样间隔为一米时， 采样的个数就是终点和起点的差值取整
-        l = coeffi[0] + coeffi[1] * s + coeffi[2] * (s ** 2) + coeffi[3] * (s ** 3) + coeffi[4] * (s ** 4) + coeffi[
-            5] * (s ** 5)
+        li = coeffi[0] + coeffi[1] * s + coeffi[2] * (s ** 2) + coeffi[3] * (s ** 3) + coeffi[4] * (s ** 4) + \
+            coeffi[5] * (s ** 5)
         enriched_s_list = enriched_s_list + list(s)
-        enriched_l_list = enriched_l_list + list(l)
+        enriched_l_list = enriched_l_list + list(li)
 
     enriched_s_list += [end_s]
     enriched_l_list += [end_l]
@@ -418,15 +411,15 @@ def cal_start_cost(obs_s_list, obs_l_list,
     coeffi = cal_quintic_coefficient(start_l, start_dl, start_ddl, end_l, end_dl, end_ddl, start_s, end_s)
     # 在五次多项式构成的曲线上采样十个点计算cost
     s = np.zeros(shape=(10, 1))
-    l = np.zeros(shape=(10, 1))
-    dl = np.zeros(shape=(10, 1))
-    ddl = np.zeros(shape=(10, 1))
-    dddl = np.zeros(shape=(10, 1))
+    # l = np.zeros(shape=(10, 1))  # reserve memory space
+    # dl = np.zeros(shape=(10, 1))
+    # ddl = np.zeros(shape=(10, 1))
+    # dddl = np.zeros(shape=(10, 1))
     # 计算s
     for i in range(10):
         s[i][0] = start_s + i * sample_s / 10  # 先从起点离散采样s, 然后通过五次多项式计算每一点的l, dl, ddl, dddl
-    l = coeffi[0] + coeffi[1] * s + coeffi[2] * (s ** 2) + coeffi[3] * (s ** 3) + coeffi[4] * (s ** 4) + coeffi[5] * (
-            s ** 5)
+    l = coeffi[0] + coeffi[1] * s + coeffi[2] * (s ** 2) + coeffi[3] * (s ** 3) + coeffi[4] * (s ** 4) + \
+        coeffi[5] * (s ** 5)
     dl = coeffi[1] + 2 * coeffi[2] * s + 3 * coeffi[3] * (s ** 2) + 4 * coeffi[4] * (s ** 3) + 5 * coeffi[5] * (s ** 4)
     ddl = 2 * coeffi[2] + 6 * coeffi[3] * s + 12 * coeffi[4] * (s ** 2) + 20 * coeffi[5] * (s ** 3)
     dddl = 6 * coeffi[3] + 24 * coeffi[4] * s + 60 * coeffi[5] * (s * 2)
@@ -490,10 +483,10 @@ def cal_neighbor_cost(obs_s_list, obs_l_list, pre_node_s, pre_node_l,
     coeffi = cal_quintic_coefficient(start_l, start_dl, start_ddl, end_l, end_dl, end_ddl, start_s, end_s)
     # 在五次多项式构成的曲线上采样十个点计算cost
     s = np.zeros(shape=(10, 1))
-    l = np.zeros(shape=(10, 1))
-    dl = np.zeros(shape=(10, 1))
-    ddl = np.zeros(shape=(10, 1))
-    dddl = np.zeros(shape=(10, 1))
+    # l = np.zeros(shape=(10, 1))  # reserve memory space
+    # dl = np.zeros(shape=(10, 1))
+    # ddl = np.zeros(shape=(10, 1))
+    # dddl = np.zeros(shape=(10, 1))
     # 计算s
     for i in range(10):
         s[i][0] = start_s + i * sample_s / 10

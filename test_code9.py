@@ -304,8 +304,8 @@ if __name__ == '__main__':
 
     """整车参数设定"""
     vehicle_para = (1.015, 2.910 - 1.015, 1412, -148970, -82204, 1537)
-    # controller = "LQR_controller"
-    controller = "MPC_controller"
+    controller = "LQR_controller"
+    # controller = "MPC_controller"
     Controller = Vehicle_control(ego_vehicle=model3_actor, vehicle_para=vehicle_para,
                                  pathway=local_frenet_path_opt,
                                  controller_type=controller)  # 实例化控制器

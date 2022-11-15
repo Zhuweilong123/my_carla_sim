@@ -29,7 +29,7 @@ class global_path_planner(object):
         self._map = world_map  # type: carla.Map
         self._sampling_resolution = sampling_resolution
         self._topology = None
-        self._graph = None  # type: nx.DiGraph
+        self._graph = nx.DiGraph()  # type: nx.DiGraph
         self._id_map = None
         self._road_to_edge = None
 
@@ -41,7 +41,7 @@ class global_path_planner(object):
         return self._topology, self._graph, self._id_map, self._road_to_edge
 
     def _build_topology(self):
-        """"
+        """
         the output of carla.Map.get_topology() could look like this: [(w0, w1), (w0, w2), (w1, w3), (w2, w3), (w0, w4)].
         由于carla.Map.get_topology()只能函数获取起点和终点信息构成的边信息，这些信息不能够为全局路径规划提供细节信息，因此需要重新构建拓扑
         新拓扑用字典类型存储每个路段，具有以下结构：
@@ -88,7 +88,7 @@ class global_path_planner(object):
         self._id_map  # 字典类型，建立节点id和位置的对应{(x, y, z): id}
         self._road_to_edge  # 字典类型，建立road_id,section_id,lane_id 和边的对应关系
         """
-        self._graph = nx.DiGraph()
+        # self._graph = nx.DiGraph()  # it is initializes in the
         self._id_map = dict()  # 字典类型，建立节点id和位置的对应{(x, y, z): id}
         self._road_to_edge = dict()  # 字典类型，建立road_id,section_id,lane_id 和边的对应关系
 
@@ -175,13 +175,16 @@ class global_path_planner(object):
         open_set = dict()  # 字典， 记录每个节点的父节点和最短路径
         closed_set = dict()
         open_set[n_begin] = (0, -1)  # 每个节点对应一个元组，第一个元素是节点到起点的最短路径，第二个元素是父节点的id
-        cal_heuristic = lambda n: math.hypot(self._graph.nodes[n]['vertex'][0] - self._graph.nodes[n_end]['vertex'][0],
-                                             self._graph.nodes[n]['vertex'][1] - self._graph.nodes[n_end]['vertex'][1],
-                                             self._graph.nodes[n]['vertex'][2] - self._graph.nodes[n_end]['vertex'][2],
-                                             )
+
+        def cal_heuristic(n):
+            return math.hypot(self._graph.nodes[n]['vertex'][0] - self._graph.nodes[n_end]['vertex'][0],
+                              self._graph.nodes[n]['vertex'][1] - self._graph.nodes[n_end]['vertex'][1],
+                              self._graph.nodes[n]['vertex'][2] - self._graph.nodes[n_end]['vertex'][2])
+
         while 1:
             if len(open_set) == 0:  # 终点不可达
                 return None
+            # find the node with minimum distance between n_begin in open_set
             c_node = min(open_set, key=lambda n: open_set[n][0] + cal_heuristic(n))
             # print(c_node)
             if c_node == n_end:
@@ -207,7 +210,8 @@ class global_path_planner(object):
                 break
         return list(reversed(route))
 
-    def _closest_index(self, current_waypoint, waypoint_list):
+    @staticmethod
+    def _closest_index(current_waypoint, waypoint_list):
         """
         确定waypoint_list中距离当前路点最近的路点的索引值
         :param current_waypoint:
@@ -259,7 +263,7 @@ class global_path_planner(object):
         path = edge["path"] + [edge["exit_waypoint"]]
         clos_index = self._closest_index(destination_wp, path)
         if clos_index != 0:  # 判断终点是否是当前路段的起点，如果不是，将后续的路点加入path_way;
-            for wp in path[:clos_index+1]:
+            for wp in path[:clos_index + 1]:
                 path_way.append((wp, edge["type"]))
         else:  # 如果是，后面的路段终点则在上个路段已经添加进path_way中，这里不进行重复操作
             pass
