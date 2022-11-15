@@ -70,7 +70,7 @@ def find_match_points(xy_list: list, frenet_path_node_list: list, is_first_run: 
     project_node_list = []  # 最终长度和input_xy_length应该相同
 
     if is_first_run is True:
-        for index_xy in range(pre_match_index, input_xy_length):  # 为每一个点寻找匹配点
+        for index_xy in range(input_xy_length):  # 为每一个点寻找匹配点
             x, y = xy_list[index_xy]
             start_index = 0
             # 用increase_count记录distance连续增大的次数，避免多个局部最小值的干扰
@@ -118,7 +118,7 @@ def find_match_points(xy_list: list, frenet_path_node_list: list, is_first_run: 
             x, y = xy_list[index_xy]
             """
             这里有一个疑问，如果在某个周期内做执行匹配算法时有多个目标点对应多个匹配点，那下一个周期要使用的上个周期的匹配点应该选哪一个比较合适
-            这里直接选取的时pre_match_index[index_xy]，index_xy还是新的
+            这里直接选取的是pre_match_index[index_xy]，index_xy还是新的
             """
             start_index = pre_match_index
             # 用increase_count记录distance连续增大的次数，避免多个局部最小值的干扰
@@ -223,12 +223,12 @@ def sampling(match_point_index: int, frenet_path_node_list: list, back_length=10
     :param forward_length: 投影点向前采样点数
 
     :return: list类型， local_frenet_path = [node0, node1, node2, ...], node0 = (x0, y0, heading0, kappa0)
-    采样的规则是，在匹配点之前的30个点和匹配点之后的150个点,这个可以根据实际调整，做到精确和速度的平衡就好
-    如果前向不够，则向后增加点；如果后向不够，则向前增加点。保持总长度为181，为了后面平滑算法统一处理
+    采样的规则是，在匹配点之前的B个点和匹配点之后的F个点,这个可以根据实际调整，做到精确和速度的平衡就好
+    如果前向不够，则向后增加点；如果后向不够，则向前增加点。保持总长度为B+F，为了后面平滑算法统一处理
     """
     local_frenet_path = []
     back_length = 10
-    forward_length = 50
+    forward_length = 40
     length_sum = back_length + forward_length
     if match_point_index < back_length:
         back_length = match_point_index
@@ -472,7 +472,6 @@ def cal_s_l_fun(obs_xy_list: list, local_path_opt: list, s_map: list):
     :param s_map:
     :return:  输出s_list 和 l_list
     """
-    # s_map = cal_s_map_fun(local_path_opt, origin_xy)  # 得到以车辆当前位置为起点的s_map
 
     # 计算这些障碍物点在当期参考线中匹配点的索引和投影点信息
     match_index_list, projection_list = match_projection_points(obs_xy_list, local_path_opt)

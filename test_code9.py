@@ -218,8 +218,6 @@ def motion_planning(conn):
                                                                frenet_path_opt=local_frenet_path_opt_,
                                                                s_map=s_map)
         # 将重新规划得到的路径信息发送给主进程，让控制器进行轨迹跟踪
-        # print("path_s", path_s)
-        # print("path_l", path_l)
         conn.send((current_local_frenet_path_opt, match_point_list_, path_s, path_l))
         print("***motion planning time cost:", time.time() - start_time)
 
@@ -306,8 +304,8 @@ if __name__ == '__main__':
 
     """整车参数设定"""
     vehicle_para = (1.015, 2.910 - 1.015, 1412, -148970, -82204, 1537)
-    controller = "LQR_controller"
-    # controller = "MPC_controller"
+    # controller = "LQR_controller"
+    controller = "MPC_controller"
     Controller = Vehicle_control(ego_vehicle=model3_actor, vehicle_para=vehicle_para,
                                  pathway=local_frenet_path_opt,
                                  controller_type=controller)  # 实例化控制器
