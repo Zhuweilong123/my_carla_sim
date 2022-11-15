@@ -290,10 +290,6 @@ class Lateral_MPC_controller(object):
         # 计算代价函数的系数矩阵 x'.H.x + 2E'x
         # G = M.T @ Q_bar @ M
         # print("V_x", self._vehicle_Vx)
-        # print("A_bar matrix:", self.A_bar)
-        # print("C matrix:", C)
-        # print("Q_bar", Q_bar)
-        # print("R_bar", R_bar)
         H = C.T @ Q_bar @ C + R_bar
         E = C.T @ Q_bar @ Cc + C.T @ Q_bar @ M @ (np.array(self.e_rr).reshape(self._n, 1))
         # 解决二次规划需要转化为标准形式0.5*x'.H.x + f'x
@@ -337,7 +333,6 @@ class Lateral_MPC_controller(object):
         self.cal_coefficient_of_discretion_fun()
 
         current_steering = self.cal_control_para_fun(Q, R, F)
-        # current_steering = current_steering[0]
         # print("raw steering:", current_steering)
         return current_steering
 
