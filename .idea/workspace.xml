@@ -1,11 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="ChangeListManager">
-    <list default="true" id="92098641-30e4-4e3d-b4d5-c4623df731a0" name="Changes" comment="Merge remote-tracking branch 'origin/master'&#10;&#10;# Conflicts:&#10;#&#9;.idea/workspace.xml">
-      <change beforePath="$PROJECT_DIR$/.idea/my_carla_sim.iml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/my_carla_sim.iml" afterDir="false" />
+    <list default="true" id="92098641-30e4-4e3d-b4d5-c4623df731a0" name="Changes" comment="optimize some methods and annotations">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/planner/global_path_plan.py" beforeDir="false" afterPath="$PROJECT_DIR$/planner/global_path_plan.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/test_code9.py" beforeDir="false" afterPath="$PROJECT_DIR$/test_code9.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/planner/motion_plan_path_planning.py" beforeDir="false" afterPath="$PROJECT_DIR$/planner/motion_plan_path_planning.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/planner/motion_plan_speed_planning.py" beforeDir="false" afterPath="$PROJECT_DIR$/planner/motion_plan_speed_planning.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/planner/planner_utiles.py" beforeDir="false" afterPath="$PROJECT_DIR$/planner/planner_utiles.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -40,10 +40,10 @@
     "RunOnceActivity.OpenProjectViewOnStart": "true",
     "RunOnceActivity.ShowReadmeOnStart": "true",
     "last_opened_file_path": "/opt/carla-0.9.12/PythonAPI/carla",
-    "settings.editor.selected.configurable": "com.jetbrains.python.configuration.PyActiveSdkModuleConfigurable"
+    "settings.editor.selected.configurable": "inlay.hints"
   }
 }]]></component>
-  <component name="RunManager" selected="Python.test_code9">
+  <component name="RunManager" selected="Python.test_code8">
     <configuration name="test_code8" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
       <module name="my_carla_sim" />
       <option name="INTERPRETER_OPTIONS" value="" />
@@ -88,8 +88,8 @@
     </configuration>
     <recent_temporary>
       <list>
-        <item itemvalue="Python.test_code9" />
         <item itemvalue="Python.test_code8" />
+        <item itemvalue="Python.test_code9" />
       </list>
     </recent_temporary>
   </component>
@@ -172,7 +172,14 @@
       <option name="project" value="LOCAL" />
       <updated>1668501835645</updated>
     </task>
-    <option name="localTasksCounter" value="11" />
+    <task id="LOCAL-00011" summary="optimize some methods and annotations">
+      <created>1668583111879</created>
+      <option name="number" value="00011" />
+      <option name="presentableId" value="LOCAL-00011" />
+      <option name="project" value="LOCAL" />
+      <updated>1668583111879</updated>
+    </task>
+    <option name="localTasksCounter" value="12" />
     <servers />
   </component>
   <component name="Vcs.Log.Tabs.Properties">
@@ -180,15 +187,53 @@
       <map>
         <entry key="MAIN">
           <value>
-            <State />
+            <State>
+              <option name="FILTERS">
+                <map>
+                  <entry key="branch">
+                    <value>
+                      <list>
+                        <option value="origin/master" />
+                      </list>
+                    </value>
+                  </entry>
+                </map>
+              </option>
+            </State>
+          </value>
+        </entry>
+      </map>
+    </option>
+    <option name="RECENT_FILTERS">
+      <map>
+        <entry key="Branch">
+          <value>
+            <list>
+              <RecentGroup>
+                <option name="FILTER_VALUES">
+                  <option value="origin/master" />
+                </option>
+              </RecentGroup>
+            </list>
+          </value>
+        </entry>
+        <entry key="User">
+          <value>
+            <list>
+              <RecentGroup>
+                <option name="FILTER_VALUES">
+                  <option value="*" />
+                </option>
+              </RecentGroup>
+            </list>
           </value>
         </entry>
       </map>
     </option>
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="optimize some methods and annotations" />
     <MESSAGE value="Merge remote-tracking branch 'origin/master'&#10;&#10;# Conflicts:&#10;#&#9;.idea/workspace.xml" />
-    <option name="LAST_COMMIT_MESSAGE" value="Merge remote-tracking branch 'origin/master'&#10;&#10;# Conflicts:&#10;#&#9;.idea/workspace.xml" />
+    <MESSAGE value="optimize some methods and annotations" />
+    <option name="LAST_COMMIT_MESSAGE" value="optimize some methods and annotations" />
   </component>
 </project>

@@ -646,3 +646,38 @@ def cal_proj_point_1(s, pre_match_index, frenet_path_opt: list, s_map: list):
     proj_kappa = mp_kappa
     res = (proj_x, proj_y, proj_theta, proj_kappa, start_s_match_index)
     return res
+
+
+def cal_quintic_coefficient(start_l, start_dl, start_ddl, end_l, end_dl, end_ddl, start_s, end_s):
+    """  已验证
+    给定六个边界条件， 计算五次多项式的系数
+    l = a0 + a1*s + a2*s^2 + a3*s^3 + a4*s^4 + a5*s^5
+    dl = a1 + 2*a2*s + 3*a3*s^2 + 4*a4*s^3 + 5*a5*s^4
+    ddl = 2*a2 + 6*a3*s + 12*a4*s^2 + 20*a5*s^3
+    构建矩阵，通过矩阵运算求出系数
+    B = A@coeffi
+    B.shape=(6,1)
+    A.shape=(6,6)
+    coeffi.shape=(6, 1)
+    :param start_l:
+    :param start_dl:
+    :param start_ddl:
+    :param end_l:
+    :param end_dl:
+    :param end_ddl:
+    :param start_s:
+    :param end_s:
+    :return:五次多项式的系数，列表类型
+    """
+    A = np.array(
+        [[1, start_s, pow(start_s, 2), pow(start_s, 3), pow(start_s, 4), pow(start_s, 5)],
+         [0, 1, 2 * start_s, 3 * pow(start_s, 2), 4 * pow(start_s, 3), 5 * pow(start_s, 4)],
+         [0, 0, 2, 6 * start_s, 12 * pow(start_s, 2), 20 * pow(start_s, 3)],
+         [1, end_s, pow(end_s, 2), pow(end_s, 3), pow(end_s, 4), pow(end_s, 5)],
+         [0, 1, 2 * end_s, 3 * pow(end_s, 2), 4 * pow(end_s, 3), 5 * pow(end_s, 4)],
+         [0, 0, 2, 6 * end_s, 12 * pow(end_s, 2), 20 * pow(end_s, 3)]]
+    )
+    B = np.array([start_l, start_dl, start_ddl, end_l, end_dl, end_ddl])
+    B = B.reshape((6, 1))
+    coeffi = np.linalg.inv(A) @ B
+    return list(coeffi.squeeze())

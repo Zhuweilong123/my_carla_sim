@@ -234,7 +234,7 @@ def DP_algorithm(obs_s_list: list, obs_l_list: list,
     :param sample_l: 沿着l方向的采样间隔
     :return: 规划的得到的s-l路径信息，dp_path_s, dp_path_l 都是列表类型,不包括规划起点
     """
-    if len(obs_s_list):
+    if len(obs_s_list):  # the length of obs_s_list is bigger than zero indicating that the obstacle exists.
         # 声明一个二维数组记录每个采样点的cost,初始化为无穷大
         cost = np.ones(shape=(row, col)) * np.inf
         # 声明另一个二维数组，记录规划起点距离当前位置的最短路径的前一个位置
@@ -329,7 +329,7 @@ def enrich_DP_s_l(DP_s_list, DP_l_list, plan_start_s, plan_start_l, plan_start_d
     end_l = DP_l_list[0]
     end_dl = 0
     end_ddl = 0
-    coeffi = cal_quintic_coefficient(start_l, start_dl, start_ddl, end_l, end_dl, end_ddl, start_s, end_s)
+    coeffi = planner_utiles.cal_quintic_coefficient(start_l, start_dl, start_ddl, end_l, end_dl, end_ddl, start_s, end_s)
 
     """ 采样间隔为resolution， 采样的个数就是终点和起点的差值取整,下面用矩阵运算，加快速度"""
     # 考虑规划起点
@@ -349,7 +349,7 @@ def enrich_DP_s_l(DP_s_list, DP_l_list, plan_start_s, plan_start_l, plan_start_d
         end_l = DP_l_list[i]
         end_dl = 0
         end_ddl = 0
-        coeffi = cal_quintic_coefficient(start_l, start_dl, start_ddl, end_l, end_dl, end_ddl, start_s, end_s)
+        coeffi = planner_utiles.cal_quintic_coefficient(start_l, start_dl, start_ddl, end_l, end_dl, end_ddl, start_s, end_s)
 
         s = start_s + np.arange(0, int(end_s - start_s), resolution)  # 采样间隔为一米时， 采样的个数就是终点和起点的差值取整
         li = coeffi[0] + coeffi[1] * s + coeffi[2] * (s ** 2) + coeffi[3] * (s ** 3) + coeffi[4] * (s ** 4) + \
@@ -408,7 +408,7 @@ def cal_start_cost(obs_s_list, obs_l_list,
     end_s = begin_s + sample_s
 
     # 计算五次多项式的系数
-    coeffi = cal_quintic_coefficient(start_l, start_dl, start_ddl, end_l, end_dl, end_ddl, start_s, end_s)
+    coeffi = planner_utiles.cal_quintic_coefficient(start_l, start_dl, start_ddl, end_l, end_dl, end_ddl, start_s, end_s)
     # 在五次多项式构成的曲线上采样十个点计算cost
     s = np.zeros(shape=(10, 1))
     # l = np.zeros(shape=(10, 1))  # reserve memory space
@@ -424,7 +424,7 @@ def cal_start_cost(obs_s_list, obs_l_list,
     ddl = 2 * coeffi[2] + 6 * coeffi[3] * s + 12 * coeffi[4] * (s ** 2) + 20 * coeffi[5] * (s ** 3)
     dddl = 6 * coeffi[3] + 24 * coeffi[4] * s + 60 * coeffi[5] * (s * 2)
     cost_smooth = w_cost_smooth[0] * (dl.T @ dl) + w_cost_smooth[1] * (ddl.T @ ddl) + w_cost_smooth[2] * (
-            dddl.T @ ddl)  # 平滑代价
+            dddl.T @ dddl)  # 平滑代价
     cost_ref = w_cost_ref * (l.T @ l)  # 参考线代价
     # 计算障碍物代价
     cost_collision = 0
@@ -480,7 +480,8 @@ def cal_neighbor_cost(obs_s_list, obs_l_list, pre_node_s, pre_node_l,
     end_s = cur_node_s
 
     # 计算五次多项式的系数
-    coeffi = cal_quintic_coefficient(start_l, start_dl, start_ddl, end_l, end_dl, end_ddl, start_s, end_s)
+    coeffi = planner_utiles.cal_quintic_coefficient(start_l, start_dl, start_ddl,
+                                                    end_l, end_dl, end_ddl, start_s, end_s)
     # 在五次多项式构成的曲线上采样十个点计算cost
     s = np.zeros(shape=(10, 1))
     # l = np.zeros(shape=(10, 1))  # reserve memory space
@@ -496,7 +497,7 @@ def cal_neighbor_cost(obs_s_list, obs_l_list, pre_node_s, pre_node_l,
     ddl = 2 * coeffi[2] + 6 * coeffi[3] * s + 12 * coeffi[4] * (s ** 2) + 20 * coeffi[5] * (s ** 3)
     dddl = 6 * coeffi[3] + 24 * coeffi[4] * s + 60 * coeffi[5] * (s * 2)
     cost_smooth = w_cost_smooth[0] * (dl.T @ dl) + w_cost_smooth[1] * (ddl.T @ ddl) + w_cost_smooth[2] * (
-            dddl.T @ ddl)  # 平滑代价
+            dddl.T @ dddl)  # 平滑代价
     # print(l)
     cost_ref = w_cost_ref * (l.T @ l)  # 参考线代价
     # 计算障碍物代价
@@ -535,41 +536,6 @@ def cal_obs_cost(w_cost_collision, square_d: np.ndarray, danger_dis=3, safe_dis=
             # print("danger range", "^^^^^^^^^^^^^^^^^^^^")
             cost += 5000 / s_d
     return cost
-
-
-def cal_quintic_coefficient(start_l, start_dl, start_ddl, end_l, end_dl, end_ddl, start_s, end_s):
-    """  已验证
-    给定六个边界条件， 计算五次多项式的系数
-    l = a0 + a1*s + a2*s^2 + a3*s^3 + a4*s^4 + a5*s^5
-    dl = a1 + 2*a2*s + 3*a3*s^2 + 4*a4*s^3 + 5*a5*s^4
-    ddl = 2*a2 + 6*a3*s + 12*a4*s^2 + 20*a5*s^3
-    构建矩阵，通过矩阵运算求出系数
-    B = A@coeffi
-    B.shape=(6,1)
-    A.shape=(6,6)
-    coeffi.shape=(6, 1)
-    :param start_l:
-    :param start_dl:
-    :param start_ddl:
-    :param end_l:
-    :param end_dl:
-    :param end_ddl:
-    :param start_s:
-    :param end_s:
-    :return:五次多项式的系数，列表类型
-    """
-    A = np.array(
-        [[1, start_s, pow(start_s, 2), pow(start_s, 3), pow(start_s, 4), pow(start_s, 5)],
-         [0, 1, 2 * start_s, 3 * pow(start_s, 2), 4 * pow(start_s, 3), 5 * pow(start_s, 4)],
-         [0, 0, 2, 6 * start_s, 12 * pow(start_s, 2), 20 * pow(start_s, 3)],
-         [1, end_s, pow(end_s, 2), pow(end_s, 3), pow(end_s, 4), pow(end_s, 5)],
-         [0, 1, 2 * end_s, 3 * pow(end_s, 2), 4 * pow(end_s, 3), 5 * pow(end_s, 4)],
-         [0, 0, 2, 6 * end_s, 12 * pow(end_s, 2), 20 * pow(end_s, 3)]]
-    )
-    B = np.array([start_l, start_dl, start_ddl, end_l, end_dl, end_ddl])
-    B = B.reshape((6, 1))
-    coeffi = np.linalg.inv(A) @ B
-    return list(coeffi.squeeze())
 
 
 def frenet_2_x_y_theta_kappa(plan_start_s, plan_start_l, enriched_s_list: list, enriched_l_list: list,
