@@ -214,8 +214,8 @@ def cal_lmin_lmax(dp_path_s, dp_path_l, obs_s_list, obs_l_list, obs_length, obs_
 
 def DP_algorithm(obs_s_list: list, obs_l_list: list,
                  plan_start_s, plan_start_l, plan_start_dl, plan_start_ddl, sampling_res=2,
-                 w_collision_cost=1e10, w_smooth_cost=[300, 2000, 10000], w_reference_cost=20,
-                 row=11, col=6, sample_s=15, sample_l=1.2):
+                 w_collision_cost=1e12, w_smooth_cost=[300, 1000, 5000], w_reference_cost=20,
+                 row=12, col=6, sample_s=15, sample_l=1.5):
     """  已验证
     采用动态规划进行路径规划, 声明一下动态规划和五次多项式用到的dl都是对弧长的导数，跟坐标变换时的定义有点差别
     :param obs_s_list: 障碍物在参考线上的弧长信息
@@ -509,11 +509,11 @@ def cal_neighbor_cost(obs_s_list, obs_l_list, pre_node_s, pre_node_l,
         # 但是考虑量采样点之间的五次多项式一般较平缓，我们就直接近似，简化计算,
         # 这里有时会出现问题，就是曲线扭曲时误差较大，导致无法找到无碰撞路径，后面要考虑把这部分优化掉********************************
         cost_collision += cal_obs_cost(w_cost_collision, square_d)
-    # print(cost_smooth, cost_collision, cost_ref)
+    print(cost_smooth, cost_collision, cost_ref)
     return cost_smooth + cost_collision + cost_ref
 
 
-def cal_obs_cost(w_cost_collision, square_d: np.ndarray, danger_dis=3, safe_dis=5):
+def cal_obs_cost(w_cost_collision, square_d: np.ndarray, danger_dis=4, safe_dis=6):
     """  已验证
     计算障碍物的代价
     暂时设定为四米意外，不会碰撞

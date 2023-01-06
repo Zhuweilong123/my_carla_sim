@@ -62,7 +62,7 @@ def construct_ST_graph_and_planning(path_s: list, ego_pos: int, ego_speed: int, 
     col = int(time_interval / time_slot)
     grid = np.zeros(shape=(row, col))
     for t_n in range(col):
-        for s_n in range(1, row):
+        for s_n in range(1, row):  # Sparse sampling 稀疏采样
             if row <= 20:  # 20* 0.2 = 4
                 grid[s_n][t_n] = grid[s_n][t_n] + 0.2
             elif row <= 40:  # 20 * 0.4 = 8
