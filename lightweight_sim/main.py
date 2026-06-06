@@ -17,8 +17,8 @@ def main():
       SimulatorApp.straight_with_obstacle()   — 直道+静态障碍 (需Phase3路径规划避障)
       SimulatorApp.curve_scenario()           — 90°弯道 (LQR过弯)
     """
-    # 默认跑直道巡航 (LQR控制器, 无障碍物)
-    app = SimulatorApp(SimulatorApp._default_config())
+    # 直道+障碍物场景 (Phase 3: DP+QP 自动避障)
+    app = SimulatorApp(SimulatorApp.straight_with_obstacle())
     app.run()
 
 

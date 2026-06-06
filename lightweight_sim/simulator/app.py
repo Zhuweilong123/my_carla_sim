@@ -61,6 +61,7 @@ from .engine import SimulationEngine
 from .world import RoadDef, RoadSegment
 from .vehicle import EgoVehicle, VehicleParams
 from ..algorithms.controller.combined import VehicleController
+from ..algorithms.planner.motion_planner import MotionPlanner
 from ..visualization.renderer import Renderer, Camera
 from ..visualization.hud import HUD
 from ..visualization.colors import *
@@ -130,8 +131,14 @@ class SimulatorApp:
             self.engine.world.ref_path_as_tuples
         )
 
-        # 规划器 (后续阶段集成)
-        self.planner = None
+        # 规划器: DP+QP (多进程)
+        global_path = self.engine.world.ref_path_as_tuples
+        self.planner = MotionPlanner(global_path)
+        self.planner.start()
+        self._plan_pending = False     # 是否有规划请求在处理中
+        self._plan_counter = 0         # 规划周期计数器
+        self._plan_interval = 50       # 每50步规划一次 (≈2.5s @ 20Hz)
+        self._first_plan_done = False  # 首次规划是否完成
 
         # 路径 (当前规划/参考路径, 用于渲染)
         self.planned_path: List[Tuple[float, float, float, float]] = []
@@ -346,6 +353,42 @@ class SimulatorApp:
             else:
                 control = self._manual_control(keys)
 
+            # ---- 第5.5步: 路径规划 (低频, 多进程) ----
+            if self.auto_mode and self._plan_counter % self._plan_interval == 0:
+                state = self.engine.get_state()
+                # 预测规划起点的位置 (补偿规划延迟)
+                pred_ts = 0.2
+                pred_x = state.x + state.vx * pred_ts * math.cos(state.phi) \
+                         - state.vy * pred_ts * math.sin(state.phi)
+                pred_y = state.y + state.vy * pred_ts * math.cos(state.phi) \
+                         + state.vx * pred_ts * math.sin(state.phi)
+
+                # 向规划子进程发送请求
+                self.planner.plan(
+                    ego_state=state,
+                    obstacles=self.engine.obstacles.get_all(),
+                    vehicle_v=(state.vx, state.vy),
+                    vehicle_a=(state.accel, 0.0),
+                    pred_loc=(pred_x, pred_y),
+                    vehicle_loc=(state.x, state.y),
+                )
+                self._plan_pending = True
+
+            # 接收上次规划的结果 (如果有的话)
+            if self._plan_pending and self._plan_counter > self._plan_interval:
+                planned = self.planner.get_result()
+                if planned is not None:
+                    self.planned_traj = planned
+                    # 更新控制器参考线
+                    if planned:
+                        self.controller.update_ref_path(planned)
+                        if not self._first_plan_done:
+                            print("[App] First planning result received!")
+                        self._first_plan_done = True
+                    self._plan_pending = False
+
+            self._plan_counter += 1
+
             # ---- 第6步: 物理步进 ----
             dt = 0.05
             state = self.engine.step(control, dt)
@@ -397,13 +440,19 @@ class SimulatorApp:
     def _auto_control(self) -> ControlCommand:
         """自动驾驶控制 — 使用 LQR/MPC + PID"""
         state = self.engine.get_state()
-        ref_path = self.engine.world.ref_path_as_tuples
+
+        # 控制器参考线: 优先使用规划轨迹, 否则使用全局参考线
+        if self.planned_traj:
+            ref_path = self.planned_traj
+        else:
+            ref_path = self.engine.world.ref_path_as_tuples
 
         if not ref_path:
             return ControlCommand()
 
-        # 更新参考线 (规划频率与自动控制分离，这里每次都用最新参考线)
-        self.controller.update_ref_path(ref_path)
+        # 仅在无规划轨迹时更新参考线 (有规划轨迹时已在main loop中更新)
+        if not self.planned_traj:
+            self.controller.update_ref_path(ref_path)
 
         # 更新目标速度
         self.controller.set_target_speed(self.engine.target_speed)
@@ -532,11 +581,15 @@ class SimulatorApp:
         self._last_ed = 0.0
         self._last_ephi = 0.0
         self._last_ctrl_debug = {}
+        self._plan_pending = False
+        self._plan_counter = 0
+        self._first_plan_done = False
 
         # 保留当前控制器类型，仅更新参考线
         self.controller.update_ref_path(
             self.engine.world.ref_path_as_tuples
         )
+        self.planned_traj.clear()
         self.controller.set_target_speed(self.engine.target_speed)
         self.controller.lat.min_index = 0  # 重置匹配点索引
         self.controller.lon.reset()        # 重置PID误差缓冲
@@ -614,6 +667,8 @@ class SimulatorApp:
         pygame.display.flip()
 
     def _on_exit(self):
-        """退出时保存数据"""
+        """退出时清理"""
+        if self.planner:
+            self.planner.stop()
         print(f"Simulation ended. {len(self.log_entries)} steps logged.")
         pygame.quit()
