@@ -3,7 +3,8 @@
 import time
 import math
 import numpy as np
-from multiprocessing import Process, Pipe
+import threading
+import queue
 from typing import List, Tuple, Optional
 from .dp_path_plan import DP_algorithm
 from .qp_path_plan import Quadratic_planning, cal_lmin_lmax, frenet_2_x_y_theta_kappa
@@ -15,9 +16,9 @@ from ..utils.reference_line import smooth_reference_line
 # 规划子进程
 # =============================================================================
 
-def _planning_process(conn):
+def _planning_thread(request_queue: queue.Queue, response_queue: queue.Queue):
     """
-    独立的规划子进程. 通过Pipe与主进程通信.
+    独立的规划线程. 通过Queue与主线程通信.
     """
     def do_planning(data):
         """实际规划逻辑"""
@@ -127,13 +128,16 @@ def _planning_process(conn):
         print(f"[Planner] {plan_used} done in {elapsed:.3f}s, "
               f"path: {len(planned_path)} points")
 
-        conn.send((planned_path, match_point_list, path_s_out, path_l_out))
+        response_queue.put((planned_path, match_point_list, path_s_out, path_l_out))
 
     # ---- 主循环: 接收请求 → 规划 → 发送结果 ----
     while True:
         try:
-            data = conn.recv()
-        except EOFError:
+            data = request_queue.get(timeout=1.0)  # 1秒超时, 允许检查退出
+        except queue.Empty:
+            continue
+
+        if data is None:  # 停止信号
             break
 
         try:
@@ -141,11 +145,8 @@ def _planning_process(conn):
         except Exception as e:
             print(f"[Planner] error: {e}")
             import traceback; traceback.print_exc()
-            # 发送空结果防止主进程阻塞
-            try:
-                conn.send(([], [0], [], []))
-            except Exception:
-                pass
+            # 发送空结果防止主线程阻塞
+            response_queue.put(([], [0], [], []))
 
 
 def _sample_path(match_idx: int, global_path: List, back: int, forward: int):
@@ -168,89 +169,80 @@ def _sample_path(match_idx: int, global_path: List, back: int, forward: int):
 
 class MotionPlanner:
     """
-    运动规划器 (主进程端).
+    运动规划器 (后台线程).
 
     用法:
         planner = MotionPlanner(global_path)
-        planner.start()                              # 启动子进程
-        planned = planner.plan(ego_state, obstacles)  # 触发规划
-        planner.stop()                               # 关闭子进程
+        planner.start()
+        planner.plan(ego_state, obstacles, ...)  # 非阻塞发送
+        if planner.poll_result():                 # 非阻塞检查
+            path = planner.get_result()           # 获取结果
+        planner.stop()
     """
 
     def __init__(self, global_frenet_path: List[Tuple[float, float, float, float]]):
         self.global_path = global_frenet_path
-        self._parent_conn = None
-        self._child_conn = None
-        self._process = None
+        self._request_queue: queue.Queue = queue.Queue()
+        self._response_queue: queue.Queue = queue.Queue()
+        self._thread: Optional[threading.Thread] = None
         self._is_running = False
         self._match_point_list = None
 
-        # 初始化匹配点 (在全局路径起点)
         if global_frenet_path:
             self._match_point_list = [0]
 
     def start(self):
-        """启动规划子进程"""
+        """启动规划后台线程"""
         if self._is_running:
             return
-        self._parent_conn, self._child_conn = Pipe()
-        self._process = Process(target=_planning_process, args=(self._child_conn,))
-        self._process.start()
+        self._thread = threading.Thread(
+            target=_planning_thread,
+            args=(self._request_queue, self._response_queue),
+            daemon=True,
+        )
+        self._thread.start()
         self._is_running = True
-        print("[Planner] subprocess started")
+        print("[Planner] thread started")
 
     def stop(self):
-        """停止规划子进程"""
+        """停止规划线程"""
         if not self._is_running:
             return
-        self._parent_conn.close()
-        self._process.terminate()
-        self._process.join(timeout=2)
+        self._request_queue.put(None)  # 停止信号
+        self._thread.join(timeout=5)
         self._is_running = False
-        print("[Planner] subprocess stopped")
+        print("[Planner] thread stopped")
 
     def plan(self, ego_state, obstacles,
              vehicle_v: Tuple[float, float],
              vehicle_a: Tuple[float, float],
              pred_loc: Tuple[float, float],
              vehicle_loc: Tuple[float, float]) -> Optional[List]:
-        """
-        触发一次规划 (非阻塞: 发送数据给子进程).
-
-        需要调用 get_result() 获取结果 (阻塞直到子进程完成).
-        """
+        """触发一次规划 (非阻塞: 发送数据给后台线程)."""
         if not self._is_running:
             return None
 
-        # 提取障碍物坐标
-        obs_xy = []
-        for obs in obstacles:
-            obs_xy.append((obs.x, obs.y))
+        obs_xy = [(obs.x, obs.y) for obs in obstacles]
 
         data = (obs_xy, vehicle_loc, pred_loc,
                 vehicle_v, vehicle_a,
                 self.global_path, self._match_point_list)
 
-        self._parent_conn.send(data)
-        return True  # 表示已发送
+        self._request_queue.put(data)
+        return True
 
     def poll_result(self) -> bool:
-        """检查子进程是否有结果就绪 (非阻塞)."""
-        if not self._is_running:
-            return False
-        return self._parent_conn.poll()
+        """检查是否有结果就绪 (非阻塞)."""
+        return not self._response_queue.empty()
 
     def get_result(self) -> Optional[List]:
-        """
-        获取规划结果 (阻塞直到子进程返回).
-        建议先调用 poll_result() 确保有数据.
-        """
-        if not self._is_running:
-            return None
+        """获取规划结果 (非阻塞, 队列空时返回None)."""
         try:
-            result = self._parent_conn.recv()
+            result = self._response_queue.get_nowait()
             planned_path, self._match_point_list, path_s, path_l = result
             return planned_path
+        except queue.Empty:
+            return None
         except Exception as e:
-            print(f"[Planner] recv failed: {e}")
+            print(f"[Planner] get_result failed: {e}")
             return None

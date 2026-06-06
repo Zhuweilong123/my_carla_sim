@@ -182,10 +182,10 @@ def cal_start_cost(obs_s_list, obs_l_list,
         s[i, 0] = start_s + i * sample_s / 10
 
     l, dl, ddl, dddl = evaluate_quintic(coeffi, s)
-    cost_smooth = (w_cost_smooth[0] * (dl.T @ dl) +
-                   w_cost_smooth[1] * (ddl.T @ ddl) +
-                   w_cost_smooth[2] * (dddl.T @ dddl))
-    cost_ref = w_cost_ref * (l.T @ l)
+    cost_smooth = float(w_cost_smooth[0] * (dl.T @ dl).item() +
+                        w_cost_smooth[1] * (ddl.T @ ddl).item() +
+                        w_cost_smooth[2] * (dddl.T @ dddl).item())
+    cost_ref = float(w_cost_ref * (l.T @ l).item())
     cost_collision = _calc_collision(obs_s_list, obs_l_list, s, l, w_cost_collision)
 
     return float(cost_smooth + cost_collision + cost_ref)
@@ -206,10 +206,10 @@ def cal_neighbor_cost(obs_s_list, obs_l_list,
         s[i, 0] = start_s + i * sample_s / 10
 
     l, dl, ddl, dddl = evaluate_quintic(coeffi, s)
-    cost_smooth = (w_cost_smooth[0] * (dl.T @ dl) +
-                   w_cost_smooth[1] * (ddl.T @ ddl) +
-                   w_cost_smooth[2] * (dddl.T @ dddl))
-    cost_ref = w_cost_ref * (l.T @ l)
+    cost_smooth = float(w_cost_smooth[0] * (dl.T @ dl).item() +
+                        w_cost_smooth[1] * (ddl.T @ ddl).item() +
+                        w_cost_smooth[2] * (dddl.T @ dddl).item())
+    cost_ref = float(w_cost_ref * (l.T @ l).item())
     cost_collision = _calc_collision(obs_s_list, obs_l_list, s, l, w_cost_collision)
 
     return float(cost_smooth + cost_collision + cost_ref)
