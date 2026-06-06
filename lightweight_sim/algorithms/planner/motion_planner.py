@@ -107,6 +107,7 @@ def _planning_thread(request_queue: queue.Queue, response_queue: queue.Queue):
                 plan_start_l=l_list[0],
                 plan_start_dl=l_ds_list[0],
                 plan_start_ddl=l_dds_list[0],
+                target_end_l=begin_l_list[0],  # 终点回到原车道
             )
 
             # 合并DP和QP结果 (插值回原始分辨率)
@@ -125,10 +126,10 @@ def _planning_thread(request_queue: queue.Queue, response_queue: queue.Queue):
             path_l_out = dp_path_l
             plan_used = "DP"
 
-        # 10. Frenet → Cartesian (并补上车辆当前位置作为路径起点)
-        # 先加入车辆当前位置(投影点, s=0)
+        # 10. Frenet → Cartesian (补上车辆当前位置为路径起点)
+        # 使用实际Frenet坐标, 而非硬编码l=0 (车辆可能在车道中心而非道路中心)
         full_s = [0.0] + path_s_out
-        full_l = [0.0] + path_l_out  # 车辆在参考线上, l≈0
+        full_l = [begin_l_list[0]] + path_l_out
         planned_path = frenet_2_x_y_theta_kappa(
             plan_start_s=full_s[0],
             plan_start_l=full_l[0],

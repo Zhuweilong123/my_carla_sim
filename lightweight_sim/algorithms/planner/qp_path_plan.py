@@ -18,7 +18,8 @@ def Quadratic_planning(l_min: List[float], l_max: List[float],
                        w_cost_centre: float = 250,
                        w_cost_end_l: float = 40, w_cost_end_dl: float = 40,
                        w_cost_end_ddl: float = 40,
-                       host_d1: float = 3, host_d2: float = 3, host_w: float = 3):
+                       host_d1: float = 3, host_d2: float = 3, host_w: float = 3,
+                       target_end_l: float = None):
     """
     二次规划实现平滑避障路径.
 
@@ -72,9 +73,11 @@ def Quadratic_planning(l_min: List[float], l_max: List[float],
     ub = np.ones((3 * n, 1)) * 100000
     lb[0], lb[1], lb[2] = plan_start_l, plan_start_dl, plan_start_ddl
     ub[0], ub[1], ub[2] = plan_start_l, plan_start_dl, plan_start_ddl
-    # 终点趋近于零
-    lb[3 * n - 1] = lb[3 * n - 2] = lb[3 * n - 3] = 0
-    ub[3 * n - 1] = ub[3 * n - 2] = ub[3 * n - 3] = 0
+    # 终点: 回到原始车道偏移 (默认0=道路中心线, 由调用方传入车道偏移量)
+    end_l = target_end_l if target_end_l is not None else 0.0
+    lb[3 * n - 3] = ub[3 * n - 3] = end_l  # 终点l
+    lb[3 * n - 2] = ub[3 * n - 2] = 0       # 终点dl=0
+    lb[3 * n - 1] = ub[3 * n - 1] = 0       # 终点ddl=0
 
     A_bound = np.concatenate((np.identity(3 * n), -np.identity(3 * n)))
     b_bound = np.concatenate((ub, -lb))
