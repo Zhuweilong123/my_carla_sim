@@ -180,6 +180,38 @@ class SimulatorApp:
                           p[2], p[3]))  # theta, kappa不变
         return result
 
+    def _blend_paths(self, old_path: List[Tuple], new_path: List[Tuple],
+                     keep_ahead: int = 5):
+        """将新规划路径平滑拼接到当前路径末尾, 避免跳变.
+
+        策略: 在新路径上找离车最近点 → 保留该点前keep_ahead个点 →
+              后面全部用新路径
+
+        Args:
+            old_path: 当前控制器跟踪的路径 (仅用于回退)
+            new_path: 规划器新生成的路径
+            keep_ahead: 保留前方点数 (避免切掉车头前方的路径)
+        Returns:
+            融合后的路径
+        """
+        if not new_path or len(new_path) < 3:
+            return old_path
+
+        # 在新路径上找离车最近的点
+        state = self.engine.get_state()
+        car_x, car_y = state.x, state.y
+        min_d = float('inf')
+        car_idx = 0
+        for i, p in enumerate(new_path):
+            d = (p[0] - car_x)**2 + (p[1] - car_y)**2
+            if d < min_d:
+                min_d = d
+                car_idx = i
+
+        # 从车前方开始取新路径 (留几个点缓冲)
+        start_idx = max(0, car_idx - keep_ahead)
+        return new_path[start_idx:]
+
     def _create_controller(self, ctrl_type: str):
         """创建控制器实例"""
         return VehicleController(
@@ -455,14 +487,14 @@ class SimulatorApp:
                     if planned is not None:
                         if planned and len(planned) > 0:
                             self.planned_traj = planned
-                            self.controller.update_ref_path(planned)
+                            # 平滑融合: 旧路径→新路径, 避免跳变
+                            blended = self._blend_paths(
+                                self.controller.ref_path, planned)
+                            self.controller.update_ref_path(blended)
                         else:
                             # 空结果=无障碍物, 回到车道中心线
                             self.planned_traj = []
-                            self.controller.update_ref_path(
-                                self._shift_ref_path(
-                                    self.engine.world.ref_path_as_tuples,
-                                    self._lane_offset))
+                            self.controller.update_ref_path(self.original_ref_path)
                         if not self._first_plan_done:
                             print("[App] First planning result received!")
                         self._first_plan_done = True

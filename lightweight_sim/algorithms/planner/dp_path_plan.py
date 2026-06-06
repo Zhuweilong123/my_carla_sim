@@ -45,14 +45,11 @@ def DP_algorithm(obs_s_list: List[float], obs_l_list: List[float],
     has_obs = len(obs_s_list) > 0
 
     # 计算"反应距离": 避障不应提前太远开始
-    # 离障碍物越远, 碰撞代价权重越低 (从0线性增加到全额)
     reaction_s = 0.0
     if has_obs:
-        # 取最近障碍物的s作为参考
         closest_obs_s = min(obs_s_list)
-        # 避障提前量: 速度越高越提前 (min 10m, max 25m)
-        v_est = max(3.0, abs(plan_start_dl * sample_s + 1e-6))  # 从dl估算速度
-        reaction_dist = max(8.0, min(20.0, closest_obs_s * 0.4))  # 40% of obstacle distance
+        # 提前量: 障碍物距离的25%, 上下限 [5m, 12m]
+        reaction_dist = max(5.0, min(12.0, closest_obs_s * 0.25))
         reaction_s = closest_obs_s - reaction_dist
 
     if has_obs:

@@ -79,10 +79,10 @@ def _planning_thread(request_queue: queue.Queue, response_queue: queue.Queue):
                 plan_start_l=l_list[0],
                 plan_start_dl=l_ds_list[0],
                 plan_start_ddl=l_dds_list[0],
-                sampling_res=2.0,    # 增密分辨率 2m
-                row=12, col=10,      # 更密的列采样
-                sample_s=8,          # 列间距8m (原15m)
-                sample_l=1.0,        # 行间距1m (原1.5m)
+                sampling_res=1.5,    # 增密分辨率 1.5m
+                row=16, col=12,      # 16行×12列
+                sample_s=5,          # 列间距5m (共60m覆盖)
+                sample_l=0.8,        # 行间距0.8m
             )
         except Exception as e:
             print(f"[Planner] DP failed: {e}")
