@@ -149,8 +149,8 @@ class Renderer:
     def _draw_dashed_line(self, pts: List[Tuple[int, int]],
                           color: Tuple[int, int, int], width: int):
         """绘制虚线"""
-        for i in range(0, len(pts) - 1, 8):
-            seg = pts[i:min(i+4, len(pts))]
+        for i in range(0, len(pts) - 1, 4):
+            seg = pts[i:min(i+2, len(pts))]
             if len(seg) >= 2:
                 pygame.draw.lines(self.screen, color, False, seg, width)
 
