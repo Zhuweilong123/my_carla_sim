@@ -121,13 +121,10 @@ class SimulatorApp:
         self.sim_time = 0.0
 
         # 控制器: LQR/MPC + PID
-        vehicle_para = (1.015, 2.910 - 1.015, 1412, -148970, -82204, 1537)
+        self._vehicle_para = (1.015, 2.910 - 1.015, 1412, -148970, -82204, 1537)
         ctrl_type = getattr(config, 'controller', 'LQR_controller')
-        self.controller = VehicleController(
-            vehicle_para=vehicle_para,
-            controller_type=ctrl_type,
-            target_speed_kmh=config.target_speed,
-        )
+        self._controller_type = ctrl_type
+        self.controller = self._create_controller(ctrl_type)
         # 初始参考线
         self.controller.update_ref_path(
             self.engine.world.ref_path_as_tuples
@@ -151,6 +148,29 @@ class SimulatorApp:
     # =========================================================================
     # 场景定义
     # =========================================================================
+
+    def _create_controller(self, ctrl_type: str):
+        """创建控制器实例"""
+        return VehicleController(
+            vehicle_para=self._vehicle_para,
+            controller_type=ctrl_type,
+            target_speed_kmh=self.config.target_speed,
+        )
+
+    def _switch_controller(self):
+        """在 LQR 和 MPC 之间切换控制器"""
+        ref_path = self.controller.ref_path  # 保存当前参考线
+        target = self.controller.lon.target_speed
+
+        if self._controller_type == "LQR_controller":
+            self._controller_type = "MPC_controller"
+        else:
+            self._controller_type = "LQR_controller"
+
+        self.controller = self._create_controller(self._controller_type)
+        self.controller.update_ref_path(ref_path)
+        self.controller.set_target_speed(target)
+        print(f"[M] Controller switched to: {self._controller_type}")
 
     @staticmethod
     def _default_config() -> ScenarioConfig:
@@ -249,13 +269,13 @@ class SimulatorApp:
         print("  Lightweight Simulator - 操作说明")
         print("  Q: 切换 手动/自动    R: 重置")
         print("  WASD/方向键: 驾驶    P: 暂停")
-        print("  Space: 刹车     ESC: 退出")
-        print("  滚轮/+/-: 缩放")
-        print(f"  Controller: {self.controller.controller_type}")
+        print("  M: 切换 LQR/MPC      Space: 刹车")
+        print("  滚轮/+/-: 缩放       ESC: 退出")
+        print(f"  Controller: {self._controller_type}")
         print("=" * 50)
 
         # 用于按键去抖的状态
-        prev_q = prev_p = prev_r = False
+        prev_q = prev_p = prev_r = prev_m = False
         running = True
 
         while running:
@@ -297,6 +317,12 @@ class SimulatorApp:
             if r_now and not prev_r:
                 self._reset()
             prev_r = r_now
+
+            # M: 切换控制器 LQR↔MPC (去抖)
+            m_now = keys[pygame.K_m]
+            if m_now and not prev_m:
+                self._switch_controller()
+            prev_m = m_now
 
             # +/-: 缩放 (去抖)
             if keys[pygame.K_EQUALS] or keys[pygame.K_PLUS]:
@@ -507,7 +533,7 @@ class SimulatorApp:
         self._last_ephi = 0.0
         self._last_ctrl_debug = {}
 
-        # 更新控制器参考线
+        # 保留当前控制器类型，仅更新参考线
         self.controller.update_ref_path(
             self.engine.world.ref_path_as_tuples
         )
@@ -554,7 +580,8 @@ class SimulatorApp:
         real_time = time.time() - self.start_real_time
 
         # ---- 屏幕顶部模式指示器 ----
-        mode_text = "AUTO (LQR)" if self.auto_mode else "MANUAL"
+        ctrl_name = "LQR" if "LQR" in self._controller_type else "MPC"
+        mode_text = f"AUTO ({ctrl_name})" if self.auto_mode else "MANUAL"
         mode_color = (0, 255, 100) if self.auto_mode else (255, 200, 50)
         try:
             big_font = pygame.font.Font(None, 36)
