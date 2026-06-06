@@ -210,7 +210,7 @@ class SimulatorApp:
             segments=[
                 RoadSegment(
                     type="straight",
-                    params={"length": 200, "heading": 0, "start": (0, 0)},
+                    params={"length": 1000, "heading": 0, "start": (0, 0)},
                     lane_width=3.5, num_lanes=2,
                 )
             ],
@@ -228,7 +228,7 @@ class SimulatorApp:
                  "speed": 0, "heading": 0, "type": "vehicle"},
             ],
             controller="LQR_controller",
-            destination=(150, 0.0),
+            destination=(190, 0.0),
         )
 
     @staticmethod
@@ -375,20 +375,24 @@ class SimulatorApp:
                 )
                 self._plan_pending = True
 
-            # 非阻塞接收规划结果 (不卡主循环)
+            # 非阻塞接收规划结果
             if self._plan_pending:
                 if self.planner.poll_result():
                     planned = self.planner.get_result()
                     if planned is not None:
-                        self.planned_traj = planned
-                        if planned:
+                        if planned and len(planned) > 0:
+                            self.planned_traj = planned
                             self.controller.update_ref_path(planned)
-                            if not self._first_plan_done:
-                                print("[App] First planning result received!")
-                            self._first_plan_done = True
-                        self._plan_pending = False
+                        else:
+                            # 空结果=无障碍物, 回到参考线
+                            self.planned_traj = []
+                            self.controller.update_ref_path(
+                                self.engine.world.ref_path_as_tuples)
+                        if not self._first_plan_done:
+                            print("[App] First planning result received!")
+                        self._first_plan_done = True
+                    self._plan_pending = False
                 elif self._plan_counter > self._plan_interval + 200:
-                    # 超时保护: 等待超过200步(~10s), 强制重置
                     print("[App] Planning timed out, resetting planner state")
                     self._plan_pending = False
 

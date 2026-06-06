@@ -20,8 +20,8 @@ def DP_algorithm(obs_s_list: List[float], obs_l_list: List[float],
                  w_collision_cost: float = 1e12,
                  w_smooth_cost: List[float] = None,
                  w_reference_cost: float = 20.0,
-                 row: int = 12, col: int = 6,
-                 sample_s: float = 15, sample_l: float = 1.5) -> Tuple[List[float], List[float]]:
+                 row: int = 12, col: int = 10,
+                 sample_s: float = 8, sample_l: float = 1.0) -> Tuple[List[float], List[float]]:
     """
     动态规划在S-L图上搜索最优避障路径.
 

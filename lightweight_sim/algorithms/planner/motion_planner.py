@@ -36,9 +36,9 @@ def _planning_thread(request_queue: queue.Queue, response_queue: queue.Queue):
             pre_match_index=match_point_list[0],
         )
 
-        # 2. 采样局部参考线
+        # 2. 采样局部参考线 (后10点+前70点 ≈ 160m范围)
         local_frenet_path = _sample_path(match_point_list[0], global_frenet_path,
-                                         back=10, forward=50)
+                                         back=10, forward=70)
 
         # 3. QP平滑参考线
         local_frenet_path_opt = smooth_reference_line(local_frenet_path)
@@ -46,9 +46,16 @@ def _planning_thread(request_queue: queue.Queue, response_queue: queue.Queue):
         # 4. s_map (以车辆当前位置为原点)
         s_map = cal_s_map_fun(local_frenet_path_opt, origin_xy=vehicle_loc)
 
-        # 5. 障碍物的s,l
+        # 5. 障碍物的s,l (过滤掉车辆后方的障碍物: obs_s < -5m)
         if obs_xy_list:
-            obs_s_list, obs_l_list = cal_s_l_fun(obs_xy_list, local_frenet_path_opt, s_map)
+            raw_s, raw_l = cal_s_l_fun(obs_xy_list, local_frenet_path_opt, s_map)
+            obs_s_list, obs_l_list = [], []
+            for s, l, xy in zip(raw_s, raw_l, obs_xy_list):
+                if s > -5:  # 只考虑前方和近后方障碍物
+                    obs_s_list.append(s)
+                    obs_l_list.append(l)
+            if not obs_s_list:
+                obs_s_list, obs_l_list = [], []
         else:
             obs_s_list, obs_l_list = [], []
 
@@ -72,6 +79,10 @@ def _planning_thread(request_queue: queue.Queue, response_queue: queue.Queue):
                 plan_start_l=l_list[0],
                 plan_start_dl=l_ds_list[0],
                 plan_start_ddl=l_dds_list[0],
+                sampling_res=2.0,    # 增密分辨率 2m
+                row=12, col=10,      # 更密的列采样
+                sample_s=8,          # 列间距8m (原15m)
+                sample_l=1.0,        # 行间距1m (原1.5m)
             )
         except Exception as e:
             print(f"[Planner] DP failed: {e}")
@@ -114,12 +125,15 @@ def _planning_thread(request_queue: queue.Queue, response_queue: queue.Queue):
             path_l_out = dp_path_l
             plan_used = "DP"
 
-        # 10. Frenet → Cartesian
+        # 10. Frenet → Cartesian (并补上车辆当前位置作为路径起点)
+        # 先加入车辆当前位置(投影点, s=0)
+        full_s = [0.0] + path_s_out
+        full_l = [0.0] + path_l_out  # 车辆在参考线上, l≈0
         planned_path = frenet_2_x_y_theta_kappa(
-            plan_start_s=begin_s_list[0],
-            plan_start_l=begin_l_list[0],
-            enriched_s_list=path_s_out,
-            enriched_l_list=path_l_out,
+            plan_start_s=full_s[0],
+            plan_start_l=full_l[0],
+            enriched_s_list=full_s[1:],
+            enriched_l_list=full_l[1:],
             frenet_path_opt=local_frenet_path_opt,
             s_map=s_map,
         )
