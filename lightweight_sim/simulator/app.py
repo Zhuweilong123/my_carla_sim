@@ -224,11 +224,11 @@ class SimulatorApp:
             ego_start_phi=0, ego_start_speed=12.5,
             target_speed=50.0,
             obstacles=[
-                {"id": 1, "x": 60, "y": 0.0, "length": 4.5, "width": 2.0,
+                {"id": 1, "x": 200, "y": 0.0, "length": 4.5, "width": 2.0,
                  "speed": 0, "heading": 0, "type": "vehicle"},
             ],
             controller="LQR_controller",
-            destination=(190, 0.0),
+            destination=(900, 0.0),
         )
 
     @staticmethod
@@ -289,21 +289,22 @@ class SimulatorApp:
             # ---- 第1步: 强制刷新事件队列 (Windows关键) ----
             pygame.event.pump()
 
-            # ---- 第2步: 处理QUIT和ESC (这两个必须用事件) ----
-            for event in pygame.event.get():
-                if event.type == pygame.QUIT:
-                    running = False
-                elif event.type == pygame.KEYDOWN:
-                    if event.key == pygame.K_ESCAPE:
-                        running = False
-                elif event.type == pygame.MOUSEWHEEL:
-                    self.camera.zoom(event.y * 0.08)
+            # ---- 第2步: 只取出QUIT/滚轮 (不消费KEYDOWN, 留给get_pressed) ----
+            for _ in pygame.event.get(pygame.QUIT):
+                running = False
+            for ev in pygame.event.get(pygame.MOUSEWHEEL):
+                self.camera.zoom(ev.y * 0.08)
 
             if not running:
                 break
 
-            # ---- 第3步: 读取键盘状态 (持续按键 + 去抖切换) ----
+            # ---- 第3步: 读取键盘状态 (一次性获取, 用于所有按键) ----
             keys = pygame.key.get_pressed()
+
+            # ESC: 退出
+            if keys[pygame.K_ESCAPE]:
+                running = False
+                break
 
             # Q: 切换自动/手动 (去抖)
             q_now = keys[pygame.K_q]
