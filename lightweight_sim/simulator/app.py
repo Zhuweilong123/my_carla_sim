@@ -354,7 +354,8 @@ class SimulatorApp:
                 control = self._manual_control(keys)
 
             # ---- 第5.5步: 路径规划 (低频, 多进程) ----
-            if self.auto_mode and self._plan_counter % self._plan_interval == 0:
+            if (self.auto_mode and not self.engine.collision_occurred
+                    and self._plan_counter % self._plan_interval == 0):
                 state = self.engine.get_state()
                 # 预测规划起点的位置 (补偿规划延迟)
                 pred_ts = 0.2
@@ -374,17 +375,21 @@ class SimulatorApp:
                 )
                 self._plan_pending = True
 
-            # 接收上次规划的结果 (如果有的话)
-            if self._plan_pending and self._plan_counter > self._plan_interval:
-                planned = self.planner.get_result()
-                if planned is not None:
-                    self.planned_traj = planned
-                    # 更新控制器参考线
-                    if planned:
-                        self.controller.update_ref_path(planned)
-                        if not self._first_plan_done:
-                            print("[App] First planning result received!")
-                        self._first_plan_done = True
+            # 非阻塞接收规划结果 (不卡主循环)
+            if self._plan_pending:
+                if self.planner.poll_result():
+                    planned = self.planner.get_result()
+                    if planned is not None:
+                        self.planned_traj = planned
+                        if planned:
+                            self.controller.update_ref_path(planned)
+                            if not self._first_plan_done:
+                                print("[App] First planning result received!")
+                            self._first_plan_done = True
+                        self._plan_pending = False
+                elif self._plan_counter > self._plan_interval + 200:
+                    # 超时保护: 等待超过200步(~10s), 强制重置
+                    print("[App] Planning timed out, resetting planner state")
                     self._plan_pending = False
 
             self._plan_counter += 1

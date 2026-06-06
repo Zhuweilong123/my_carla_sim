@@ -18,17 +18,9 @@ from ..utils.reference_line import smooth_reference_line
 def _planning_process(conn):
     """
     独立的规划子进程. 通过Pipe与主进程通信.
-
-    接收: (obs_xy_list, vehicle_loc, pred_loc, vehicle_v, vehicle_a,
-           global_frenet_path, match_point_list)
-    发送: (planned_path_xy_theta_kappa, match_point_list, path_s, path_l)
     """
-    while True:
-        try:
-            data = conn.recv()
-        except EOFError:
-            break
-
+    def do_planning(data):
+        """实际规划逻辑"""
         (obs_xy_list, vehicle_loc, pred_loc,
          vehicle_v, vehicle_a,
          global_frenet_path, match_point_list) = data
@@ -137,6 +129,24 @@ def _planning_process(conn):
 
         conn.send((planned_path, match_point_list, path_s_out, path_l_out))
 
+    # ---- 主循环: 接收请求 → 规划 → 发送结果 ----
+    while True:
+        try:
+            data = conn.recv()
+        except EOFError:
+            break
+
+        try:
+            do_planning(data)
+        except Exception as e:
+            print(f"[Planner] error: {e}")
+            import traceback; traceback.print_exc()
+            # 发送空结果防止主进程阻塞
+            try:
+                conn.send(([], [0], [], []))
+            except Exception:
+                pass
+
 
 def _sample_path(match_idx: int, global_path: List, back: int, forward: int):
     """从全局路径中采样局部参考线"""
@@ -224,12 +234,16 @@ class MotionPlanner:
         self._parent_conn.send(data)
         return True  # 表示已发送
 
+    def poll_result(self) -> bool:
+        """检查子进程是否有结果就绪 (非阻塞)."""
+        if not self._is_running:
+            return False
+        return self._parent_conn.poll()
+
     def get_result(self) -> Optional[List]:
         """
         获取规划结果 (阻塞直到子进程返回).
-
-        Returns:
-            planned_path: [(x, y, theta, kappa), ...] or None
+        建议先调用 poll_result() 确保有数据.
         """
         if not self._is_running:
             return None
