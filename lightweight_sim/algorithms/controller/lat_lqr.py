@@ -177,6 +177,10 @@ class LateralLQRController:
 
         # 1. 匹配点查找
         path_len = len(ref_path)
+        if path_len == 0:
+            return (0.0, 0.0, 0.0, 0.0), 0.0
+        # 防止min_index越界 (参考线切换后可能超出新路径长度)
+        self.min_index = min(self.min_index, path_len - 1)
         min_d = float('inf')
         for i in range(self.min_index, min(self.min_index + 50, path_len)):
             d = (ref_path[i][0] - x_pred)**2 + (ref_path[i][1] - y_pred)**2
