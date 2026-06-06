@@ -122,10 +122,9 @@ class Renderer:
                 # 内部车道线: 虚线灰色
                 self._draw_offset_line(pts, path, offset, LANE_DASH, 1, dashed=True)
 
-        # ---- 参考线: 绿色 (仅在自动模式下显示) ----
-        # 注意: 参考线现在位于道路中心
+        # 道路中心线: 浅灰虚线 (仅作参考, 不太显眼)
         if len(pts) >= 2:
-            pygame.draw.lines(self.screen, REF_PATH_RAW, False, pts, 2)
+            self._draw_dashed_line(pts, GRID, 1)
 
     def _draw_offset_line(self, screen_pts: List[Tuple[int, int]],
                           path: List[PathPoint], offset: float,
