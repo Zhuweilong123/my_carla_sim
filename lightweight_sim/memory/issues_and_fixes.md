@@ -1,7 +1,8 @@
 # 遇到的问题及解决办法归档
 
-> 项目: Lightweight Planning & Control Simulator  
+> 项目: Lightweight Planning & Control Simulator
 > 日期: 2026-06-06
+> 版本: 含 Phase 1-3 所有问题
 
 ---
 
@@ -15,257 +16,249 @@ pip install pygame
 # FileNotFoundError: [WinError 2] 系统找不到指定的文件 (pacman)
 ```
 
-### 原因分析
+### 原因
 
-1. Python 3.14.5 是 2025 年底发布的最新版本，`pygame` 官方尚未发布 cp314 的预编译 wheel
-2. pip 自动回退到源码编译（`pygame-2.6.1.tar.gz`）
-3. 编译过程需要 MSYS2 环境中的 `pacman` 安装 SDL2 等依赖，Windows 系统缺少该工具
+Python 3.14.5 太新，pygame 官方未发布 cp314 预编译 wheel，pip 回退到源码编译但缺少 MSYS2 环境。
 
 ### 解决办法
 
-**使用 `pygame-ce`（Community Edition）替代原版 `pygame`**：
+**使用 `pygame-ce`（Community Edition）替代**：
 
 ```bash
 pip install pygame-ce
 ```
 
-- `pygame-ce` 有 cp314 预编译 wheel (`pygame_ce-2.5.7-cp314-cp314-win_amd64.whl`, 10.6MB)
-- API 完全兼容原版 pygame，`import pygame` 导入方式不变
-- 社区版维护更活跃，Bug 修复更快
-
-### 相关文件
-
-- 安装命令: `pip install numpy cvxopt networkx pygame-ce`
+- `pygame-ce` 有 cp314 预编译 wheel
+- API 完全兼容原版 pygame，`import pygame` 不变
 
 ---
 
-## 问题 2: pygame-ce 在 Python 3.14 上 SysFont 崩溃
+## 问题 2: pygame-ce SysFont 在 Python 3.14 崩溃
 
 ### 现象
 
 ```python
 pygame.font.SysFont('consolas', 20)
 # TypeError: expected str, bytes or os.PathLike object, not int
-#   File "pygame/sysfont.py", line 80, in initsysfonts_win32
-#     if splitext(font)[1].lower() not in OpenType_extensions:
+#  File "pygame/sysfont.py", line 80, in initsysfonts_win32
 ```
-
-### 原因分析
-
-1. `initsysfonts_win32()` 遍历 Windows 注册表字体信息时，Python 3.14 的 Win32 API 返回了部分整数类型的值
-2. `os.path.splitext()` 函数期望字符串参数，遇到整数后抛出 `TypeError`
-3. Python 3.14 加强了对 `os.path` 函数的类型检查（之前版本可能隐式转换）
-
-根本原因: **Python 3.14 的 `os.path.splitext()` 不再接受非字符串参数**
-
-### 解决办法
-
-在 `simulator/app.py` 中，**在任何 pygame 初始化之前** monkey-patch 两个函数：
-
-```python
-def _patch_pygame_sysfont():
-    """Monkey-patch pygame.sysfont for Python 3.14 compatibility."""
-    import pygame.sysfont as _sf
-
-    # Patch 1: 替换 initsysfonts_win32，过滤非字符串字体名
-    _orig_initsysfonts_win32 = _sf.initsysfonts_win32
-    def _safe_initsysfonts_win32():
-        fonts = {}
-        try:
-            result = _orig_initsysfonts_win32()
-            for name, path in result.items():
-                if isinstance(name, str) and isinstance(path, str):
-                    fonts[name] = path
-        except Exception:
-            pass
-        return fonts
-    _sf.initsysfonts_win32 = _safe_initsysfonts_win32
-
-    # Patch 2: SysFont 构造函数捕获 TypeError 回退到默认字体
-    _orig_SysFont_init = _sf.SysFont.__init__
-    def _safe_SysFont_init(self, name, size, bold=False, italic=False):
-        try:
-            _orig_SysFont_init(self, name, size, bold, italic)
-        except TypeError:
-            self.__dict__.clear()
-            pygame.font.Font.__init__(self, None, size)
-    _sf.SysFont.__init__ = _safe_SysFont_init
-
-_patch_pygame_sysfont()  # 模块导入时立即执行
-```
-
-**补充措施**: HUD 和 Renderer 中的字体创建添加 try/except 回退：
-
-```python
-try:
-    self.font = pygame.font.SysFont("consolas", font_size)
-except Exception:
-    self.font = pygame.font.Font(None, font_size)  # 使用默认字体
-```
-
-### 副作用
-
-- 自定义字体名（如 'consolas'）无法使用，自动回退到 pygame 默认字体
-- 视觉效果略有下降（字体不同），但不影响功能
-
-### 相关文件
-
-- `simulator/app.py:15-55` — monkey-patch 代码
-- `visualization/hud.py:20-31` — HUD 字体回退
-- `visualization/renderer.py:29-32` — 渲染器字体回退
-
----
-
-## 问题 3: CARLA API 强依赖导致算法无法独立运行
-
-### 现象
-
-原项目中的控制器需要 CARLA 仿真器才能运行：
-
-```python
-# 原代码: controller/Controller.py
-vehicle_loc = self._vehicle.get_location()  # 依赖 carla.Vehicle
-V = self._vehicle.get_velocity()            # 依赖 carla.Vehicle
-fi = self._vehicle.get_transform().rotation.yaw * (math.pi / 180)
-```
-
-### 解决办法
-
-**设计统一的数据接口 `VehicleState`**，完全替代 CARLA API 调用：
-
-1. 创建 `VehicleState` dataclass 存储车辆状态（x, y, phi, vx, vy, r, steer, accel, timestamp）
-2. 在 `EgoVehicle` 中实现 `get_error_state(ref_path)` 方法
-3. 该方法内部调用 `algorithms/utils/frenet.py` 的坐标变换函数计算 `e_rr = [ed, ėd, eφ, ėφ]`
-4. 控制器新增 `_control_from_state(state)` 接口，从 VehicleState 直接取值
-
-```python
-# 新代码: simulator/vehicle.py
-def get_error_state(self, ref_path, ts=0.1):
-    s = self._state
-    # 预测补偿
-    pred_x = s.x + s.vx * ts * cos(s.phi) - s.vy * ts * sin(s.phi)
-    pred_y = s.y + s.vy * ts * cos(s.phi) + s.vx * ts * sin(s.phi)
-    # Frenet投影 → 匹配点 → 计算误差
-    match_idx, proj_list = find_match_points([(pred_x, pred_y)], ref_path)
-    # ... 计算 ed, ėd, eφ, ėφ
-    return np.array([ed, ed_dot, ephi, ephi_dot])
-```
-
-### 相关文件
-
-- `simulator/data_types.py` — VehicleState 定义
-- `simulator/vehicle.py` — get_error_state() 实现
-- `algorithms/utils/frenet.py` — Frenet 坐标变换（从 planner_utiles.py 迁移）
-
----
-
-## 问题 4: 大文件下载超时
-
-### 现象
-
-`pip install` 时下载 cvxopt (13.8MB) 和 pygame-ce (10.6MB) 耗时超过 5 分钟。
 
 ### 原因
 
-网络环境带宽有限（约 40-50 KB/s），且 pip 默认无超时限制。
+Python 3.14 的 `os.path.splitext()` 不再接受非字符串参数。Windows 注册表字体枚举返回了部分 int 类型值。
 
 ### 解决办法
 
-1. 使用 `pip install --default-timeout=300` 增加超时时间
-2. 分批安装（先安装小包，再安装大包）
-3. 验证时每个包单独安装，确认哪个包慢
+在 `simulator/app.py` 模块加载时 monkey-patch 两个函数：
 
-### 最终安装耗时
+1. `initsysfonts_win32` → 过滤非 str 字体名
+2. `SysFont.__init__` → 捕获 TypeError 回退到 `pygame.font.Font(None, size)`
 
-| 包 | 大小 | 耗时 |
-|----|------|------|
-| numpy | 12.5 MB | ~5s (本地缓存命中) |
-| cvxopt | 13.8 MB | ~6 min |
-| networkx | 2.1 MB | ~55s |
-| pygame-ce | 10.6 MB | ~5.5 min |
+HUD/Renderer 字体创建添加 try/except 回退。
 
 ---
 
-## 问题 5: Frenet 坐标系的法向量方向约定
+## 问题 3: CARLA API 强依赖
 
 ### 现象
 
-原 CARLA 代码中多处标注 `***************************************` 提示法向量方向可能存在歧义。
-
-### 原因
-
-CARLA 使用 UE4（Unreal Engine 4）的**左手坐标系**：
-- X 轴向前
-- Y 轴向右
-- Z 轴向上
-
-在左手系中，法向量 `n = [-sin(θ), cos(θ)]` 的含义与右手系不同：
-- CARLA/UE4: 车辆在参考线**左侧**时，$l < 0$
-- 标准数学: 车辆在切线方向**左侧**时，$l > 0$
+原控制器依赖 `carla.Vehicle.get_location()` 等 CARLA API，无法独立运行。
 
 ### 解决办法
 
-1. 在 `algorithms/utils/frenet.py` 中保持一致使用 `n_r = [-sin(θ), cos(θ)]`
-2. `simulator/world.py` 中的车道编号：`lane_idx=0` 为最右侧车道（l > 0）
-3. 代码注释中标注约定
-
-### 相关文件
-
-- `algorithms/utils/frenet.py:103-105` — 法向量计算
-- `simulator/world.py:104` — 车道偏移约定
+设计 `VehicleState` dataclass，实现 `get_error_state(ref_path)` 完全替代 CARLA API 调用。控制器新增 `control(x,y,phi,vx,vy,r,ref_path)` 接口。
 
 ---
 
-## 问题 6: cvxopt QP 求解器在极端情况下崩溃
+## 问题 4: 按键完全不响应
 
-### 风险 (未实际触发)
+### 现象（多次迭代）
 
-当 `Vx ≈ 0` 时，动力学模型的 A 矩阵某些元素 → ∞ 或出现奇异，导致离散化后的 H 矩阵不正定，cvxopt 无法求解。
+**第1次**: Windows 上 `pygame.KEYDOWN` 事件不可靠，Q/R 键不响应。
 
-### 预置缓解措施
+**修复**: 改用 `pygame.key.get_pressed()` 轮询 + 去抖机制。
 
-1. **Vx 下限保护**: `Vx = Vx + 0.0001` 防止除零
-2. **H 矩阵正定性**: 权重全为正值，保证 H ≻ 0
-3. **QP 失败回退**: 规划层捕获异常时可回退到 DP 路径
+**第2次**: 修复后仍不灵敏，WASD 也无法操作。
 
+**修复**: 重写主循环，`pygame.event.pump()` 后直接用 `get_pressed()` 处理所有按键。
+
+**第3次（最终根因）**: 按 R/Z 后所有按键失效。
+
+**根因**: `pygame.event.get()` 调用会**吞掉所有类型的事件**（包括 KEYDOWN），但代码只处理了 QUIT 和 ESC。其余 KEYDOWN 事件被丢弃，`get_pressed()` 也读不到（短暂按键已作为事件消费）。
+
+**最终修复**: 改用类型过滤：
 ```python
-# controller/Controller.py 中的保护
-if Vx < 0:
-    Vx = -max(abs(Vx), 0.005)
-else:
-    Vx = max(Vx, 0.005)
+pygame.event.get(pygame.QUIT)        # 只取QUIT
+pygame.event.get(pygame.MOUSEWHEEL)  # 只取滚轮
+keys = pygame.key.get_pressed()      # 所有按键统一从这读
 ```
 
 ---
 
-## 问题 7: 运动学模型在高速/大曲率下精度不足
+## 问题 5: 道路绘制不对称
 
-### 风险 (未实际触发)
+### 现象
 
-运动学自行车模型不考虑轮胎侧偏，在高速（>60km/h）或大曲率（转弯半径 < 50m）场景下，与实际物理的偏差会增大。
+车辆看起来不在道路中间，只有一侧实线和中间虚线。
 
-### 预置缓解措施
+### 原因
 
-1. `EgoVehicle` 同时实现了 `dynamic_step()` 方法，可随时切换
-2. 车辆参数 `VehicleParams` 包含轮胎侧偏刚度（Cf, Cr），可用于动力学模式
-3. 调用接口统一为 `ego.step(steer, accel, dt, model="kinematic")`
-4. 切换只需将 `model="kinematic"` 改为 `model="dynamic"`
+所有车道线 offset 都在参考线法向量的**同一侧**。参考线成了道路左边缘而非中心线。
 
-### 相关文件
+### 解决办法
 
-- `simulator/vehicle.py:58-88` — kinematic_step()
-- `simulator/vehicle.py:90-115` — dynamic_step()
+- 道路以参考线为中心对称绘制：offset 从 `-N*lane_width/2` 到 `+N*lane_width/2`
+- 添加灰色路面多边形填充
+- `world.get_lane_center()` 返回值对称分布
+
+---
+
+## 问题 6: cvxopt 大文件下载慢
+
+### 现象
+
+`pip install cvxopt` (13.8MB) 和 `pygame-ce` (10.6MB) 耗时超过5分钟。
+
+### 原因
+
+网络带宽有限（约40-50 KB/s）。
+
+### 解决办法
+
+分批安装，使用 `--default-timeout=300`。
+
+---
+
+## 问题 7: Frenet 法向量方向约定
+
+### 现象
+
+原 CARLA 代码多处标注 `*****` 提示法向量方向可能有问题。
+
+### 原因
+
+CARLA 使用 UE4 左手坐标系，法向量 `n=[-sinθ, cosθ]` 含义与标准右手系不同。
+
+### 解决办法
+
+统一使用 `n=[-sinθ, cosθ]`，在代码注释中标注约定。道路居中后参考线=车道分界线，l<0 为右侧车道。
+
+---
+
+## 问题 8: 规划器子进程在 Windows 上崩溃
+
+### 现象
+
+```python
+Process(target=_planning_process, args=(conn,))
+p.start()
+p.is_alive()  # → False (立即死亡, exitcode=1)
+```
+
+### 原因
+
+Windows multiprocessing 使用 **spawn** 模式（非 fork），子进程启动全新 Python 解释器。`sys.path` 不包含项目根目录，导致 `from lightweight_sim...` 导入失败。
+
+### 解决办法
+
+**放弃 multiprocessing，改用 threading**：
+
+- 线程共享内存空间和 sys.path → 无导入问题
+- cvxopt QP 求解时会释放 GIL → 并行性不受影响
+- `queue.Queue` 替代 `Pipe` 进行线程间通信
+- 非阻塞：`get_result()` 通过 `get_nowait()` 实现
+
+---
+
+## 问题 9: DP 规划页面卡死
+
+### 现象
+
+切换自动模式后，pygame 画面冻结，控制台持续输出 "Planning timed out"。
+
+### 原因
+
+初版用 `conn.recv()` **阻塞**等待子进程返回结果。QP 求解需要 0.1-0.3s，主循环被堵住。
+
+### 解决办法
+
+1. `poll_result()` 非阻塞检查队列
+2. 主循环轮询：有数据→取，无数据→跳过
+3. 超时保护：200步(~10s)未返回则放弃
+
+---
+
+## 问题 10: DP 代价函数 TypeError
+
+### 现象
+
+```python
+TypeError: only 0-dimensional arrays can be converted to Python scalars
+```
+
+### 原因
+
+`evaluate_quintic()` 返回 (10,1) ndarray，`dl.T @ dl` 产生 (1,1) 矩阵，NumPy 新版 `float()` 不接受多维数组。
+
+### 解决办法
+
+所有矩阵乘法结果加 `.item()` 转为标量：
+```python
+float((dl.T @ dl).item())
+```
+
+---
+
+## 问题 11: 避障路径超前（离障碍物太远就开始偏移）
+
+### 现象
+
+避障白色曲线在车前方很远就开始偏移，还没到障碍物就出现了大幅度的绕行。
+
+### 原因
+
+1. DP 列间距 sample_s=15m 太大，第一个避障判断点在 15m 外
+2. 障碍物距离变为负数（车已通过）后 DP 仍尝试避障
+3. 规划路径从预测点开始，与车辆当前位置脱节
+
+### 解决办法
+
+1. sample_s: 15→8m, col: 6→10, sample_l: 1.5→1.0m（网格更密）
+2. 过滤 obs_s < -5m 的障碍物（车后方）
+3. 路径首点插入车辆当前位置 (s=0)
+4. 无障碍时自动切回全局参考线
+
+---
+
+## 问题 12: 游戏窗口刚打开时按键失效
+
+### 现象
+
+pygame 窗口打开后，按小写 r/z 无反应，切换 Caps Lock 大写也无效。
+
+### 根因
+
+同问题 4 的最终根因：`pygame.event.get()` 吞掉所有 KEYDOWN 事件。
+
+### 解决办法
+
+同问题 4 的最终修复：类型过滤 `get()`，统一用 `get_pressed()` 处理按键。
 
 ---
 
 ## 问题总结表
 
-| # | 问题 | 严重度 | 解决状态 |
-|---|------|--------|----------|
-| 1 | Python 3.14 + pygame 无预编译wheel | 🔴 阻塞 | ✅ 已解决 (换用pygame-ce) |
-| 2 | pygame-ce SysFont 在Python 3.14崩溃 | 🔴 阻塞 | ✅ 已解决 (monkey-patch) |
-| 3 | CARLA API强依赖 | 🟡 架构 | ✅ 已解决 (VehicleState接口) |
-| 4 | pip大文件下载慢 | 🟢 效率 | ✅ 已解决 (分批安装) |
-| 5 | Frenet法向量方向约定不一致 | 🟡 架构 | ✅ 已解决 (统一约定+注释) |
-| 6 | cvxopt QP在极端情况崩溃 | 🟡 鲁棒性 | ⚠️ 已预防 (未触发) |
-| 7 | 运动学模型高速/大曲率精度 | 🟡 精度 | ⚠️ 已预防 (保留动力学接口) |
+| # | 问题 | 严重度 | 阶段 | 状态 |
+|---|------|--------|------|------|
+| 1 | Python 3.14 + pygame 无预编译wheel | 🔴 阻塞 | Phase 1 | ✅ pygame-ce |
+| 2 | pygame-ce SysFont TypeError | 🔴 阻塞 | Phase 1 | ✅ monkey-patch |
+| 3 | CARLA API 强依赖 | 🟡 架构 | Phase 2 | ✅ VehicleState |
+| 4 | 按键完全不响应（3次迭代） | 🔴 阻塞 | Phase 1-3 | ✅ get_pressed+类型过滤 |
+| 5 | 道路绘制不对称 | 🟡 视觉 | Phase 2 | ✅ 居中对称 |
+| 6 | cvxopt大文件下载慢 | 🟢 效率 | Phase 1 | ✅ 分批安装 |
+| 7 | Frenet法向量约定 | 🟡 架构 | Phase 1 | ✅ 统一约定 |
+| 8 | Windows spawn子进程崩溃 | 🔴 阻塞 | Phase 3 | ✅ 改用threading |
+| 9 | DP规划阻塞主循环 | 🔴 阻塞 | Phase 3 | ✅ 非阻塞轮询 |
+| 10 | DP numpy维度错误 | 🔴 阻塞 | Phase 3 | ✅ .item() |
+| 11 | 避障路径超前 | 🟡 功能 | Phase 3 | ✅ 加密网格+过滤 |
+| 12 | 窗口启动时按键失效 | 🔴 阻塞 | Phase 3 | ✅ 同问题4 |
