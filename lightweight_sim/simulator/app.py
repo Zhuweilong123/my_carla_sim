@@ -126,12 +126,13 @@ class SimulatorApp:
         ctrl_type = getattr(config, 'controller', 'LQR_controller')
         self._controller_type = ctrl_type
         self.controller = self._create_controller(ctrl_type)
-        # 初始参考线
-        self.controller.update_ref_path(
-            self.engine.world.ref_path_as_tuples
-        )
+        # 初始参考线 (偏移到车道中心, 让LQR跟踪车道而非道路中心线)
+        self._lane_offset = config.ego_start_y  # 车道中心相对于参考线的偏移
+        lane_ref_path = self._shift_ref_path(
+            self.engine.world.ref_path_as_tuples, self._lane_offset)
+        self.controller.update_ref_path(lane_ref_path)
 
-        # 规划器: DP+QP (多进程)
+        # 规划器: DP+QP (使用道路中心线作为参考线进行规划)
         global_path = self.engine.world.ref_path_as_tuples
         self.planner = MotionPlanner(global_path)
         self.planner.start()
@@ -155,6 +156,28 @@ class SimulatorApp:
     # =========================================================================
     # 场景定义
     # =========================================================================
+
+    @staticmethod
+    def _shift_ref_path(ref_path: List[Tuple], offset: float):
+        """将参考线沿法向量偏移指定距离 (用于车道中心定位)
+
+        Args:
+            ref_path: [(x,y,theta,kappa), ...] 道路中心线
+            offset: 法向偏移量 (m), 正值=法向量方向
+        Returns:
+            偏移后的参考线
+        """
+        if abs(offset) < 0.01:
+            return ref_path
+        import math as _m
+        result = []
+        for p in ref_path:
+            nx = -_m.sin(p[2])
+            ny = _m.cos(p[2])
+            result.append((p[0] + offset * nx,
+                          p[1] + offset * ny,
+                          p[2], p[3]))  # theta, kappa不变
+        return result
 
     def _create_controller(self, ctrl_type: str):
         """创建控制器实例"""
@@ -198,37 +221,44 @@ class SimulatorApp:
             road=road,
             ego_start_x=20, ego_start_y=0.0,   # 参考线即道路中心线
             ego_start_phi=0, ego_start_speed=10.0,
-            target_speed=50.0,
+            target_speed=20.0,
             controller="LQR_controller",
             destination=(190, 0.0),
         )
 
     @staticmethod
     def straight_with_obstacle() -> ScenarioConfig:
-        """直道 + 静态障碍物场景"""
+        """直道 + 静态障碍物场景
+
+        双车道路面布局 (参考线=分道线y=0):
+          - 右车道中心: y = -1.75m
+          - 左车道中心: y = +1.75m
+        自车和障碍物均置于右车道内.
+        """
         road = RoadDef(
             segments=[
                 RoadSegment(
                     type="straight",
-                    params={"length": 1000, "heading": 0, "start": (0, 0)},
+                    params={"length": 200, "heading": 0, "start": (0, 0)},
                     lane_width=3.5, num_lanes=2,
                 )
             ],
             lane_width=3.5, num_lanes=2,
         )
+        lane_y = -1.75  # 右车道中心 (参考线y=0往右)
         return ScenarioConfig(
             name="straight_obstacle",
-            description="直道前方静止车辆",
+            description="直道右车道前方静止车辆",
             road=road,
-            ego_start_x=20, ego_start_y=0.0,
-            ego_start_phi=0, ego_start_speed=12.5,
-            target_speed=50.0,
+            ego_start_x=20, ego_start_y=lane_y,
+            ego_start_phi=0, ego_start_speed=10.0,
+            target_speed=40.0,
             obstacles=[
-                {"id": 1, "x": 200, "y": 0.0, "length": 4.5, "width": 2.0,
+                {"id": 1, "x": 60, "y": lane_y, "length": 4.5, "width": 2.0,
                  "speed": 0, "heading": 0, "type": "vehicle"},
             ],
             controller="LQR_controller",
-            destination=(900, 0.0),
+            destination=(180, lane_y),
         )
 
     @staticmethod
@@ -385,10 +415,12 @@ class SimulatorApp:
                             self.planned_traj = planned
                             self.controller.update_ref_path(planned)
                         else:
-                            # 空结果=无障碍物, 回到参考线
+                            # 空结果=无障碍物, 回到车道中心线
                             self.planned_traj = []
                             self.controller.update_ref_path(
-                                self.engine.world.ref_path_as_tuples)
+                                self._shift_ref_path(
+                                    self.engine.world.ref_path_as_tuples,
+                                    self._lane_offset))
                         if not self._first_plan_done:
                             print("[App] First planning result received!")
                         self._first_plan_done = True
@@ -451,16 +483,17 @@ class SimulatorApp:
         """自动驾驶控制 — 使用 LQR/MPC + PID"""
         state = self.engine.get_state()
 
-        # 控制器参考线: 优先使用规划轨迹, 否则使用全局参考线
+        # 控制器参考线: 优先用规划轨迹 → 否则用车道路中心偏移线
         if self.planned_traj:
             ref_path = self.planned_traj
         else:
-            ref_path = self.engine.world.ref_path_as_tuples
+            ref_path = self._shift_ref_path(
+                self.engine.world.ref_path_as_tuples, self._lane_offset)
 
         if not ref_path:
             return ControlCommand()
 
-        # 仅在无规划轨迹时更新参考线 (有规划轨迹时已在main loop中更新)
+        # 仅在无规划轨迹时更新参考线
         if not self.planned_traj:
             self.controller.update_ref_path(ref_path)
 
@@ -595,9 +628,10 @@ class SimulatorApp:
         self._plan_counter = 0
         self._first_plan_done = False
 
-        # 保留当前控制器类型，仅更新参考线
+        # 保留当前控制器类型，更新车道中心参考线
         self.controller.update_ref_path(
-            self.engine.world.ref_path_as_tuples
+            self._shift_ref_path(
+                self.engine.world.ref_path_as_tuples, self._lane_offset)
         )
         self.planned_traj.clear()
         self.controller.set_target_speed(self.engine.target_speed)
