@@ -10,13 +10,15 @@ from lightweight_sim.simulator.app import SimulatorApp
 
 
 def main():
-    """启动仿真器"""
-    # 可选场景:
-    #   SimulatorApp()                                    默认直道
-    #   SimulatorApp(SimulatorApp.straight_with_obstacle())  直道+障碍
-    #   SimulatorApp(SimulatorApp.curve_scenario())           弯道
+    """启动仿真器
 
-    app = SimulatorApp(SimulatorApp.straight_with_obstacle())
+    可用场景:
+      SimulatorApp._default_config()          — 200m直道, 无障碍 (LQR巡航)
+      SimulatorApp.straight_with_obstacle()   — 直道+静态障碍 (需Phase3路径规划避障)
+      SimulatorApp.curve_scenario()           — 90°弯道 (LQR过弯)
+    """
+    # 默认跑直道巡航 (LQR控制器, 无障碍物)
+    app = SimulatorApp(SimulatorApp._default_config())
     app.run()
 
 

@@ -88,6 +88,8 @@ class SimulatorApp:
     def __init__(self, config: Optional[ScenarioConfig] = None,
                  screen_size: Tuple[int, int] = (1200, 800)):
         pygame.init()
+        import warnings
+        warnings.filterwarnings('ignore', category=UserWarning, module='pygame.sysfont')
         pygame.font.init()
 
         self.screen = pygame.display.set_mode(screen_size)
