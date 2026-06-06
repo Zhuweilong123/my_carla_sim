@@ -141,9 +141,10 @@ class SimulatorApp:
         self._plan_interval = 50       # 每50步规划一次 (≈2.5s @ 20Hz)
         self._first_plan_done = False  # 首次规划是否完成
 
-        # 路径 (当前规划/参考路径, 用于渲染)
-        self.planned_path: List[Tuple[float, float, float, float]] = []
-        self.planned_traj: List[Tuple[float, float, float, float]] = []
+        # 路径 (用于渲染)
+        self.original_ref_path = lane_ref_path  # 原始车道中心线 (始终绘制)
+        self.planned_path: List[Tuple] = []     # 控制器当前跟踪路径
+        self.planned_traj: List[Tuple] = []     # 规划器避障轨迹
 
         # 日志
         self.log_entries: List[LogEntry] = []
@@ -670,10 +671,10 @@ class SimulatorApp:
         self._first_plan_done = False
 
         # 保留当前控制器类型，更新车道中心参考线
-        self.controller.update_ref_path(
-            self._shift_ref_path(
-                self.engine.world.ref_path_as_tuples, self._lane_offset)
-        )
+        self.original_ref_path = self._shift_ref_path(
+            self.engine.world.ref_path_as_tuples, self._lane_offset)
+        self.controller.update_ref_path(self.original_ref_path)
+        self.planned_path = []
         self.planned_traj.clear()
         self.controller.set_target_speed(self.engine.target_speed)
         self.controller.lat.min_index = 0  # 重置匹配点索引
@@ -694,9 +695,14 @@ class SimulatorApp:
         # 道路
         self.renderer.draw_road(self.engine.world)
 
-        # 规划路径
-        if self.planned_path:
+        # 原始车道中心线 (始终绘制, 青色虚线, 作为"原路线"参考)
+        if self.original_ref_path:
+            self.renderer.draw_path(self.original_ref_path, (0, 200, 200), 1, dashed=True)
+
+        # 控制器当前跟踪路径 (绿色实线)
+        if self.planned_path and self.planned_path != self.original_ref_path:
             self.renderer.draw_path(self.planned_path, REF_PATH_SMOOTH, 2)
+        # 规划器避障轨迹 (白色)
         if self.planned_traj:
             self.renderer.draw_path(self.planned_traj, PLANNED_TRAJ, 2)
 

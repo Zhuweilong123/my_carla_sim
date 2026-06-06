@@ -215,15 +215,18 @@ class Renderer:
 
     def draw_path(self, path: List[Tuple[float, float, float, float]],
                   color: Tuple[int, int, int] = PLANNED_TRAJ,
-                  width: int = 2):
-        """绘制规划路径"""
+                  width: int = 2, dashed: bool = False):
+        """绘制路径"""
         if len(path) < 2:
             return
         pts = []
         for p in path:
             sx, sy = self.camera.world_to_screen(p[0], p[1])
             pts.append((sx, sy))
-        pygame.draw.lines(self.screen, color, False, pts, width)
+        if dashed:
+            self._draw_dashed_line(pts, color, width)
+        else:
+            pygame.draw.lines(self.screen, color, False, pts, width)
 
     def draw_points(self, points: List[Tuple[float, float]],
                     color: Tuple[int, int, int], size: int = 3):
