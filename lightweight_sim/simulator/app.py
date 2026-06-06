@@ -112,7 +112,6 @@ class SimulatorApp:
         self.paused = False
 
         # 手动控制状态
-        self.keys = None
         self.manual_steer = 0.0
         self.manual_throttle = 0.0
         self.manual_brake = 0.0
@@ -255,46 +254,95 @@ class SimulatorApp:
         print(f"  Controller: {self.controller.controller_type}")
         print("=" * 50)
 
+        # 用于按键去抖的状态
+        prev_q = prev_p = prev_r = False
         running = True
-        while running:
-            # 事件处理
-            running = self._handle_events()
 
+        while running:
+            # ---- 第1步: 强制刷新事件队列 (Windows关键) ----
+            pygame.event.pump()
+
+            # ---- 第2步: 处理QUIT和ESC (这两个必须用事件) ----
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    running = False
+                elif event.type == pygame.KEYDOWN:
+                    if event.key == pygame.K_ESCAPE:
+                        running = False
+                elif event.type == pygame.MOUSEWHEEL:
+                    self.camera.zoom(event.y * 0.08)
+
+            if not running:
+                break
+
+            # ---- 第3步: 读取键盘状态 (持续按键 + 去抖切换) ----
+            keys = pygame.key.get_pressed()
+
+            # Q: 切换自动/手动 (去抖)
+            q_now = keys[pygame.K_q]
+            if q_now and not prev_q:
+                self.auto_mode = not self.auto_mode
+                print(f"[Q] Mode: {'AUTO' if self.auto_mode else 'MANUAL'}")
+            prev_q = q_now
+
+            # P: 暂停 (去抖)
+            p_now = keys[pygame.K_p]
+            if p_now and not prev_p:
+                self.paused = not self.paused
+                print(f"[P] {'PAUSED' if self.paused else 'RESUMED'}")
+            prev_p = p_now
+
+            # R: 重置 (去抖)
+            r_now = keys[pygame.K_r]
+            if r_now and not prev_r:
+                self._reset()
+            prev_r = r_now
+
+            # +/-: 缩放 (去抖)
+            if keys[pygame.K_EQUALS] or keys[pygame.K_PLUS]:
+                self.camera.zoom(0.05)
+            if keys[pygame.K_MINUS]:
+                self.camera.zoom(-0.05)
+
+            # ---- 第4步: 暂停检查 ----
             if self.paused:
                 self.clock.tick(30)
+                # 暂停时也要渲染一帧(更新画面)
+                self._render(self.engine.get_state(),
+                            ControlCommand(steer=self.manual_steer,
+                                          throttle=self.manual_throttle,
+                                          brake=self.manual_brake))
                 continue
 
-            # 控制决策
+            # ---- 第5步: 控制 ----
             if self.auto_mode:
                 control = self._auto_control()
             else:
-                control = self._manual_control()
+                control = self._manual_control(keys)
 
-            # 物理步进
-            dt = 0.05  # 20Hz
+            # ---- 第6步: 物理步进 ----
+            dt = 0.05
             state = self.engine.step(control, dt)
             self.sim_time += dt
 
-            # 计算误差
+            # ---- 第7步: 误差计算 ----
             err_state = self.engine.get_error_state()
             if err_state is not None:
                 self._last_ed = err_state[0]
                 self._last_ephi = err_state[2]
             self.hud.update_history(self._last_ed, self._last_ephi)
 
-            # 碰撞处理
+            # ---- 第8步: 状态检查 ----
             if self.engine.collision_occurred:
                 print("[!] Collision detected!")
-
-            # 到达终点
             if self.engine.reached_destination:
                 print("[✓] Destination reached!")
                 running = False
 
-            # 相机跟随
+            # ---- 第9步: 相机跟随 ----
             self.camera.follow(state.x, state.y)
 
-            # 日志
+            # ---- 第10步: 日志 ----
             self.log_entries.append(LogEntry(
                 timestamp=self.sim_time,
                 x=state.x, y=state.y, phi=state.phi,
@@ -307,9 +355,10 @@ class SimulatorApp:
                 target_speed=self.engine.target_speed,
             ))
 
-            # 渲染
+            # ---- 第11步: 渲染 ----
             self._render(state, control)
 
+            # ---- 第12步: 帧率控制 ----
             self.clock.tick(60)
 
         # 结束
@@ -352,15 +401,13 @@ class SimulatorApp:
 
         return ControlCommand(steer=steer, throttle=throttle, brake=brake)
 
-    def _manual_control(self) -> ControlCommand:
-        """手动键盘控制"""
-        self.keys = pygame.key.get_pressed()
-
+    def _manual_control(self, keys) -> ControlCommand:
+        """手动键盘控制 (keys 由主循环的 get_pressed() 传入)"""
         # 油门
-        if self.keys[pygame.K_w] or self.keys[pygame.K_UP]:
+        if keys[pygame.K_w] or keys[pygame.K_UP]:
             self.manual_throttle = min(1.0, self.manual_throttle + 0.05)
             self.manual_brake = 0.0
-        elif self.keys[pygame.K_s] or self.keys[pygame.K_DOWN]:
+        elif keys[pygame.K_s] or keys[pygame.K_DOWN]:
             self.manual_throttle = 0.0
             self.manual_brake = min(1.0, self.manual_brake + 0.1)
         else:
@@ -368,15 +415,15 @@ class SimulatorApp:
             self.manual_brake = 0.0
 
         # 转向
-        if self.keys[pygame.K_a] or self.keys[pygame.K_LEFT]:
+        if keys[pygame.K_a] or keys[pygame.K_LEFT]:
             self.manual_steer = max(-1.0, self.manual_steer - 0.05)
-        elif self.keys[pygame.K_d] or self.keys[pygame.K_RIGHT]:
+        elif keys[pygame.K_d] or keys[pygame.K_RIGHT]:
             self.manual_steer = min(1.0, self.manual_steer + 0.05)
         else:
             self.manual_steer *= 0.8  # 回正
 
         # 刹车
-        if self.keys[pygame.K_SPACE]:
+        if keys[pygame.K_SPACE]:
             self.manual_brake = 1.0
             self.manual_throttle = 0.0
 
