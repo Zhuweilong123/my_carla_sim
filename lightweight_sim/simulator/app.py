@@ -262,6 +262,47 @@ class SimulatorApp:
         )
 
     @staticmethod
+    def three_lane_double_obstacle() -> ScenarioConfig:
+        """三车道 + 双障碍物连续避障场景
+
+        3车道路面 (参考线y=0=分道线):
+          - 车道0 (右): y = -3.50m
+          - 车道1 (中): y =  0.00m
+          - 车道2 (左): y = +3.50m
+        障碍物1: x=200m, 车道0 → 自车需换到车道1
+        障碍物2: x=400m, 车道1 → 自车需换到车道2
+        """
+        road = RoadDef(
+            segments=[
+                RoadSegment(
+                    type="straight",
+                    params={"length": 1000, "heading": 0, "start": (0, 0)},
+                    lane_width=3.5, num_lanes=3,
+                )
+            ],
+            lane_width=3.5, num_lanes=3,
+        )
+        lane0 = -3.5   # 右车道中心
+        lane1 = 0.0    # 中车道中心
+        lane2 = +3.5   # 左车道中心
+        return ScenarioConfig(
+            name="three_lane_double_obs",
+            description="三车道双障碍物连续避障",
+            road=road,
+            ego_start_x=20, ego_start_y=lane0,  # 从右车道出发
+            ego_start_phi=0, ego_start_speed=5.56,  # 20 km/h
+            target_speed=40.0,
+            obstacles=[
+                {"id": 1, "x": 200, "y": lane0, "length": 4.5, "width": 2.0,
+                 "speed": 0, "heading": 0, "type": "vehicle"},
+                {"id": 2, "x": 400, "y": lane1, "length": 4.5, "width": 2.0,
+                 "speed": 0, "heading": 0, "type": "vehicle"},
+            ],
+            controller="LQR_controller",
+            destination=(600, lane0),  # 最终回到右车道
+        )
+
+    @staticmethod
     def curve_scenario() -> ScenarioConfig:
         """弯道场景"""
         road = RoadDef(
