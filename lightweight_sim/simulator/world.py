@@ -143,16 +143,22 @@ class World:
 
     def get_lane_center(self, lane_idx: int) -> float:
         """
-        获取车道中心线相对于参考线的横向偏移.
-        lane_idx=0 为最右侧车道 (CARLA右手系, l>0).
+        获取车道中心线相对于道路中心线的横向偏移 (参考线=道路中心).
+
+        lane_idx=0 为最右侧车道, 偏移为负值.
+        例: 2车道, 单车道宽3.5m:
+          lane 0 (右): -1.75m
+          lane 1 (左): +1.75m
         """
-        return (lane_idx + 0.5) * self.lane_width
+        half_w = self.num_lanes * self.lane_width / 2
+        return -half_w + (lane_idx + 0.5) * self.lane_width
 
     def get_lane_boundaries(self) -> List[float]:
-        """返回所有车道边界相对于参考线的横向偏移"""
+        """返回所有车道边界相对于道路中心线的横向偏移"""
         boundaries = []
+        half_w = self.num_lanes * self.lane_width / 2
         for i in range(self.num_lanes + 1):
-            boundaries.append(i * self.lane_width)
+            boundaries.append(-half_w + i * self.lane_width)
         return boundaries
 
     def is_on_road(self, x: float, y: float, margin: float = 2.0) -> bool:

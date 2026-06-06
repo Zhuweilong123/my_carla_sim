@@ -80,27 +80,50 @@ class Renderer:
             y += grid_spacing
 
     def draw_road(self, world: World):
-        """绘制道路: 参考线 + 车道边界"""
+        """绘制道路: 路面填充 + 车道边界 (参考线 = 道路中心线)"""
         path = world.ref_path
         if len(path) < 2:
             return
 
         pts = [self.camera.world_to_screen(p.x, p.y) for p in path]
-
-        # 车道边界
         lane_w = world.lane_width
         n_lanes = world.num_lanes
+        half_w = n_lanes * lane_w / 2  # 半幅路宽
 
+        # ---- 路面填充 (灰色) ----
+        # 左边界和右边界构成多边形
+        left_edge = []
+        right_edge = []
+        for i, p in enumerate(path):
+            nx = -math.sin(p.theta)
+            ny = math.cos(p.theta)
+            lx = p.x + nx * (-half_w)
+            ly = p.y + ny * (-half_w)
+            rx = p.x + nx * half_w
+            ry = p.y + ny * half_w
+            left_edge.append(self.camera.world_to_screen(lx, ly))
+            right_edge.append(self.camera.world_to_screen(rx, ry))
+
+        # 左边界 + 反向的右边界 = 闭合多边形
+        road_poly = left_edge + list(reversed(right_edge))
+        if len(road_poly) >= 4:
+            pygame.draw.polygon(self.screen, ROAD_SURFACE, road_poly)
+
+        # ---- 车道线 ----
         for i in range(n_lanes + 1):
-            offset = i * lane_w
-            if i == 0 or i == n_lanes:
+            offset = -half_w + i * lane_w  # 从 -half 到 +half
+            if abs(offset) < 0.05:
+                # 道路中心线: 虚线 (参考线位置, 即车道分界线)
+                self._draw_offset_line(pts, path, offset, LANE_DASH, 1, dashed=True)
+            elif i == 0 or i == n_lanes:
                 # 道路边界: 实线白色
                 self._draw_offset_line(pts, path, offset, ROAD_EDGE, 2)
             else:
                 # 内部车道线: 虚线灰色
                 self._draw_offset_line(pts, path, offset, LANE_DASH, 1, dashed=True)
 
-        # 参考线: 绿色虚线
+        # ---- 参考线: 绿色 (仅在自动模式下显示) ----
+        # 注意: 参考线现在位于道路中心
         if len(pts) >= 2:
             pygame.draw.lines(self.screen, REF_PATH_RAW, False, pts, 2)
 
