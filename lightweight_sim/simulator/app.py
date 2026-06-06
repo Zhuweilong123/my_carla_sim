@@ -246,6 +246,15 @@ class SimulatorApp:
 
     def run(self):
         """主循环"""
+        print("=" * 50)
+        print("  Lightweight Simulator - 操作说明")
+        print("  Q: 切换 手动/自动    R: 重置")
+        print("  WASD/方向键: 驾驶    P: 暂停")
+        print("  Space: 刹车     ESC: 退出")
+        print("  滚轮/+/-: 缩放")
+        print(f"  Controller: {self.controller.controller_type}")
+        print("=" * 50)
+
         running = True
         while running:
             # 事件处理
@@ -382,7 +391,12 @@ class SimulatorApp:
     # =========================================================================
 
     def _handle_events(self) -> bool:
-        """处理pygame事件, 返回False表示退出"""
+        """处理pygame事件, 返回False表示退出
+
+        同时使用 KEYDOWN 事件(一次性动作) 和 get_pressed(连续动作).
+        切换类按键(Q/P/R)用事件+去抖双重保障.
+        """
+        # --- 事件处理 (一次性动作: 退出, 切换, 重置) ---
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 return False
@@ -391,18 +405,42 @@ class SimulatorApp:
                     return False
                 elif event.key == pygame.K_q:
                     self.auto_mode = not self.auto_mode
-                    print(f"Mode: {'AUTO' if self.auto_mode else 'MANUAL'}")
+                    self._prev_q_pressed = True
+                    print(f"[Q] Mode: {'AUTO' if self.auto_mode else 'MANUAL'}")
                 elif event.key == pygame.K_p:
                     self.paused = not self.paused
-                    print(f"{'PAUSED' if self.paused else 'RESUMED'}")
+                    print(f"[P] {'PAUSED' if self.paused else 'RESUMED'}")
                 elif event.key == pygame.K_r:
                     self._reset()
-                elif event.key == pygame.K_EQUALS or event.key == pygame.K_PLUS:
-                    self.camera.zoom(0.1)
+                elif event.key in (pygame.K_EQUALS, pygame.K_PLUS):
+                    self.camera.zoom(0.15)
                 elif event.key == pygame.K_MINUS:
-                    self.camera.zoom(-0.1)
+                    self.camera.zoom(-0.15)
             elif event.type == pygame.MOUSEWHEEL:
-                self.camera.zoom(event.y * 0.05)
+                self.camera.zoom(event.y * 0.08)
+
+        # --- get_pressed 兜底 (去抖: 防止一帧触发多次) ---
+        keys = pygame.key.get_pressed()
+
+        # Q: 自动/手动切换
+        q_now = keys[pygame.K_q]
+        if q_now and not getattr(self, '_prev_q_pressed', False):
+            self.auto_mode = not self.auto_mode
+            print(f"[Q] Mode: {'AUTO' if self.auto_mode else 'MANUAL'}")
+        self._prev_q_pressed = q_now
+
+        # P: 暂停
+        p_now = keys[pygame.K_p]
+        if p_now and not getattr(self, '_prev_p_pressed', False):
+            self.paused = not self.paused
+            print(f"[P] {'PAUSED' if self.paused else 'RESUMED'}")
+        self._prev_p_pressed = p_now
+
+        # R: 重置
+        r_now = keys[pygame.K_r]
+        if r_now and not getattr(self, '_prev_r_pressed', False):
+            self._reset()
+        self._prev_r_pressed = r_now
 
         return True
 
