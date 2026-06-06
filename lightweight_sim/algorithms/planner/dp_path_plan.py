@@ -44,6 +44,17 @@ def DP_algorithm(obs_s_list: List[float], obs_l_list: List[float],
 
     has_obs = len(obs_s_list) > 0
 
+    # 计算"反应距离": 避障不应提前太远开始
+    # 离障碍物越远, 碰撞代价权重越低 (从0线性增加到全额)
+    reaction_s = 0.0
+    if has_obs:
+        # 取最近障碍物的s作为参考
+        closest_obs_s = min(obs_s_list)
+        # 避障提前量: 速度越高越提前 (min 10m, max 25m)
+        v_est = max(3.0, abs(plan_start_dl * sample_s + 1e-6))  # 从dl估算速度
+        reaction_dist = max(8.0, min(20.0, closest_obs_s * 0.4))  # 40% of obstacle distance
+        reaction_s = closest_obs_s - reaction_dist
+
     if has_obs:
         # DP 递推
         cost = np.ones((row, col)) * np.inf
@@ -51,13 +62,18 @@ def DP_algorithm(obs_s_list: List[float], obs_l_list: List[float],
 
         # 起点到第一列的cost
         for i in range(row):
+            # 计算当前列的s坐标, 决定碰撞权重
+            col_s = plan_start_s + sample_s
+            alpha = max(0.0, min(1.0, (col_s - reaction_s) / (reaction_dist * 0.5 + 1.0)))
+            col_w_collision = w_collision_cost * alpha
+
             cost[i, 0] = cal_start_cost(
                 obs_s_list, obs_l_list,
                 begin_s=plan_start_s, begin_l=plan_start_l,
                 begin_dl=plan_start_dl, begin_ddl=plan_start_ddl,
                 cur_node_row=i, row=row,
                 sample_s=sample_s, sample_l=sample_l,
-                w_cost_collision=w_collision_cost,
+                w_cost_collision=col_w_collision,
                 w_cost_smooth=w_smooth_cost,
                 w_cost_ref=w_reference_cost,
             )
@@ -70,6 +86,10 @@ def DP_algorithm(obs_s_list: List[float], obs_l_list: List[float],
                 cur_node_s = plan_start_s + (j + 1) * sample_s
                 cur_node_l = ((row + 1) / 2 - 1 - i) * sample_l
 
+                # 碰撞代价随距离渐变
+                alpha = max(0.0, min(1.0, (cur_node_s - reaction_s) / (reaction_dist * 0.5 + 1.0)))
+                col_w_collision = w_collision_cost * alpha
+
                 for k in range(row):
                     pre_node_s = plan_start_s + j * sample_s
                     pre_node_l = ((row + 1) / 2 - 1 - k) * sample_l
@@ -79,7 +99,7 @@ def DP_algorithm(obs_s_list: List[float], obs_l_list: List[float],
                         pre_node_s, pre_node_l,
                         cur_node_s=cur_node_s, cur_node_l=cur_node_l,
                         sample_s=sample_s,
-                        w_cost_collision=w_collision_cost,
+                        w_cost_collision=col_w_collision,
                         w_cost_smooth=w_smooth_cost,
                         w_cost_ref=w_reference_cost,
                     )
