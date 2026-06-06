@@ -60,6 +60,7 @@ from .data_types import ScenarioConfig, VehicleState, ControlCommand, LogEntry
 from .engine import SimulationEngine
 from .world import RoadDef, RoadSegment
 from .vehicle import EgoVehicle, VehicleParams
+from ..algorithms.controller.combined import VehicleController
 from ..visualization.renderer import Renderer, Camera
 from ..visualization.hud import HUD
 from ..visualization.colors import *
@@ -118,8 +119,20 @@ class SimulatorApp:
         self.start_real_time = time.time()
         self.sim_time = 0.0
 
-        # 控制器引用 (后续阶段集成)
-        self.controller = None
+        # 控制器: LQR/MPC + PID
+        vehicle_para = (1.015, 2.910 - 1.015, 1412, -148970, -82204, 1537)
+        ctrl_type = getattr(config, 'controller', 'LQR_controller')
+        self.controller = VehicleController(
+            vehicle_para=vehicle_para,
+            controller_type=ctrl_type,
+            target_speed_kmh=config.target_speed,
+        )
+        # 初始参考线
+        self.controller.update_ref_path(
+            self.engine.world.ref_path_as_tuples
+        )
+
+        # 规划器 (后续阶段集成)
         self.planner = None
 
         # 路径 (当前规划/参考路径, 用于渲染)
@@ -130,6 +143,9 @@ class SimulatorApp:
         self.log_entries: List[LogEntry] = []
         self._last_ed = 0.0
         self._last_ephi = 0.0
+
+        # 控制器debug信息
+        self._last_ctrl_debug = {}
 
     # =========================================================================
     # 场景定义
@@ -152,11 +168,11 @@ class SimulatorApp:
             name="straight_200m",
             description="200m直道巡航",
             road=road,
-            ego_start_x=20, ego_start_y=1.75,
+            ego_start_x=20, ego_start_y=0.0,   # 参考线即道路中心线
             ego_start_phi=0, ego_start_speed=10.0,
             target_speed=50.0,
             controller="LQR_controller",
-            destination=(190, 1.75),
+            destination=(190, 0.0),
         )
 
     @staticmethod
@@ -176,15 +192,15 @@ class SimulatorApp:
             name="straight_obstacle",
             description="直道前方静止车辆",
             road=road,
-            ego_start_x=20, ego_start_y=1.75,
+            ego_start_x=20, ego_start_y=0.0,
             ego_start_phi=0, ego_start_speed=12.5,
             target_speed=50.0,
             obstacles=[
-                {"id": 1, "x": 60, "y": 1.75, "length": 4.5, "width": 2.0,
+                {"id": 1, "x": 60, "y": 0.0, "length": 4.5, "width": 2.0,
                  "speed": 0, "heading": 0, "type": "vehicle"},
             ],
             controller="LQR_controller",
-            destination=(150, 1.75),
+            destination=(150, 0.0),
         )
 
     @staticmethod
@@ -293,48 +309,37 @@ class SimulatorApp:
     # =========================================================================
 
     def _auto_control(self) -> ControlCommand:
-        """自动驾驶控制 (占位: 后续集成LQR/MPC)"""
-        # 简单的比例控制让车辆沿参考线走
+        """自动驾驶控制 — 使用 LQR/MPC + PID"""
         state = self.engine.get_state()
         ref_path = self.engine.world.ref_path_as_tuples
 
         if not ref_path:
             return ControlCommand()
 
-        # 找最近点
-        min_d = float('inf')
-        min_i = 0
-        for i, p in enumerate(ref_path):
-            d = math.hypot(p[0] - state.x, p[1] - state.y)
-            if d < min_d:
-                min_d = d
-                min_i = i
+        # 更新参考线 (规划频率与自动控制分离，这里每次都用最新参考线)
+        self.controller.update_ref_path(ref_path)
 
-        # 前视5个点
-        look_i = min(min_i + 10, len(ref_path) - 1)
-        look_p = ref_path[look_i]
+        # 更新目标速度
+        self.controller.set_target_speed(self.engine.target_speed)
 
-        # 横向误差
-        dx = look_p[0] - state.x
-        dy = look_p[1] - state.y
-        target_heading = math.atan2(dy, dx)
-        heading_error = target_heading - state.phi
-        # 归一化到 [-pi, pi]
-        heading_error = math.atan2(math.sin(heading_error), math.cos(heading_error))
+        # 计算控制量
+        steer, throttle, brake = self.controller.step(
+            x=state.x, y=state.y, phi=state.phi,
+            vx=state.vx, vy=state.vy, r=state.r,
+        )
 
-        # 简单比例转向
-        steer = max(-1.0, min(1.0, heading_error * 2.0))
-
-        # 速度控制
-        speed_err = (self.engine.target_speed / 3.6) - state.speed
-        accel = max(-1.0, min(1.0, speed_err * 0.5))
-
-        cmd = ControlCommand.from_accel_steer(accel, steer)
-
-        # 保存当前参考线用于渲染
+        # 保存参考线用于渲染
         self.planned_path = ref_path
 
-        return cmd
+        # 保存debug标记
+        self._last_ctrl_debug = {
+            'x_pre': self.controller.lat.x_pre,
+            'y_pre': self.controller.lat.y_pre,
+            'x_pro': self.controller.lat.x_pro,
+            'y_pro': self.controller.lat.y_pro,
+        }
+
+        return ControlCommand(steer=steer, throttle=throttle, brake=brake)
 
     def _manual_control(self) -> ControlCommand:
         """手动键盘控制"""
@@ -411,8 +416,20 @@ class SimulatorApp:
         self.hud.ephi_history.clear()
         self.planned_path.clear()
         self.planned_traj.clear()
+        self._last_ed = 0.0
+        self._last_ephi = 0.0
+        self._last_ctrl_debug = {}
+
+        # 更新控制器参考线
+        self.controller.update_ref_path(
+            self.engine.world.ref_path_as_tuples
+        )
+        self.controller.set_target_speed(self.engine.target_speed)
+        self.controller.lat.min_index = 0  # 重置匹配点索引
+        self.controller.lon.reset()        # 重置PID误差缓冲
+
         self.start_real_time = time.time()
-        print("[R] Reset complete")
+        print(f"[R] Reset complete (controller: {self.controller.controller_type})")
 
     # =========================================================================
     # 渲染
@@ -438,6 +455,14 @@ class SimulatorApp:
         # 自车
         self.renderer.draw_vehicle(state)
 
+        # 控制器debug标记 (预测点 + 投影点)
+        if self.auto_mode and self._last_ctrl_debug:
+            dbg = self._last_ctrl_debug
+            self.renderer.draw_debug_marker(dbg['x_pre'], dbg['y_pre'],
+                                            PREDICT_POINT, size=4, label='pre')
+            self.renderer.draw_debug_marker(dbg['x_pro'], dbg['y_pro'],
+                                            PROJ_POINT, size=4, label='proj')
+
         # HUD
         real_time = time.time() - self.start_real_time
         fps = self.clock.get_fps()
@@ -455,7 +480,7 @@ class SimulatorApp:
             sim_time=self.sim_time,
             real_time=real_time,
             collision=self.engine.collision_occurred,
-            map_name=self.config.name,
+            map_name=f"{self.config.name} [{self.controller.controller_type}]",
         )
 
         pygame.display.flip()
