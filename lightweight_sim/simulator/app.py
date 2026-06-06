@@ -1,0 +1,466 @@
+"""SimulatorApp — 主循环 + pygame窗口管理 + 手动/自动模式切换"""
+
+import math
+import sys
+import time
+import pygame
+import numpy as np
+
+# ---------------------------------------------------------------------------
+# Fix: pygame-ce on Python 3.14 — sysfont.initsysfonts_win32 crashes because
+# some Win32 registry values come back as int instead of str.
+# Monkey-patch the function to filter out non-string font names.
+# ---------------------------------------------------------------------------
+def _patch_pygame_sysfont():
+    """Monkey-patch pygame.sysfont for Python 3.14 compatibility.
+
+    Python 3.14 changed how Win32 registry enumeration returns values,
+    causing some font names to appear as int instead of str.
+    Patch both initsysfonts_win32 and get_fonts to be resilient.
+    """
+    try:
+        import pygame.sysfont as _sf
+
+        # Patch 1: replace initsysfonts_win32 with a safe version
+        _orig_initsysfonts_win32 = _sf.initsysfonts_win32
+
+        def _safe_initsysfonts_win32():
+            fonts = {}
+            try:
+                result = _orig_initsysfonts_win32()
+                for name, path in result.items():
+                    if isinstance(name, str) and isinstance(path, str):
+                        fonts[name] = path
+            except Exception:
+                pass
+            return fonts
+
+        _sf.initsysfonts_win32 = _safe_initsysfonts_win32
+
+        # Patch 2: SysFont constructor — catch TypeError and fall back
+        _orig_SysFont_init = _sf.SysFont.__init__
+
+        def _safe_SysFont_init(self, name, size, bold=False, italic=False):
+            try:
+                _orig_SysFont_init(self, name, size, bold, italic)
+            except TypeError:
+                # Fallback: use pygame.font.Font directly
+                self.__dict__.clear()
+                pygame.font.Font.__init__(self, None, size)
+
+        _sf.SysFont.__init__ = _safe_SysFont_init
+
+    except Exception:
+        pass
+
+_patch_pygame_sysfont()
+from typing import Optional, List, Tuple
+
+from .data_types import ScenarioConfig, VehicleState, ControlCommand, LogEntry
+from .engine import SimulationEngine
+from .world import RoadDef, RoadSegment
+from .vehicle import EgoVehicle, VehicleParams
+from ..visualization.renderer import Renderer, Camera
+from ..visualization.hud import HUD
+from ..visualization.colors import *
+
+
+class SimulatorApp:
+    """
+    简易规划控制仿真器主程序.
+
+    支持两种模式:
+      - 手动模式: 键盘W/S/A/D控制
+      - 自动模式: LQR/MPC控制器 (后续集成)
+
+    按键:
+      Q      - 切换手动/自动模式
+      W/S    - 油门/倒车
+      A/D    - 转向
+      Space  - 刹车
+      R      - 重置
+      P      - 暂停
+      +/-     - 缩放
+      ESC    - 退出
+    """
+
+    def __init__(self, config: Optional[ScenarioConfig] = None,
+                 screen_size: Tuple[int, int] = (1200, 800)):
+        pygame.init()
+        pygame.font.init()
+
+        self.screen = pygame.display.set_mode(screen_size)
+        pygame.display.set_caption("Lightweight Planning & Control Simulator")
+        self.clock = pygame.time.Clock()
+
+        # 相机和渲染
+        self.camera = Camera(screen_size[0], screen_size[1])
+        self.renderer = Renderer(self.screen, self.camera)
+        self.hud = HUD(self.screen)
+
+        # 仿真引擎
+        if config is None:
+            config = self._default_config()
+        self.config = config
+        self.engine = SimulationEngine(config)
+
+        # 模式
+        self.auto_mode = False
+        self.paused = False
+
+        # 手动控制状态
+        self.keys = None
+        self.manual_steer = 0.0
+        self.manual_throttle = 0.0
+        self.manual_brake = 0.0
+
+        # 时间
+        self.start_real_time = time.time()
+        self.sim_time = 0.0
+
+        # 控制器引用 (后续阶段集成)
+        self.controller = None
+        self.planner = None
+
+        # 路径 (当前规划/参考路径, 用于渲染)
+        self.planned_path: List[Tuple[float, float, float, float]] = []
+        self.planned_traj: List[Tuple[float, float, float, float]] = []
+
+        # 日志
+        self.log_entries: List[LogEntry] = []
+        self._last_ed = 0.0
+        self._last_ephi = 0.0
+
+    # =========================================================================
+    # 场景定义
+    # =========================================================================
+
+    @staticmethod
+    def _default_config() -> ScenarioConfig:
+        """默认场景: 200m直道, 2车道, 无障碍物"""
+        road = RoadDef(
+            segments=[
+                RoadSegment(
+                    type="straight",
+                    params={"length": 200, "heading": 0, "start": (0, 0)},
+                    lane_width=3.5, num_lanes=2,
+                )
+            ],
+            lane_width=3.5, num_lanes=2,
+        )
+        return ScenarioConfig(
+            name="straight_200m",
+            description="200m直道巡航",
+            road=road,
+            ego_start_x=20, ego_start_y=1.75,
+            ego_start_phi=0, ego_start_speed=10.0,
+            target_speed=50.0,
+            controller="LQR_controller",
+            destination=(190, 1.75),
+        )
+
+    @staticmethod
+    def straight_with_obstacle() -> ScenarioConfig:
+        """直道 + 静态障碍物场景"""
+        road = RoadDef(
+            segments=[
+                RoadSegment(
+                    type="straight",
+                    params={"length": 200, "heading": 0, "start": (0, 0)},
+                    lane_width=3.5, num_lanes=2,
+                )
+            ],
+            lane_width=3.5, num_lanes=2,
+        )
+        return ScenarioConfig(
+            name="straight_obstacle",
+            description="直道前方静止车辆",
+            road=road,
+            ego_start_x=20, ego_start_y=1.75,
+            ego_start_phi=0, ego_start_speed=12.5,
+            target_speed=50.0,
+            obstacles=[
+                {"id": 1, "x": 60, "y": 1.75, "length": 4.5, "width": 2.0,
+                 "speed": 0, "heading": 0, "type": "vehicle"},
+            ],
+            controller="LQR_controller",
+            destination=(150, 1.75),
+        )
+
+    @staticmethod
+    def curve_scenario() -> ScenarioConfig:
+        """弯道场景"""
+        road = RoadDef(
+            segments=[
+                RoadSegment(
+                    type="straight",
+                    params={"length": 50, "heading": 0, "start": (0, 0)},
+                    lane_width=3.5, num_lanes=2,
+                ),
+                RoadSegment(
+                    type="arc",
+                    params={"radius": 50, "angle": math.pi / 2,
+                            "center": (50, -50), "start_angle": math.pi / 2},
+                    lane_width=3.5, num_lanes=2,
+                ),
+                RoadSegment(
+                    type="straight",
+                    params={"length": 100, "heading": math.pi / 2,
+                            "start": (100, 0)},
+                    lane_width=3.5, num_lanes=2,
+                ),
+            ],
+            lane_width=3.5, num_lanes=2,
+        )
+        return ScenarioConfig(
+            name="curve_90deg",
+            description="90度弯道",
+            road=road,
+            ego_start_x=10, ego_start_y=1.75,
+            ego_start_phi=0, ego_start_speed=8.0,
+            target_speed=30.0,
+            controller="LQR_controller",
+        )
+
+    # =========================================================================
+    # 主循环
+    # =========================================================================
+
+    def run(self):
+        """主循环"""
+        running = True
+        while running:
+            # 事件处理
+            running = self._handle_events()
+
+            if self.paused:
+                self.clock.tick(30)
+                continue
+
+            # 控制决策
+            if self.auto_mode:
+                control = self._auto_control()
+            else:
+                control = self._manual_control()
+
+            # 物理步进
+            dt = 0.05  # 20Hz
+            state = self.engine.step(control, dt)
+            self.sim_time += dt
+
+            # 计算误差
+            err_state = self.engine.get_error_state()
+            if err_state is not None:
+                self._last_ed = err_state[0]
+                self._last_ephi = err_state[2]
+            self.hud.update_history(self._last_ed, self._last_ephi)
+
+            # 碰撞处理
+            if self.engine.collision_occurred:
+                print("[!] Collision detected!")
+
+            # 到达终点
+            if self.engine.reached_destination:
+                print("[✓] Destination reached!")
+                running = False
+
+            # 相机跟随
+            self.camera.follow(state.x, state.y)
+
+            # 日志
+            self.log_entries.append(LogEntry(
+                timestamp=self.sim_time,
+                x=state.x, y=state.y, phi=state.phi,
+                vx=state.vx, vy=state.vy,
+                speed_kmh=state.speed_kmh,
+                steer=control.steer,
+                throttle=control.throttle,
+                brake=control.brake,
+                ed=self._last_ed, ephi=self._last_ephi,
+                target_speed=self.engine.target_speed,
+            ))
+
+            # 渲染
+            self._render(state, control)
+
+            self.clock.tick(60)
+
+        # 结束
+        self._on_exit()
+
+    # =========================================================================
+    # 控制
+    # =========================================================================
+
+    def _auto_control(self) -> ControlCommand:
+        """自动驾驶控制 (占位: 后续集成LQR/MPC)"""
+        # 简单的比例控制让车辆沿参考线走
+        state = self.engine.get_state()
+        ref_path = self.engine.world.ref_path_as_tuples
+
+        if not ref_path:
+            return ControlCommand()
+
+        # 找最近点
+        min_d = float('inf')
+        min_i = 0
+        for i, p in enumerate(ref_path):
+            d = math.hypot(p[0] - state.x, p[1] - state.y)
+            if d < min_d:
+                min_d = d
+                min_i = i
+
+        # 前视5个点
+        look_i = min(min_i + 10, len(ref_path) - 1)
+        look_p = ref_path[look_i]
+
+        # 横向误差
+        dx = look_p[0] - state.x
+        dy = look_p[1] - state.y
+        target_heading = math.atan2(dy, dx)
+        heading_error = target_heading - state.phi
+        # 归一化到 [-pi, pi]
+        heading_error = math.atan2(math.sin(heading_error), math.cos(heading_error))
+
+        # 简单比例转向
+        steer = max(-1.0, min(1.0, heading_error * 2.0))
+
+        # 速度控制
+        speed_err = (self.engine.target_speed / 3.6) - state.speed
+        accel = max(-1.0, min(1.0, speed_err * 0.5))
+
+        cmd = ControlCommand.from_accel_steer(accel, steer)
+
+        # 保存当前参考线用于渲染
+        self.planned_path = ref_path
+
+        return cmd
+
+    def _manual_control(self) -> ControlCommand:
+        """手动键盘控制"""
+        self.keys = pygame.key.get_pressed()
+
+        # 油门
+        if self.keys[pygame.K_w] or self.keys[pygame.K_UP]:
+            self.manual_throttle = min(1.0, self.manual_throttle + 0.05)
+            self.manual_brake = 0.0
+        elif self.keys[pygame.K_s] or self.keys[pygame.K_DOWN]:
+            self.manual_throttle = 0.0
+            self.manual_brake = min(1.0, self.manual_brake + 0.1)
+        else:
+            self.manual_throttle = 0.0
+            self.manual_brake = 0.0
+
+        # 转向
+        if self.keys[pygame.K_a] or self.keys[pygame.K_LEFT]:
+            self.manual_steer = max(-1.0, self.manual_steer - 0.05)
+        elif self.keys[pygame.K_d] or self.keys[pygame.K_RIGHT]:
+            self.manual_steer = min(1.0, self.manual_steer + 0.05)
+        else:
+            self.manual_steer *= 0.8  # 回正
+
+        # 刹车
+        if self.keys[pygame.K_SPACE]:
+            self.manual_brake = 1.0
+            self.manual_throttle = 0.0
+
+        return ControlCommand(
+            steer=self.manual_steer,
+            throttle=self.manual_throttle,
+            brake=self.manual_brake,
+        )
+
+    # =========================================================================
+    # 事件处理
+    # =========================================================================
+
+    def _handle_events(self) -> bool:
+        """处理pygame事件, 返回False表示退出"""
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                return False
+            elif event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_ESCAPE:
+                    return False
+                elif event.key == pygame.K_q:
+                    self.auto_mode = not self.auto_mode
+                    print(f"Mode: {'AUTO' if self.auto_mode else 'MANUAL'}")
+                elif event.key == pygame.K_p:
+                    self.paused = not self.paused
+                    print(f"{'PAUSED' if self.paused else 'RESUMED'}")
+                elif event.key == pygame.K_r:
+                    self._reset()
+                elif event.key == pygame.K_EQUALS or event.key == pygame.K_PLUS:
+                    self.camera.zoom(0.1)
+                elif event.key == pygame.K_MINUS:
+                    self.camera.zoom(-0.1)
+            elif event.type == pygame.MOUSEWHEEL:
+                self.camera.zoom(event.y * 0.05)
+
+        return True
+
+    def _reset(self):
+        """重置仿真"""
+        self.engine = SimulationEngine(self.config)
+        self.sim_time = 0.0
+        self.manual_steer = 0.0
+        self.manual_throttle = 0.0
+        self.manual_brake = 0.0
+        self.log_entries.clear()
+        self.hud.ed_history.clear()
+        self.hud.ephi_history.clear()
+        self.planned_path.clear()
+        self.planned_traj.clear()
+        self.start_real_time = time.time()
+        print("[R] Reset complete")
+
+    # =========================================================================
+    # 渲染
+    # =========================================================================
+
+    def _render(self, state: VehicleState, control: ControlCommand):
+        """渲染一帧"""
+        self.renderer.clear()
+        self.renderer.draw_grid()
+
+        # 道路
+        self.renderer.draw_road(self.engine.world)
+
+        # 规划路径
+        if self.planned_path:
+            self.renderer.draw_path(self.planned_path, REF_PATH_SMOOTH, 2)
+        if self.planned_traj:
+            self.renderer.draw_path(self.planned_traj, PLANNED_TRAJ, 2)
+
+        # 障碍物
+        self.renderer.draw_obstacles(self.engine.obstacles.get_all())
+
+        # 自车
+        self.renderer.draw_vehicle(state)
+
+        # HUD
+        real_time = time.time() - self.start_real_time
+        fps = self.clock.get_fps()
+        control_info = {
+            'steer': control.steer,
+            'throttle': control.throttle,
+            'brake': control.brake,
+        }
+        self.hud.render(
+            state=state,
+            target_speed=self.engine.target_speed,
+            control_info=control_info,
+            auto_mode=self.auto_mode,
+            fps=fps,
+            sim_time=self.sim_time,
+            real_time=real_time,
+            collision=self.engine.collision_occurred,
+            map_name=self.config.name,
+        )
+
+        pygame.display.flip()
+
+    def _on_exit(self):
+        """退出时保存数据"""
+        print(f"Simulation ended. {len(self.log_entries)} steps logged.")
+        pygame.quit()
