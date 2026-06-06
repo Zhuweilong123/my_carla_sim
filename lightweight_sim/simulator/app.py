@@ -505,6 +505,18 @@ class SimulatorApp:
 
         # HUD
         real_time = time.time() - self.start_real_time
+
+        # ---- 屏幕顶部模式指示器 ----
+        mode_text = "AUTO (LQR)" if self.auto_mode else "MANUAL"
+        mode_color = (0, 255, 100) if self.auto_mode else (255, 200, 50)
+        try:
+            big_font = pygame.font.Font(None, 36)
+            mode_surf = big_font.render(mode_text, True, mode_color, (0, 0, 0))
+            self.screen.blit(mode_surf, (self.screen.get_width() // 2 - mode_surf.get_width() // 2, 5))
+        except Exception:
+            pass
+
+        # 帧率+状态
         fps = self.clock.get_fps()
         control_info = {
             'steer': control.steer,
@@ -521,6 +533,8 @@ class SimulatorApp:
             real_time=real_time,
             collision=self.engine.collision_occurred,
             map_name=f"{self.config.name} [{self.controller.controller_type}]",
+            ed=self._last_ed,
+            ephi=self._last_ephi,
         )
 
         pygame.display.flip()

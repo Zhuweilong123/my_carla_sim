@@ -46,7 +46,8 @@ class HUD:
                control_info: dict, auto_mode: bool,
                fps: float, sim_time: float, real_time: float,
                collision: bool = False,
-               map_name: str = "Default"):
+               map_name: str = "Default",
+               ed: float = 0.0, ephi: float = 0.0):
         """渲染HUD面板"""
 
         # 背景面板 (半透明)
@@ -57,13 +58,14 @@ class HUD:
 
         # 构建信息文本
         speed_kmh = state.speed_kmh
+        mode_str = '>>> AUTO <<<' if auto_mode else 'MANUAL'
         lines = [
             f"Sim FPS:  {fps:16.0f}",
             f"Sim Time: {datetime.timedelta(seconds=int(sim_time))!s:>20s}",
             f"Real Time:{datetime.timedelta(seconds=int(real_time))!s:>20s}",
             " ",
             f"Map:      {map_name:>20s}",
-            f"Mode:     {'AUTO' if auto_mode else 'MANUAL':>20s}",
+            f"Mode:     {mode_str:>20s}",
             " ",
             "--- Vehicle State ---",
             f"Location: ({state.x:6.1f}, {state.y:6.1f})",
@@ -71,11 +73,18 @@ class HUD:
             f"Accel:    {state.accel:5.2f} m/s^2",
             f"Steer:    {math.degrees(state.steer):5.1f} deg",
             " ",
+            "--- Tracking Error ---",
+            f"ed:       {ed:+6.3f} m",
+            f"ephi:     {math.degrees(ephi):+6.2f} deg",
+            " ",
             "--- Control ---",
             f"Throttle: {control_info.get('throttle', 0):5.2f}",
             f"Brake:    {control_info.get('brake', 0):5.2f}",
             f"Steer cmd:{math.degrees(control_info.get('steer', 0)):5.1f} deg",
         ]
+
+        if not auto_mode:
+            lines += [" ", "[WASD] drive  [Q] auto  [R] reset"]
 
         if collision:
             lines.append(" ")
