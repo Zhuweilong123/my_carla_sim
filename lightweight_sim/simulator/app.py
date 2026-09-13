@@ -57,6 +57,7 @@ _patch_pygame_sysfont()
 from typing import Optional, List, Tuple
 
 from .data_types import ScenarioConfig, VehicleState, ControlCommand, LogEntry
+from .logging_utils import get_log_path, get_run_logger
 from .engine import SimulationEngine
 from .world import RoadDef, RoadSegment
 from .vehicle import EgoVehicle, VehicleParams
@@ -106,11 +107,14 @@ class SimulatorApp:
         if config is None:
             config = self._default_config()
         self.config = config
+        self.logger = get_run_logger()
         self.engine = SimulationEngine(config)
+        self.logger.info("GUI initialized; scenario=%s controller=%s log_file=%s", config.name, config.controller, get_log_path())
 
         # 模式
-        self.auto_mode = False
+        self.auto_mode = True
         self.paused = False
+        self.logger.info("initial mode; auto_mode=%s paused=%s", self.auto_mode, self.paused)
 
         # 手动控制状态
         self.manual_steer = 0.0
@@ -132,9 +136,9 @@ class SimulatorApp:
             self.engine.world.ref_path_as_tuples, self._lane_offset)
         self.controller.update_ref_path(lane_ref_path)
 
-        # 规划器: DP+QP (使用道路中心线作为参考线进行规划)
+        # 规划器: latest-only 车道级避障规划
         global_path = self.engine.world.ref_path_as_tuples
-        self.planner = MotionPlanner(global_path)
+        self.planner = MotionPlanner(global_path, self.engine.world.lane_width, self.engine.world.num_lanes)
         self.planner.start()
         self._plan_pending = False     # 是否有规划请求在处理中
         self._plan_counter = 0         # 规划周期计数器
@@ -153,6 +157,7 @@ class SimulatorApp:
 
         # 控制器debug信息
         self._last_ctrl_debug = {}
+        self._control_diagnostic_until = 0
 
     # =========================================================================
     # 场景定义
@@ -234,6 +239,7 @@ class SimulatorApp:
         self.controller.update_ref_path(ref_path)
         self.controller.set_target_speed(target)
         print(f"[M] Controller switched to: {self._controller_type}")
+        self.logger.info("controller switched; controller=%s", self._controller_type)
 
     @staticmethod
     def _default_config() -> ScenarioConfig:
@@ -348,13 +354,13 @@ class SimulatorApp:
                 RoadSegment(
                     type="arc",
                     params={"radius": 50, "angle": math.pi / 2,
-                            "center": (50, -50), "start_angle": math.pi / 2},
+                            "center": (50, 50), "start_angle": -math.pi / 2},
                     lane_width=3.5, num_lanes=2,
                 ),
                 RoadSegment(
                     type="straight",
                     params={"length": 100, "heading": math.pi / 2,
-                            "start": (100, 0)},
+                            "start": (100, 50)},
                     lane_width=3.5, num_lanes=2,
                 ),
             ],
@@ -376,6 +382,7 @@ class SimulatorApp:
 
     def run(self):
         """主循环"""
+        self.logger.info("GUI run started; scenario=%s", self.config.name)
         print("=" * 50)
         print("  Lightweight Simulator - 操作说明")
         print("  Q: 切换 手动/自动    R: 重置")
@@ -415,6 +422,7 @@ class SimulatorApp:
             if q_now and not prev_q:
                 self.auto_mode = not self.auto_mode
                 print(f"[Q] Mode: {'AUTO' if self.auto_mode else 'MANUAL'}")
+                self.logger.info("mode changed; auto_mode=%s", self.auto_mode)
             prev_q = q_now
 
             # P: 暂停 (去抖)
@@ -422,6 +430,7 @@ class SimulatorApp:
             if p_now and not prev_p:
                 self.paused = not self.paused
                 print(f"[P] {'PAUSED' if self.paused else 'RESUMED'}")
+                self.logger.info("pause changed; paused=%s", self.paused)
             prev_p = p_now
 
             # R: 重置 (去抖)
@@ -447,7 +456,7 @@ class SimulatorApp:
                 self.clock.tick(30)
                 # 暂停时也要渲染一帧(更新画面)
                 self._render(self.engine.get_state(),
-                            ControlCommand(steer=self.manual_steer,
+                            ControlCommand(steer=self.manual_steer * self.engine.ego.params.max_steer,
                                           throttle=self.manual_throttle,
                                           brake=self.manual_brake))
                 continue
@@ -459,7 +468,7 @@ class SimulatorApp:
                 control = self._manual_control(keys)
 
             # ---- 第5.5步: 路径规划 (低频, 多进程) ----
-            if (self.auto_mode and not self.engine.collision_occurred
+            if (self.auto_mode and not self.engine.is_done and not self._plan_pending
                     and self._plan_counter % self._plan_interval == 0):
                 state = self.engine.get_state()
                 # 预测规划起点的位置 (补偿规划延迟)
@@ -479,11 +488,27 @@ class SimulatorApp:
                     vehicle_loc=(state.x, state.y),
                 )
                 self._plan_pending = True
+                self.logger.debug("planner request submitted; sim_time=%.3f position=(%.3f,%.3f) obstacles=%d", self.sim_time, state.x, state.y, len(self.engine.obstacles.get_all()))
 
             # 非阻塞接收规划结果
             if self._plan_pending:
                 if self.planner.poll_result():
                     planned = self.planner.get_result()
+                    self.logger.info("planner result received; points=%d", len(planned) if planned else 0)
+                    self._control_diagnostic_until = self.engine.step_count + 40
+                    if planned:
+                        sample_indices = sorted(set((0, len(planned) // 2, len(planned) - 1)))
+                        profile = ";".join(
+                            "i=%d x=%.2f y=%.2f" % (
+                                index, planned[index][0], planned[index][1]
+                            )
+                            for index in sample_indices
+                        )
+                        self.logger.info(
+                            "planner path profile; points=%d %s",
+                            len(planned),
+                            profile,
+                        )
                     if planned is not None:
                         if planned and len(planned) > 0:
                             self.planned_traj = planned
@@ -501,6 +526,7 @@ class SimulatorApp:
                     self._plan_pending = False
                 elif self._plan_counter > self._plan_interval + 200:
                     print("[App] Planning timed out, resetting planner state")
+                    self.logger.warning("planner request timed out; sim_time=%.3f", self.sim_time)
                     self._plan_pending = False
 
             self._plan_counter += 1
@@ -516,12 +542,39 @@ class SimulatorApp:
                 self._last_ed = err_state[0]
                 self._last_ephi = err_state[2]
             self.hud.update_history(self._last_ed, self._last_ephi)
+            if self.engine.step_count <= self._control_diagnostic_until:
+                self.logger.debug(
+                    "control diagnostic; step=%d active_ed=%.4f active_ephi=%.4f global_ed=%.4f global_ephi=%.4f ref=(%.3f,%.3f) steer=%.4f throttle=%.3f brake=%.3f position=(%.3f,%.3f)",
+                    self.engine.step_count,
+                    self.controller.lat.last_ed,
+                    self.controller.lat.last_ephi,
+                    self._last_ed,
+                    self._last_ephi,
+                    self.controller.lat.x_pro,
+                    self.controller.lat.y_pro,
+                    control.steer,
+                    control.throttle,
+                    control.brake,
+                    state.x,
+                    state.y,
+                )
 
             # ---- 第8步: 状态检查 ----
             if self.engine.collision_occurred:
                 print("[!] Collision detected!")
             if self.engine.reached_destination:
                 print("[✓] Destination reached!")
+                running = False
+            if self.engine.offroad_occurred:
+                print("[!] Vehicle left the road!")
+            if self.engine.is_done:
+                self.logger.warning(
+                    "simulation stopped; collision=%s offroad=%s reached=%s step=%d",
+                    self.engine.collision_occurred,
+                    self.engine.offroad_occurred,
+                    self.engine.reached_destination,
+                    self.engine.step_count,
+                )
                 running = False
 
             # ---- 第9步: 相机跟随 ----
@@ -646,9 +699,11 @@ class SimulatorApp:
                     self.auto_mode = not self.auto_mode
                     self._prev_q_pressed = True
                     print(f"[Q] Mode: {'AUTO' if self.auto_mode else 'MANUAL'}")
+                    self.logger.info("mode changed; auto_mode=%s", self.auto_mode)
                 elif event.key == pygame.K_p:
                     self.paused = not self.paused
                     print(f"[P] {'PAUSED' if self.paused else 'RESUMED'}")
+                    self.logger.info("pause changed; paused=%s", self.paused)
                 elif event.key == pygame.K_r:
                     self._reset()
                 elif event.key in (pygame.K_EQUALS, pygame.K_PLUS):
@@ -714,6 +769,7 @@ class SimulatorApp:
 
         self.start_real_time = time.time()
         print(f"[R] Reset complete (controller: {self.controller.controller_type})")
+        self.logger.info("GUI reset complete; controller=%s", self.controller.controller_type)
 
     # =========================================================================
     # 渲染
@@ -791,6 +847,7 @@ class SimulatorApp:
 
     def _on_exit(self):
         """退出时清理"""
+        self.logger.info("GUI exit requested; steps_logged=%d", len(self.log_entries))
         if self.planner:
             self.planner.stop()
         print(f"Simulation ended. {len(self.log_entries)} steps logged.")

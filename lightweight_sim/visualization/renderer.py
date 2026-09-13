@@ -24,7 +24,7 @@ class Camera:
 
     def world_to_screen(self, wx: float, wy: float) -> Tuple[int, int]:
         sx = int((wx - self.cx) * self.scale + self.w / 2)
-        sy = int(-(wy - self.cy) * self.scale + self.h / 2)  # Y轴翻转
+        sy = int(self.h / 2 - (wy - self.cy) * self.scale)
         return sx, sy
 
     def screen_to_world(self, sx: int, sy: int) -> Tuple[float, float]:

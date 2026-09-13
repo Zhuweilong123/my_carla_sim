@@ -1,15 +1,6 @@
-motion planning for autonomous vehicle based on EM Planner was realized in carla
+Vehicle Motion 仿真环境文档入口
 
-In Controller.py File MPC and LQR Controller for Lateral control are realized. PID Controller for Longitudinal control is realized.
+轻量级仿真器的安装、启动、场景和按键说明请阅读仓库根目录 README.md。
+架构设计、数据接口和已知限制请阅读 lightweight_sim/DESIGN.md。
 
-In Planner folder, the necessary functions of path planning based on S-L graph and speed planning based on S-T graph are realized.
-
-The version of necessary configurations:
-
-CARLA Version 0.9.12
-
-PYTHON Version 3.8.12
-
-CUDA Version 11.4
-
-Driver Version 470.86
+根目录原有 CARLA 实现仍保留，运行它需要 CARLA 0.9.12 及对应 Python API。

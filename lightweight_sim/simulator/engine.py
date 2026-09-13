@@ -1,107 +1,193 @@
-"""仿真引擎 — 时间步进与状态管理"""
+"""Fixed-step simulation engine with diagnostic logging."""
 
-import time
+from __future__ import annotations
+
+import math
 from typing import Optional
-from .data_types import ScenarioConfig, VehicleState, ControlCommand
-from .world import World, RoadDef
-from .vehicle import EgoVehicle, VehicleParams
+
+from .data_types import ControlCommand, ScenarioConfig, VehicleParams, VehicleState
+from .logging_utils import get_run_logger
 from .obstacle import ObstacleManager
+from .vehicle import EgoVehicle
+from .world import World
 
 
 class SimulationEngine:
-    """
-    仿真引擎 — 管理世界、自车、障碍物的状态更新.
-
-    物理步长 dt = 0.05s (20Hz), 与CARLA同步模式一致.
-    """
+    """Own the world state and advance it with a deterministic physics step."""
 
     def __init__(self, config: ScenarioConfig):
+        self.logger = get_run_logger()
         self.config = config
-
-        # 初始化世界
         self.world = World(config.road)
-
-        # 初始化自车
-        ego_state = VehicleState(
-            x=config.ego_start_x,
-            y=config.ego_start_y,
-            phi=config.ego_start_phi,
-            vx=config.ego_start_speed,
-            vy=0.0,
-            r=0.0,
-            steer=0.0,
-            accel=0.0,
-            timestamp=0.0,
+        self.ego = EgoVehicle(
+            VehicleState(
+                x=config.ego_start_x,
+                y=config.ego_start_y,
+                phi=config.ego_start_phi,
+                vx=config.ego_start_speed,
+            ),
+            VehicleParams(),
         )
-        self.ego = EgoVehicle(ego_state, VehicleParams())
-
-        # 初始化障碍物
         self.obstacles = ObstacleManager()
         self.obstacles.add_from_config(config.obstacles)
-
-        # 时间管理
-        self.sim_time: float = 0.0
-        self.step_count: int = 0
-        self.physics_dt: float = 0.05  # 20Hz
-
-        # 目标
-        self.target_speed: float = config.target_speed  # km/h
+        self.sim_time = 0.0
+        self.step_count = 0
+        self.physics_dt = 0.05
+        self.vehicle_model = getattr(config, "vehicle_model", "kinematic")
+        self.target_speed = config.target_speed
         self.destination = config.destination
-
-        # 统计
-        self.collision_occurred: bool = False
-        self.reached_destination: bool = False
-
-    def step(self, control: ControlCommand, dt: Optional[float] = None) -> VehicleState:
-        """
-        执行一步仿真.
-
-        Args:
-            control: 控制指令 (steer, throttle, brake)
-            dt: 物理步长, 默认0.05s
-        Returns:
-            新的车辆状态
-        """
-        if dt is None:
-            dt = self.physics_dt
-
-        # 将throttle/brake转为加速度
-        accel = control.throttle - control.brake * 2.0  # brake更强
-
-        # 更新自车
-        new_state = self.ego.kinematic_step(control.steer, accel, dt)
-
-        # 更新障碍物
-        self.obstacles.step(dt)
-
-        # 碰撞检测
-        self.collision_occurred = self.obstacles.check_collision(
-            new_state.x, new_state.y,
-            self.ego.length, self.ego.width, new_state.phi
+        self.collision_occurred = False
+        self.reached_destination = False
+        self.offroad_occurred = False
+        self._collision_ids = []
+        self._last_collision = False
+        self._last_offroad = False
+        self._last_reached = False
+        self.logger.info(
+            "engine initialized; scenario=%s model=%s path_points=%d obstacles=%d initial=(%.3f,%.3f) speed=%.3f destination=%s",
+            config.name,
+            self.vehicle_model,
+            len(self.world.ref_path),
+            len(self.obstacles.get_all()),
+            config.ego_start_x,
+            config.ego_start_y,
+            config.ego_start_speed,
+            config.destination,
         )
 
-        # 检查是否到达终点
+    def reset(self):
+        """Reset the complete simulation state using the original configuration."""
+
+        self.logger.info("engine reset requested; scenario=%s", self.config.name)
+        self.__init__(self.config)
+
+    def step(
+        self,
+        control: ControlCommand | None = None,
+        dt: Optional[float] = None,
+    ) -> VehicleState:
+        """Advance the simulation and log periodic state plus terminal events."""
+
+        dt = self.physics_dt if dt is None else float(dt)
+        if not math.isfinite(dt) or dt <= 0.0:
+            self.logger.error("invalid simulation dt=%r", dt)
+            raise ValueError("dt must be a positive finite number")
+
+        control = control or ControlCommand()
+        params = self.ego.params
+        raw_steer = float(control.steer)
+        raw_throttle = float(control.throttle)
+        raw_brake = float(control.brake)
+        steer = max(-params.max_steer, min(params.max_steer, raw_steer))
+        throttle = max(0.0, min(1.0, raw_throttle))
+        brake = max(0.0, min(1.0, raw_brake))
+        if (steer, throttle, brake) != (raw_steer, raw_throttle, raw_brake):
+            self.logger.debug(
+                "control clamped; step=%d raw=(%.4f,%.4f,%.4f) applied=(%.4f,%.4f,%.4f)",
+                self.step_count,
+                raw_steer,
+                raw_throttle,
+                raw_brake,
+                steer,
+                throttle,
+                brake,
+            )
+
+        accel = throttle * params.max_accel - brake * params.max_decel
+        substeps = max(1, int(math.ceil(self.ego.get_state().speed * dt / 0.5)))
+        subdt = dt / substeps
+        state = self.ego.get_state()
+
+        try:
+            for _ in range(substeps):
+                state = self.ego.step(steer, accel, subdt, self.vehicle_model)
+                self.obstacles.step(subdt)
+                collision_hit = self.obstacles.check_collision(
+                    state.x,
+                    state.y,
+                    self.ego.length,
+                    self.ego.width,
+                    state.phi,
+                )
+                if collision_hit:
+                    self._collision_ids = list(self.obstacles.last_collision_ids)
+                self.collision_occurred = self.collision_occurred or collision_hit
+        except Exception:
+            self.logger.exception(
+                "physics step failed; step=%d sim_time=%.3f model=%s",
+                self.step_count,
+                self.sim_time,
+                self.vehicle_model,
+            )
+            raise
+
+        self.offroad_occurred = not self.world.is_on_road(
+            state.x, state.y, -self.ego.width / 2.0
+        )
         if self.destination:
-            dist = ((new_state.x - self.destination[0])**2 +
-                    (new_state.y - self.destination[1])**2)**0.5
-            if dist < 2.0:
+            distance = math.hypot(
+                state.x - self.destination[0], state.y - self.destination[1]
+            )
+            if distance < 2.0:
                 self.reached_destination = True
+        else:
+            distance = None
 
         self.sim_time += dt
         self.step_count += 1
+        if self.collision_occurred and not self._last_collision:
+            self.logger.warning(
+                "collision detected; step=%d sim_time=%.3f position=(%.3f,%.3f) obstacle_ids=%s obstacle_positions=%s",
+                self.step_count,
+                self.sim_time,
+                state.x,
+                state.y,
+                self._collision_ids,
+                [
+                    (o.id, round(o.x, 3), round(o.y, 3))
+                    for o in self.obstacles.get_all()
+                    if o.id in self._collision_ids
+                ],
+            )
+        if self.offroad_occurred and not self._last_offroad:
+            self.logger.warning(
+                "vehicle left road; step=%d position=(%.3f,%.3f) road_distance=%.3f road_limit=%.3f",
+                self.step_count,
+                state.x,
+                state.y,
+                self.world.distance_to_reference(state.x, state.y),
+                self.world.num_lanes * self.world.lane_width / 2.0 - self.ego.width / 2.0,
+            )
+        if self.reached_destination and not self._last_reached:
+            self.logger.info(
+                "destination reached; step=%d distance=%.3f",
+                self.step_count,
+                distance if distance is not None else 0.0,
+            )
+        self._last_collision = self.collision_occurred
+        self._last_offroad = self.offroad_occurred
+        self._last_reached = self.reached_destination
 
-        return new_state
+        if self.step_count == 1 or self.step_count % 100 == 0:
+            self.logger.debug(
+                "state; step=%d sim_time=%.3f position=(%.3f,%.3f) speed=%.3f steer=%.4f accel=%.3f",
+                self.step_count,
+                self.sim_time,
+                state.x,
+                state.y,
+                state.speed,
+                steer,
+                accel,
+            )
+        return state
 
     def get_state(self) -> VehicleState:
         return self.ego.get_state()
 
     def get_error_state(self, ts: float = 0.1):
-        """获取误差状态 (供控制器使用)"""
-        ref_path = self.world.ref_path_as_tuples
-        if not ref_path:
-            return None
-        return self.ego.get_error_state(ref_path, ts)
+        path = self.world.ref_path_as_tuples
+        return self.ego.get_error_state(path, ts) if path else None
 
     @property
     def is_done(self) -> bool:
-        return self.collision_occurred or self.reached_destination
+        return self.collision_occurred or self.reached_destination or self.offroad_occurred

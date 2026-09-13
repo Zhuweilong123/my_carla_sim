@@ -1,96 +1,36 @@
-"""障碍物管理"""
-
+"""Obstacle state and collision management."""
+import math
 import numpy as np
 from typing import List, Tuple
 from .data_types import Obstacle
-
-
 class ObstacleManager:
-    """管理场景中所有障碍物的生命周期和状态更新"""
-
-    def __init__(self):
-        self._obstacles: List[Obstacle] = []
-        self._next_id = 1
-
-    def add_obstacle(self, obs: Obstacle):
-        self._obstacles.append(obs)
-
-    def add_from_config(self, config_list: List[dict]):
-        """从场景配置加载障碍物"""
-        for cfg in config_list:
-            obs = Obstacle(
-                id=cfg.get("id", self._next_id),
-                x=cfg["x"],
-                y=cfg["y"],
-                length=cfg.get("length", 4.5),
-                width=cfg.get("width", 2.0),
-                speed=cfg.get("speed", 0.0),
-                heading=cfg.get("heading", 0.0),
-                type=cfg.get("type", "vehicle"),
-            )
-            self._obstacles.append(obs)
-            self._next_id = max(self._next_id, obs.id) + 1
-
-    def step(self, dt: float):
-        """更新所有动态障碍物位置"""
-        for obs in self._obstacles:
-            obs.step(dt)
-
-    def get_all(self) -> List[Obstacle]:
-        return self._obstacles
-
-    def get_obstacle_xy_list(self) -> List[Tuple[float, float]]:
-        """返回所有障碍物的 (x,y) 坐标列表 (用于Frenet变换)"""
-        return [(obs.x, obs.y) for obs in self._obstacles]
-
-    def check_collision(self, ego_x: float, ego_y: float,
-                        ego_length: float, ego_width: float,
-                        ego_phi: float) -> bool:
-        """检查自车是否与任何障碍物碰撞 (简化AABB + 旋转矩形)"""
-        # 自车AABB
-        ego_corners = self._rect_corners(ego_x, ego_y, ego_length, ego_width, ego_phi)
-        ego_min = ego_corners.min(axis=0)
-        ego_max = ego_corners.max(axis=0)
-
-        for obs in self._obstacles:
-            obs_corners = self._rect_corners(obs.x, obs.y, obs.length, obs.width, obs.heading)
-            obs_min = obs_corners.min(axis=0)
-            obs_max = obs_corners.max(axis=0)
-
-            # AABB快速剔除
-            if (ego_max[0] < obs_min[0] or ego_min[0] > obs_max[0] or
-                ego_max[1] < obs_min[1] or ego_min[1] > obs_max[1]):
-                continue
-
-            # SAT (Separating Axis Theorem) 精确检测
-            if self._sat_collision(ego_corners, obs_corners):
-                return True
-        return False
-
+    def __init__(self): self._obstacles=[]; self._next_id=1; self.last_collision_ids=[]
+    def add_obstacle(self,obs): self._obstacles.append(obs); self._next_id=max(self._next_id,obs.id+1)
+    def add_from_config(self,configs):
+        for c in configs:
+            self.add_obstacle(Obstacle(id=c.get("id",self._next_id),x=c["x"],y=c["y"],length=c.get("length",4.5),width=c.get("width",2.0),speed=c.get("speed",0.0),heading=c.get("heading",0.0),type=c.get("type","vehicle")))
+    def step(self,dt):
+        for o in self._obstacles: o.step(dt)
+    def get_all(self): return self._obstacles
+    def get_obstacle_xy_list(self): return [(o.x,o.y) for o in self._obstacles]
     @staticmethod
-    def _rect_corners(x, y, length, width, heading):
-        """计算矩形四角坐标"""
-        hl, hw = length / 2, width / 2
-        corners = np.array([[-hl, -hw], [hl, -hw], [hl, hw], [-hl, hw]])
-        cos_h, sin_h = np.cos(heading), np.sin(heading)
-        rot = np.array([[cos_h, -sin_h], [sin_h, cos_h]])
-        return corners @ rot.T + np.array([[x, y]])
-
+    def _rect(x,y,length,width,heading):
+        c,s=math.cos(heading),math.sin(heading); local=np.array([[-length/2,-width/2],[length/2,-width/2],[length/2,width/2],[-length/2,width/2]])
+        return local@np.array([[c,-s],[s,c]]).T+np.array([[x,y]])
     @staticmethod
-    def _sat_collision(corners1, corners2):
-        """SAT碰撞检测 (简化: 只检测两个矩形的4条边的法向量)"""
-        for corners in [corners1, corners2]:
-            for i in range(len(corners)):
-                edge = corners[(i+1) % len(corners)] - corners[i]
-                axis = np.array([-edge[1], edge[0]])
-                axis = axis / (np.linalg.norm(axis) + 1e-10)
-
-                proj1 = corners1 @ axis
-                proj2 = corners2 @ axis
-
-                if proj1.max() < proj2.min() or proj2.max() < proj1.min():
-                    return False
+    def _sat(a,b):
+        for corners in (a,b):
+            for i in range(4):
+                edge=corners[(i+1)%4]-corners[i]; axis=np.array([-edge[1],edge[0]])/max(np.linalg.norm(edge),1e-9)
+                if np.max(a@axis)<np.min(b@axis) or np.max(b@axis)<np.min(a@axis): return False
         return True
-
-    def clear(self):
-        self._obstacles.clear()
+    def check_collision(self,ego_x,ego_y,ego_length,ego_width,ego_phi):
+        ego=self._rect(ego_x,ego_y,ego_length,ego_width,ego_phi); amin,amax=ego.min(0),ego.max(0)
+        self.last_collision_ids = []
+        for o in self._obstacles:
+            obs=self._rect(o.x,o.y,o.length,o.width,o.heading); bmin,bmax=obs.min(0),obs.max(0)
+            if amax[0]<bmin[0] or amin[0]>bmax[0] or amax[1]<bmin[1] or amin[1]>bmax[1]: continue
+            if self._sat(ego,obs):
+                self.last_collision_ids.append(o.id)
+        return bool(self.last_collision_ids)
+    def clear(self): self._obstacles.clear()

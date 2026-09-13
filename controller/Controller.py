@@ -716,7 +716,7 @@ class Vehicle_control(object):
             control.brake = 0
         else:
             control.throttle = 0
-            control.brake = max(self._max_brake, current_acceleration)  # 没有反向加速，加速度为零时对应的是刹车制动
+            control.brake = min(self._max_brake, abs(current_acceleration))  # 没有反向加速，加速度为零时对应的是刹车制动
 
         V = self._vehicle.get_velocity()
         V_len = math.sqrt(V.x * V.x + V.y * V.y + V.z * V.z)

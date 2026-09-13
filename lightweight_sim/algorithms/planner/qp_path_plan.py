@@ -3,7 +3,10 @@
 import math
 import time
 import numpy as np
-import cvxopt
+try:
+    import cvxopt
+except ImportError:
+    cvxopt = None
 from typing import List, Tuple
 from ..utils.quintic import cal_quintic_coefficient
 from ..utils.geometry import cal_heading_kappa
@@ -125,6 +128,11 @@ def Quadratic_planning(l_min: List[float], l_max: List[float],
     f = w_cost_centre * f
 
     # ---- 求解 ----
+    if cvxopt is None:
+        centre = np.clip((np.array(l_min) + np.array(l_max)) / 2, np.array(l_min), np.array(l_max))
+        centre[0] = plan_start_l
+        centre[-1] = end_l
+        return list(centre), [0.0] * n, [0.0] * n
     cvxopt.solvers.options['show_progress'] = False
     try:
         res = cvxopt.solvers.qp(
