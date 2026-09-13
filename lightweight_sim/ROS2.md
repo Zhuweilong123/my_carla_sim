@@ -51,8 +51,11 @@ QoS 约定：`/vehicle/state` 和 `/obstacles` 使用 BEST_EFFORT、depth 1；`/
 ```bash
 ros2 topic echo /vehicle/state
 ros2 topic echo /planned_path
+ros2 topic echo /sim/status --once
 ros2 service call /sim/reset std_srvs/srv/Empty {}
 ros2 service call /sim/pause std_srvs/srv/SetBool "{data: true}"
 ```
+
+`/sim/status` 发布当前仿真生命周期状态，包含运行/暂停/结束标志、碰撞/越界/到达结果、仿真步数、仿真时间、场景名和终止原因；该话题使用 RELIABLE + TRANSIENT_LOCAL，晚启动的监控节点也能读取最近状态。
 
 当前节点默认使用仿真时间戳并发布 `/clock`。如果其他节点需要 ROS 仿真时间，应在 launch 或参数中设置 `use_sim_time: true`。

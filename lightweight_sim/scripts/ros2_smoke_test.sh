@@ -24,6 +24,7 @@ fi
 launch_log="$(mktemp /tmp/lightweight_sim_smoke.XXXXXX.log)"
 state_output="$(mktemp /tmp/lightweight_sim_state.XXXXXX.txt)"
 path_output="$(mktemp /tmp/lightweight_sim_path.XXXXXX.txt)"
+status_output="$(mktemp /tmp/lightweight_sim_status.XXXXXX.txt)"
 launch_pid=""
 
 cleanup() {
@@ -34,7 +35,7 @@ cleanup() {
         kill -TERM "${launch_pid}" 2>/dev/null
         wait "${launch_pid}" 2>/dev/null
     fi
-    rm -f "${launch_log}" "${state_output}" "${path_output}"
+    rm -f "${launch_log}" "${state_output}" "${path_output}" "${status_output}"
 }
 trap cleanup EXIT
 
@@ -75,6 +76,12 @@ sed -n '1,12p' "${state_output}"
 echo "--- planned path ---"
 timeout 10s ros2 topic echo "${topic_prefix}/planned_path" --once >"${path_output}"
 sed -n '1,12p' "${path_output}"
+
+echo "--- simulation status ---"
+timeout 10s ros2 topic echo "${topic_prefix}/sim/status" --once >"${status_output}"
+sed -n '1,20p' "${status_output}"
+grep -q "scenario:" "${status_output}"
+grep -q "step_count:" "${status_output}"
 
 echo "--- simulation services ---"
 ros2 service call "${topic_prefix}/sim/pause" std_srvs/srv/SetBool '{data: true}'

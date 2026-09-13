@@ -10,6 +10,7 @@ from lightweight_sim_msgs.msg import Obstacle as RosObstacle
 from lightweight_sim_msgs.msg import ObstacleArray
 from lightweight_sim_msgs.msg import Path as RosPath
 from lightweight_sim_msgs.msg import PathPoint
+from lightweight_sim_msgs.msg import SimulationStatus
 from lightweight_sim_msgs.msg import VehicleState as RosVehicleState
 from rclpy.node import Node
 from rosgraph_msgs.msg import Clock
@@ -18,7 +19,7 @@ from std_srvs.srv import Empty, SetBool, Trigger
 from ..simulator.data_types import ControlCommand
 from ..simulator.engine import SimulationEngine
 from ..simulator.scenarios import make_scenario
-from .qos import clock_qos, command_qos, latched_path_qos, sensor_data_qos
+from .qos import clock_qos, command_qos, latched_path_qos, sensor_data_qos, status_qos
 
 
 def seconds_to_time(seconds: float) -> Time:
@@ -52,6 +53,9 @@ class SimulatorNode(Node):
         self.reference_pub = self.create_publisher(
             RosPath, "reference_path", latched_path_qos()
         )
+        self.status_pub = self.create_publisher(
+            SimulationStatus, "sim/status", status_qos()
+        )
         self.clock_pub = self.create_publisher(Clock, "/clock", clock_qos())
         self.command_sub = self.create_subscription(
             RosControlCommand, "control_command", self._on_command, command_qos()
@@ -61,6 +65,7 @@ class SimulatorNode(Node):
         self.step_srv = self.create_service(Trigger, "sim/step", self._on_step)
         self.timer = self.create_timer(self.physics_dt, self._on_timer)
         self._publish_reference(sequence=0)
+        self._publish_status()
         self.get_logger().info(
             f"simulator ready: scenario={scenario_name} dt={self.physics_dt:.3f}"
         )
@@ -90,6 +95,7 @@ class SimulatorNode(Node):
                 f"offroad={self.engine.offroad_occurred} "
                 f"reached={self.engine.reached_destination}"
             )
+        self._publish_status()
 
     def _on_timer(self) -> None:
         if not self.paused:
@@ -108,10 +114,12 @@ class SimulatorNode(Node):
         self.paused = False
         self._publish_reference(sequence=0)
         self._publish_state()
+        self._publish_status()
         return response
 
     def _on_pause(self, request, response):
         self.paused = bool(request.data)
+        self._publish_status()
         response.success = True
         response.message = "paused" if self.paused else "running"
         return response
@@ -165,6 +173,33 @@ class SimulatorNode(Node):
             clock = Clock()
             clock.clock = stamp
             self.clock_pub.publish(clock)
+
+    def _termination_reason(self) -> str:
+        if self.engine.collision_occurred:
+            return "collision"
+        if self.engine.offroad_occurred:
+            return "offroad"
+        if self.engine.reached_destination:
+            return "reached"
+        if self.paused:
+            return "paused"
+        return ""
+
+    def _publish_status(self, stamp: Optional[Time] = None) -> None:
+        message = SimulationStatus()
+        message.header.stamp = stamp or seconds_to_time(self.engine.sim_time)
+        message.header.frame_id = self.frame_id
+        message.running = not self.paused and not self.engine.is_done
+        message.paused = self.paused
+        message.done = self.engine.is_done
+        message.collision = self.engine.collision_occurred
+        message.offroad = self.engine.offroad_occurred
+        message.reached = self.engine.reached_destination
+        message.step_count = self.engine.step_count
+        message.sim_time = self.engine.sim_time
+        message.scenario = self.engine.config.name
+        message.termination_reason = self._termination_reason()
+        self.status_pub.publish(message)
 
 
 def main(args=None) -> None:

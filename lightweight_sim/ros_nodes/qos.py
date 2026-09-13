@@ -50,3 +50,14 @@ def clock_qos() -> QoSProfile:
         reliability=ReliabilityPolicy.BEST_EFFORT,
         durability=DurabilityPolicy.VOLATILE,
     )
+
+
+def status_qos() -> QoSProfile:
+    """Retain the latest low-rate simulator status for late subscribers."""
+
+    return QoSProfile(
+        history=HistoryPolicy.KEEP_LAST,
+        depth=1,
+        reliability=ReliabilityPolicy.RELIABLE,
+        durability=DurabilityPolicy.TRANSIENT_LOCAL,
+    )
