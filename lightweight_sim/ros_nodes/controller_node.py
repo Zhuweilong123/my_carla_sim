@@ -36,15 +36,15 @@ class ControllerNode(Node):
             durability=DurabilityPolicy.TRANSIENT_LOCAL,
         )
         self.state_sub = self.create_subscription(
-            RosVehicleState, "/vehicle/state", self._on_state, 10
+            RosVehicleState, "vehicle/state", self._on_state, 10
         )
         self.reference_sub = self.create_subscription(
-            RosPath, "/reference_path", self._on_reference, latched_qos
+            RosPath, "reference_path", self._on_reference, latched_qos
         )
         self.planned_sub = self.create_subscription(
-            RosPath, "/planned_path", self._on_planned, 1
+            RosPath, "planned_path", self._on_planned, 1
         )
-        self.command_pub = self.create_publisher(ControlCommand, "/control_command", 10)
+        self.command_pub = self.create_publisher(ControlCommand, "control_command", 10)
         period = float(self.get_parameter("control_period").value)
         self.timer = self.create_timer(period, self._on_timer)
 

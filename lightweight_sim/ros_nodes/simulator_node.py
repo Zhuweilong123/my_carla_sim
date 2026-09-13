@@ -51,16 +51,16 @@ class SimulatorNode(Node):
             reliability=ReliabilityPolicy.RELIABLE,
             durability=DurabilityPolicy.TRANSIENT_LOCAL,
         )
-        self.state_pub = self.create_publisher(RosVehicleState, "/vehicle/state", 10)
-        self.obstacle_pub = self.create_publisher(ObstacleArray, "/obstacles", 10)
-        self.reference_pub = self.create_publisher(RosPath, "/reference_path", latched_qos)
+        self.state_pub = self.create_publisher(RosVehicleState, "vehicle/state", 10)
+        self.obstacle_pub = self.create_publisher(ObstacleArray, "obstacles", 10)
+        self.reference_pub = self.create_publisher(RosPath, "reference_path", latched_qos)
         self.clock_pub = self.create_publisher(Clock, "/clock", 10)
         self.command_sub = self.create_subscription(
-            RosControlCommand, "/control_command", self._on_command, 10
+            RosControlCommand, "control_command", self._on_command, 10
         )
-        self.reset_srv = self.create_service(Empty, "/sim/reset", self._on_reset)
-        self.pause_srv = self.create_service(SetBool, "/sim/pause", self._on_pause)
-        self.step_srv = self.create_service(Trigger, "/sim/step", self._on_step)
+        self.reset_srv = self.create_service(Empty, "sim/reset", self._on_reset)
+        self.pause_srv = self.create_service(SetBool, "sim/pause", self._on_pause)
+        self.step_srv = self.create_service(Trigger, "sim/step", self._on_step)
         self.timer = self.create_timer(self.physics_dt, self._on_timer)
         self._publish_reference(sequence=0)
         self.get_logger().info(

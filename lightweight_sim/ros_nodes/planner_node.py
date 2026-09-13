@@ -53,15 +53,15 @@ class PlannerNode(Node):
             durability=DurabilityPolicy.TRANSIENT_LOCAL,
         )
         self.path_sub = self.create_subscription(
-            RosPath, "/reference_path", self._on_path, latched_qos
+            RosPath, "reference_path", self._on_path, latched_qos
         )
         self.state_sub = self.create_subscription(
-            RosVehicleState, "/vehicle/state", self._on_state, 10
+            RosVehicleState, "vehicle/state", self._on_state, 10
         )
         self.obstacle_sub = self.create_subscription(
-            ObstacleArray, "/obstacles", self._on_obstacles, 10
+            ObstacleArray, "obstacles", self._on_obstacles, 10
         )
-        self.result_pub = self.create_publisher(RosPath, "/planned_path", 1)
+        self.result_pub = self.create_publisher(RosPath, "planned_path", 1)
         period = float(self.get_parameter("plan_period").value)
         self.plan_timer = self.create_timer(period, self._request_plan)
         self.poll_timer = self.create_timer(0.02, self._poll_result)

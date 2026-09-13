@@ -36,6 +36,9 @@ python3 -m pip install -r requirements.txt  # 如果项目环境尚未安装 num
 colcon build --base-paths . lightweight_sim_msgs --symlink-install
 source install/setup.bash
 ros2 launch lightweight_sim lightweight_sim.launch.py
+
+# Run an isolated instance; /clock remains global and other topics/services use /sim_01.
+ros2 launch lightweight_sim lightweight_sim.launch.py namespace:=sim_01
 ```
 
 仓库当前将消息包放在根目录下的 `lightweight_sim_msgs/`。由于根目录本身也是一个 ROS 包，必须显式列出两个 base path；后续如果迁移到标准 `ros2_ws/src/` 布局，可以去掉这个参数。
