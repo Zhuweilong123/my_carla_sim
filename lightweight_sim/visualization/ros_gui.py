@@ -9,7 +9,7 @@ import pygame
 from ..simulator.data_types import Obstacle, PathPoint, VehicleState
 from .colors import HUD_TEXT, HUD_WARNING
 from .hud import HUD
-from .pygame_compat import patch_sysfont_for_python314
+from .pygame_compat import configure_display_driver, patch_sysfont_for_python314
 from .renderer import Camera, Renderer
 
 
@@ -61,6 +61,7 @@ class RosGuiView:
         num_lanes: int = 2,
         target_speed_kmh: float = 40.0,
     ) -> None:
+        configure_display_driver()
         patch_sysfont_for_python314()
         pygame.init()
         pygame.font.init()

@@ -1,6 +1,21 @@
 """Small pygame compatibility helpers shared by GUI entry points."""
 
+import os
 import pygame
+
+
+def configure_display_driver() -> None:
+    """Prefer WSLg's X11 bridge unless the caller selected a driver explicitly."""
+
+    if os.environ.get("SDL_VIDEODRIVER"):
+        return
+    try:
+        with open("/proc/sys/kernel/osrelease", encoding="utf-8") as stream:
+            kernel = stream.read().lower()
+    except OSError:
+        kernel = ""
+    if "microsoft" in kernel and os.environ.get("DISPLAY"):
+        os.environ["SDL_VIDEODRIVER"] = "x11"
 
 
 def patch_sysfont_for_python314() -> None:
