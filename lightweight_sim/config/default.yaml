@@ -1,0 +1,22 @@
+simulator_node:
+  ros__parameters:
+    scenario: obstacle
+    physics_dt: 0.05
+    command_timeout: 0.25
+    publish_clock: true
+    frame_id: map
+    child_frame_id: base_link
+
+planner_node:
+  ros__parameters:
+    plan_period: 0.5
+    prediction_time: 0.2
+    lane_width: 3.5
+    num_lanes: 2
+
+controller_node:
+  ros__parameters:
+    controller: LQR_controller
+    target_speed_kmh: 40.0
+    control_period: 0.05
+    state_timeout: 0.25
