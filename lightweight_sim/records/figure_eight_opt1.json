@@ -1,0 +1,29 @@
+{
+  "label": "opt1",
+  "scenario": "figure_eight_three_lane",
+  "duration_requested_s": 30.0,
+  "duration_measured_s": 30.0,
+  "samples": 600,
+  "dt_s": 0.05,
+  "target_speed_kmh": 30.0,
+  "preview_time_s": 0.1,
+  "k_lat": 12.0,
+  "k_heading": 0.8,
+  "lateral_error_m": {
+    "mean_abs": 0.2672108233780801,
+    "rms": 0.708174471219865,
+    "max_abs": 4.03283670700709
+  },
+  "heading_error_deg": {
+    "mean_abs": 2.2302308325693785,
+    "rms": 6.295484128664657,
+    "max_abs": 41.433361216722346
+  },
+  "offroad": false,
+  "collision": false,
+  "final_state": {
+    "x_m": 77.95035150803041,
+    "y_m": 0.3875051669901255,
+    "speed_kmh": 29.999999999999947
+  }
+}

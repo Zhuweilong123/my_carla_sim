@@ -47,7 +47,14 @@ def tracking_error(state, path):
     return ed, ephi
 
 
-def run_benchmark(duration: float, output_dir: Path, label: str) -> dict:
+def run_benchmark(
+    duration: float,
+    output_dir: Path,
+    label: str,
+    preview_time: float = 0.1,
+    k_lat: float = 12.0,
+    k_heading: float = 0.8,
+) -> dict:
     config = make_scenario("figure_eight")
     engine = SimulationEngine(config)
     path = engine.world.ref_path_as_tuples
@@ -56,6 +63,9 @@ def run_benchmark(duration: float, output_dir: Path, label: str) -> dict:
         controller_type=config.controller,
         target_speed_kmh=config.target_speed,
     )
+    controller.lat.ts = preview_time
+    controller.lat.k_lat = k_lat
+    controller.lat.k_heading = k_heading
     controller.update_ref_path(path)
 
     dt = 0.05
@@ -108,6 +118,9 @@ def run_benchmark(duration: float, output_dir: Path, label: str) -> dict:
         "samples": len(rows),
         "dt_s": dt,
         "target_speed_kmh": config.target_speed,
+        "preview_time_s": preview_time,
+        "k_lat": k_lat,
+        "k_heading": k_heading,
         "lateral_error_m": metrics("ed_m"),
         "heading_error_deg": metrics("ephi_deg"),
         "offroad": engine.offroad_occurred,
@@ -140,13 +153,23 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--duration", type=float, default=30.0)
     parser.add_argument("--label", default="baseline")
+    parser.add_argument("--preview-time", type=float, default=0.1)
+    parser.add_argument("--k-lat", type=float, default=12.0)
+    parser.add_argument("--k-heading", type=float, default=0.8)
     parser.add_argument(
         "--output-dir",
         type=Path,
         default=Path(__file__).resolve().parents[1] / "records",
     )
     args = parser.parse_args()
-    run_benchmark(args.duration, args.output_dir, args.label)
+    run_benchmark(
+        args.duration,
+        args.output_dir,
+        args.label,
+        preview_time=args.preview_time,
+        k_lat=args.k_lat,
+        k_heading=args.k_heading,
+    )
 
 
 if __name__ == "__main__":
