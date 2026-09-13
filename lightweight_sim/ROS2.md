@@ -32,8 +32,9 @@ controller_node --/control_command-----------> simulator_node
 
 ```bash
 source /opt/ros/$ROS_DISTRO/setup.bash
-python3 -m pip install -r requirements.txt  # 如果项目环境尚未安装 numpy/pytest
-colcon build --base-paths . lightweight_sim_msgs --symlink-install
+cd /mnt/d/AI_tools/vehicle_motion
+python3 -m pip install -r lightweight_sim/requirements.txt  # 如果项目环境尚未安装 numpy/pytest
+colcon build
 source install/setup.bash
 ros2 launch lightweight_sim lightweight_sim.launch.py
 
@@ -41,7 +42,7 @@ ros2 launch lightweight_sim lightweight_sim.launch.py
 ros2 launch lightweight_sim lightweight_sim.launch.py namespace:=sim_01
 ```
 
-仓库当前将消息包放在根目录下的 `lightweight_sim_msgs/`。由于根目录本身也是一个 ROS 包，必须显式列出两个 base path；后续如果迁移到标准 `ros2_ws/src/` 布局，可以去掉这个参数。
+仓库根目录现在包含两个独立 ROS 2 包：`lightweight_sim/` 和 `lightweight_sim_msgs/`，可以直接使用标准 `colcon build --symlink-install` 构建。后续如果迁移到标准 `ros2_ws/src/` 布局，只需将这两个包整体放入 `src/`。
 
 常用检查：
 
