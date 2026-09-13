@@ -46,6 +46,9 @@ done
 echo "--- topics ---"
 ros2 topic list | sort
 
+echo "--- reset before sampling ---"
+ros2 service call /sim/reset std_srvs/srv/Empty '{}'
+
 echo "--- vehicle state ---"
 timeout 10s ros2 topic echo /vehicle/state --once >"${state_output}"
 sed -n '1,12p' "${state_output}"
@@ -55,7 +58,6 @@ timeout 10s ros2 topic echo /planned_path --once >"${path_output}"
 sed -n '1,12p' "${path_output}"
 
 echo "--- simulation services ---"
-ros2 service call /sim/reset std_srvs/srv/Empty '{}'
 ros2 service call /sim/pause std_srvs/srv/SetBool '{data: true}'
 ros2 service call /sim/step std_srvs/srv/Trigger '{}'
 ros2 service call /sim/pause std_srvs/srv/SetBool '{data: false}'
