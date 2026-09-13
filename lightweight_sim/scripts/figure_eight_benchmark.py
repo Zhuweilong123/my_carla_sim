@@ -51,9 +51,9 @@ def run_benchmark(
     duration: float,
     output_dir: Path,
     label: str,
-    preview_time: float = 0.1,
-    k_lat: float = 12.0,
-    k_heading: float = 0.8,
+    preview_time: float = 0.05,
+    k_lat: float = 20.0,
+    k_heading: float = 0.5,
 ) -> dict:
     config = make_scenario("figure_eight")
     engine = SimulationEngine(config)
@@ -153,9 +153,9 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--duration", type=float, default=30.0)
     parser.add_argument("--label", default="baseline")
-    parser.add_argument("--preview-time", type=float, default=0.1)
-    parser.add_argument("--k-lat", type=float, default=12.0)
-    parser.add_argument("--k-heading", type=float, default=0.8)
+    parser.add_argument("--preview-time", type=float, default=0.05)
+    parser.add_argument("--k-lat", type=float, default=20.0)
+    parser.add_argument("--k-heading", type=float, default=0.5)
     parser.add_argument(
         "--output-dir",
         type=Path,
