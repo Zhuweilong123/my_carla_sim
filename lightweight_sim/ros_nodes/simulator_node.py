@@ -63,7 +63,9 @@ class SimulatorNode(Node):
         self.step_srv = self.create_service(Trigger, "/sim/step", self._on_step)
         self.timer = self.create_timer(self.physics_dt, self._on_timer)
         self._publish_reference(sequence=0)
-        self.get_logger().info("simulator ready: scenario=%s dt=%.3f", scenario_name, self.physics_dt)
+        self.get_logger().info(
+            f"simulator ready: scenario={scenario_name} dt={self.physics_dt:.3f}"
+        )
 
     def _on_command(self, message: RosControlCommand) -> None:
         self.command = ControlCommand(
@@ -85,10 +87,10 @@ class SimulatorNode(Node):
         if self.engine.is_done:
             self.paused = True
             self.get_logger().warning(
-                "simulation stopped: collision=%s offroad=%s reached=%s",
-                self.engine.collision_occurred,
-                self.engine.offroad_occurred,
-                self.engine.reached_destination,
+                "simulation stopped: "
+                f"collision={self.engine.collision_occurred} "
+                f"offroad={self.engine.offroad_occurred} "
+                f"reached={self.engine.reached_destination}"
             )
 
     def _on_timer(self) -> None:
@@ -173,7 +175,15 @@ def main(args=None) -> None:
     try:
         node = SimulatorNode()
         rclpy.spin(node)
+    except KeyboardInterrupt:
+        pass
     finally:
         if node is not None:
-            node.destroy_node()
-        rclpy.shutdown()
+            try:
+                node.destroy_node()
+            except KeyboardInterrupt:
+                pass
+        try:
+            rclpy.shutdown()
+        except (KeyboardInterrupt, RuntimeError):
+            pass

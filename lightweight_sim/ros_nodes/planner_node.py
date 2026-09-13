@@ -142,6 +142,14 @@ def main(args=None) -> None:
     node = PlannerNode()
     try:
         rclpy.spin(node)
+    except KeyboardInterrupt:
+        pass
     finally:
-        node.destroy_node()
-        rclpy.shutdown()
+        try:
+            node.destroy_node()
+        except KeyboardInterrupt:
+            pass
+        try:
+            rclpy.shutdown()
+        except (KeyboardInterrupt, RuntimeError):
+            pass
