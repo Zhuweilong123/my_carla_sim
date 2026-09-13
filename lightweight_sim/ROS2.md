@@ -42,7 +42,9 @@ ros2 launch lightweight_sim lightweight_sim.launch.py
 ros2 launch lightweight_sim lightweight_sim.launch.py namespace:=sim_01
 ```
 
-仓库根目录现在包含两个独立 ROS 2 包：`lightweight_sim/` 和 `lightweight_sim_msgs/`，可以直接使用标准 `colcon build --symlink-install` 构建。后续如果迁移到标准 `ros2_ws/src/` 布局，只需将这两个包整体放入 `src/`。
+仓库根目录现在包含两个独立 ROS 2 包：`lightweight_sim/` 和 `lightweight_sim_msgs/`，可以直接使用标准 `colcon build` 构建。后续如果迁移到标准 `ros2_ws/src/` 布局，只需将这两个包整体放入 `src/`。
+
+QoS 约定：`/vehicle/state` 和 `/obstacles` 使用 BEST_EFFORT、depth 1；`/control_command` 使用 RELIABLE、depth 1；路径话题使用 RELIABLE + TRANSIENT_LOCAL，保证晚启动节点能够获取最新路径；`/clock` 使用 BEST_EFFORT。
 
 常用检查：
 

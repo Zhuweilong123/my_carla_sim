@@ -9,10 +9,9 @@ from lightweight_sim_msgs.msg import Path as RosPath
 from lightweight_sim_msgs.msg import PathPoint
 from lightweight_sim_msgs.msg import VehicleState as RosVehicleState
 from rclpy.node import Node
-from rclpy.qos import DurabilityPolicy, QoSProfile, ReliabilityPolicy
-
 from ..algorithms.planner.motion_planner import MotionPlanner
 from ..simulator.data_types import Obstacle, VehicleState
+from .qos import latched_path_qos, sensor_data_qos
 
 
 def message_to_state(message: RosVehicleState) -> VehicleState:
@@ -47,21 +46,19 @@ class PlannerNode(Node):
         self.planner: Optional[MotionPlanner] = None
         self.plan_pending = False
 
-        latched_qos = QoSProfile(
-            depth=1,
-            reliability=ReliabilityPolicy.RELIABLE,
-            durability=DurabilityPolicy.TRANSIENT_LOCAL,
-        )
         self.path_sub = self.create_subscription(
-            RosPath, "reference_path", self._on_path, latched_qos
+            RosPath, "reference_path", self._on_path, latched_path_qos()
         )
+        sensor_qos = sensor_data_qos()
         self.state_sub = self.create_subscription(
-            RosVehicleState, "vehicle/state", self._on_state, 10
+            RosVehicleState, "vehicle/state", self._on_state, sensor_qos
         )
         self.obstacle_sub = self.create_subscription(
-            ObstacleArray, "obstacles", self._on_obstacles, 10
+            ObstacleArray, "obstacles", self._on_obstacles, sensor_qos
         )
-        self.result_pub = self.create_publisher(RosPath, "planned_path", 1)
+        self.result_pub = self.create_publisher(
+            RosPath, "planned_path", latched_path_qos()
+        )
         period = float(self.get_parameter("plan_period").value)
         self.plan_timer = self.create_timer(period, self._request_plan)
         self.poll_timer = self.create_timer(0.02, self._poll_result)

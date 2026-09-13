@@ -12,13 +12,13 @@ from lightweight_sim_msgs.msg import Path as RosPath
 from lightweight_sim_msgs.msg import PathPoint
 from lightweight_sim_msgs.msg import VehicleState as RosVehicleState
 from rclpy.node import Node
-from rclpy.qos import DurabilityPolicy, QoSProfile, ReliabilityPolicy
 from rosgraph_msgs.msg import Clock
 from std_srvs.srv import Empty, SetBool, Trigger
 
 from ..simulator.data_types import ControlCommand
 from ..simulator.engine import SimulationEngine
 from ..simulator.scenarios import make_scenario
+from .qos import clock_qos, command_qos, latched_path_qos, sensor_data_qos
 
 
 def seconds_to_time(seconds: float) -> Time:
@@ -46,17 +46,15 @@ class SimulatorNode(Node):
         self.last_command_time = self.get_clock().now()
         self.paused = False
 
-        latched_qos = QoSProfile(
-            depth=1,
-            reliability=ReliabilityPolicy.RELIABLE,
-            durability=DurabilityPolicy.TRANSIENT_LOCAL,
+        sensor_qos = sensor_data_qos()
+        self.state_pub = self.create_publisher(RosVehicleState, "vehicle/state", sensor_qos)
+        self.obstacle_pub = self.create_publisher(ObstacleArray, "obstacles", sensor_qos)
+        self.reference_pub = self.create_publisher(
+            RosPath, "reference_path", latched_path_qos()
         )
-        self.state_pub = self.create_publisher(RosVehicleState, "vehicle/state", 10)
-        self.obstacle_pub = self.create_publisher(ObstacleArray, "obstacles", 10)
-        self.reference_pub = self.create_publisher(RosPath, "reference_path", latched_qos)
-        self.clock_pub = self.create_publisher(Clock, "/clock", 10)
+        self.clock_pub = self.create_publisher(Clock, "/clock", clock_qos())
         self.command_sub = self.create_subscription(
-            RosControlCommand, "control_command", self._on_command, 10
+            RosControlCommand, "control_command", self._on_command, command_qos()
         )
         self.reset_srv = self.create_service(Empty, "sim/reset", self._on_reset)
         self.pause_srv = self.create_service(SetBool, "sim/pause", self._on_pause)

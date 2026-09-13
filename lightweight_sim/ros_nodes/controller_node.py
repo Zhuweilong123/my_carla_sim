@@ -6,10 +6,9 @@ import rclpy
 from lightweight_sim_msgs.msg import ControlCommand, Path as RosPath
 from lightweight_sim_msgs.msg import VehicleState as RosVehicleState
 from rclpy.node import Node
-from rclpy.qos import DurabilityPolicy, QoSProfile, ReliabilityPolicy
-
 from ..algorithms.controller.combined import VehicleController
 from .planner_node import message_to_state, path_to_tuples
+from .qos import command_qos, latched_path_qos, sensor_data_qos
 
 
 class ControllerNode(Node):
@@ -30,21 +29,19 @@ class ControllerNode(Node):
         self.planned_path = []
         self.last_sequence = -1
 
-        latched_qos = QoSProfile(
-            depth=1,
-            reliability=ReliabilityPolicy.RELIABLE,
-            durability=DurabilityPolicy.TRANSIENT_LOCAL,
-        )
+        sensor_qos = sensor_data_qos()
         self.state_sub = self.create_subscription(
-            RosVehicleState, "vehicle/state", self._on_state, 10
+            RosVehicleState, "vehicle/state", self._on_state, sensor_qos
         )
         self.reference_sub = self.create_subscription(
-            RosPath, "reference_path", self._on_reference, latched_qos
+            RosPath, "reference_path", self._on_reference, latched_path_qos()
         )
         self.planned_sub = self.create_subscription(
-            RosPath, "planned_path", self._on_planned, 1
+            RosPath, "planned_path", self._on_planned, latched_path_qos()
         )
-        self.command_pub = self.create_publisher(ControlCommand, "control_command", 10)
+        self.command_pub = self.create_publisher(
+            ControlCommand, "control_command", command_qos()
+        )
         period = float(self.get_parameter("control_period").value)
         self.timer = self.create_timer(period, self._on_timer)
 
