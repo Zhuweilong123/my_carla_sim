@@ -106,6 +106,8 @@ def run_benchmark(
             "max_abs": max(absolute),
         }
 
+    speed_values = values("speed_kmh")
+
     summary = {
         "label": label,
         "scenario": config.name,
@@ -115,6 +117,11 @@ def run_benchmark(
         "dt_s": dt,
         "target_speed_kmh": config.target_speed,
         "vehicle_model": config.vehicle_model,
+        "speed_kmh": {
+            "mean": sum(speed_values) / len(speed_values),
+            "max": max(speed_values),
+            "final": speed_values[-1],
+        },
         "lateral_error_m": metrics("ed_m"),
         "heading_error_deg": metrics("ephi_deg"),
         "offroad": engine.offroad_occurred,
