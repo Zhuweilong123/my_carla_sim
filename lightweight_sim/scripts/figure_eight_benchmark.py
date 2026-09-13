@@ -51,11 +51,10 @@ def run_benchmark(
     duration: float,
     output_dir: Path,
     label: str,
-    preview_time: float = 0.05,
-    k_lat: float = 20.0,
-    k_heading: float = 0.5,
+    vehicle_model: str = "dynamic",
 ) -> dict:
     config = make_scenario("figure_eight")
+    config.vehicle_model = vehicle_model
     engine = SimulationEngine(config)
     path = engine.world.ref_path_as_tuples
     controller = VehicleController(
@@ -63,9 +62,6 @@ def run_benchmark(
         controller_type=config.controller,
         target_speed_kmh=config.target_speed,
     )
-    controller.lat.ts = preview_time
-    controller.lat.k_lat = k_lat
-    controller.lat.k_heading = k_heading
     controller.update_ref_path(path)
 
     dt = 0.05
@@ -118,13 +114,16 @@ def run_benchmark(
         "samples": len(rows),
         "dt_s": dt,
         "target_speed_kmh": config.target_speed,
-        "preview_time_s": preview_time,
-        "k_lat": k_lat,
-        "k_heading": k_heading,
+        "vehicle_model": config.vehicle_model,
         "lateral_error_m": metrics("ed_m"),
         "heading_error_deg": metrics("ephi_deg"),
         "offroad": engine.offroad_occurred,
         "collision": engine.collision_occurred,
+        "riccati": {
+            "converged": controller.lat.riccati_converged,
+            "iterations": controller.lat.riccati_iterations,
+            "K": controller.lat.K.tolist(),
+        },
         "final_state": {
             "x_m": engine.get_state().x,
             "y_m": engine.get_state().y,
@@ -153,9 +152,11 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--duration", type=float, default=30.0)
     parser.add_argument("--label", default="baseline")
-    parser.add_argument("--preview-time", type=float, default=0.05)
-    parser.add_argument("--k-lat", type=float, default=20.0)
-    parser.add_argument("--k-heading", type=float, default=0.5)
+    parser.add_argument(
+        "--vehicle-model",
+        choices=("kinematic", "dynamic"),
+        default="dynamic",
+    )
     parser.add_argument(
         "--output-dir",
         type=Path,
@@ -166,9 +167,7 @@ def main() -> None:
         args.duration,
         args.output_dir,
         args.label,
-        preview_time=args.preview_time,
-        k_lat=args.k_lat,
-        k_heading=args.k_heading,
+        vehicle_model=args.vehicle_model,
     )
 
 
