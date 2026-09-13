@@ -38,13 +38,14 @@ setup(
         (f"share/{package_name}/launch", ["launch/lightweight_sim.launch.py"]),
         (f"share/{package_name}/config", ["config/default.yaml"]),
     ],
-    install_requires=["setuptools", "numpy"],
+    install_requires=["setuptools", "numpy", "pygame-ce>=2.5"],
     zip_safe=True,
     entry_points={
         "console_scripts": [
             "simulator_node = lightweight_sim.ros_nodes.simulator_node:main",
             "planner_node = lightweight_sim.ros_nodes.planner_node:main",
             "controller_node = lightweight_sim.ros_nodes.controller_node:main",
+            "gui_node = lightweight_sim.ros_nodes.gui_node:main",
         ],
     },
 )

@@ -40,6 +40,9 @@ ros2 launch lightweight_sim lightweight_sim.launch.py
 
 # Run an isolated instance; /clock remains global and other topics/services use /sim_01.
 ros2 launch lightweight_sim lightweight_sim.launch.py namespace:=sim_01
+
+# Start the Pygame GUI as a ROS 2 client of the same simulator instance.
+ros2 launch lightweight_sim lightweight_sim.launch.py gui:=true
 ```
 
 仓库根目录现在包含两个独立 ROS 2 包：`lightweight_sim/` 和 `lightweight_sim_msgs/`，可以直接使用标准 `colcon build` 构建。后续如果迁移到标准 `ros2_ws/src/` 布局，只需将这两个包整体放入 `src/`。
@@ -59,3 +62,9 @@ ros2 service call /sim/pause std_srvs/srv/SetBool "{data: true}"
 `/sim/status` 发布当前仿真生命周期状态，包含运行/暂停/结束标志、碰撞/越界/到达结果、仿真步数、仿真时间、场景名和终止原因；该话题使用 RELIABLE + TRANSIENT_LOCAL，晚启动的监控节点也能读取最近状态。
 
 当前节点默认使用仿真时间戳并发布 `/clock`。如果其他节点需要 ROS 仿真时间，应在 launch 或参数中设置 `use_sim_time: true`。
+
+### ROS 2 GUI client
+
+`gui:=true` 启动的是 ROS 2 GUI 客户端，不会创建第二个 `SimulationEngine`。仿真仍由 `simulator_node` 推进，GUI 只订阅状态、障碍物、参考路径、规划路径和 `/sim/status`，并通过服务控制仿真。
+
+GUI 依赖 Pygame；首次使用前执行 `python3 -m pip install -r requirements.txt`。WSL 需要启用 WSLg 或其他 Linux 图形环境；如果只做后台测试，可以不传 `gui:=true`。快捷键：`R` 重置，`P` 暂停/继续，`N` 单步，`+/-` 或鼠标滚轮缩放，`ESC` 退出 GUI。
