@@ -8,6 +8,7 @@ from lightweight_sim.engine.algorithms.controller.combined import VehicleControl
 from lightweight_sim.engine.simulator.data_types import (
     ControlCommand,
     Obstacle,
+    PathPoint,
     RoadDef,
     RoadSegment,
     ScenarioConfig,
@@ -18,6 +19,8 @@ from lightweight_sim.engine.simulator.obstacle import ObstacleManager
 from lightweight_sim.engine.simulator.scenarios import make_scenario
 from lightweight_sim.engine.simulator.vehicle import EgoVehicle, VehicleParams
 from lightweight_sim.engine.simulator.world import World
+from lightweight_sim.visualization.ros_gui import RosGuiView
+from lightweight_sim.visualization._ros_gui_impl import GuiSnapshot
 
 
 def test_engine_uses_fixed_physics_and_clamps_commands():
@@ -69,6 +72,21 @@ def test_figure_eight_scenario_has_three_lanes_and_a_closed_path():
     assert len(path) >= 100
     assert math.hypot(path[0].x - path[-1].x, path[0].y - path[-1].y) < 2.0
     assert engine.get_state().position == pytest.approx((78.0, 0.0))
+
+
+def test_gui_tracking_error_prefers_heading_at_figure_eight_crossing():
+    snapshot = GuiSnapshot(
+        state=VehicleState(x=0.0, y=0.0, phi=0.0),
+        reference_path=[
+            PathPoint(0.0, 0.0, 0.0, 0.0),
+            PathPoint(0.0, 0.0, math.pi, 0.0),
+        ],
+    )
+
+    ed, ephi = RosGuiView._tracking_error(snapshot)
+
+    assert ed == pytest.approx(0.0)
+    assert ephi == pytest.approx(0.0)
 
 
 def test_latest_planner_can_choose_a_free_lane():

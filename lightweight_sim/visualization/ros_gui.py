@@ -66,6 +66,7 @@ class RosGuiView(_LegacyRosGuiView):
         self.num_lanes = num_lanes
         self.target_speed_kmh = target_speed_kmh
         self.started_at = time.monotonic()
+        self._history_scenario = ""
         self._scenario_key_state = {
             key: False for key, _name in self.SCENARIO_KEYS
         }

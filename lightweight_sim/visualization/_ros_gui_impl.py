@@ -1,5 +1,6 @@
 """Pygame view and view-model types for the ROS 2 simulator client."""
 
+import math
 import time
 from dataclasses import dataclass, field
 from typing import List, Optional, Tuple
@@ -75,6 +76,48 @@ class RosGuiView:
         self.num_lanes = num_lanes
         self.target_speed_kmh = target_speed_kmh
         self.started_at = time.monotonic()
+        self._history_scenario = ""
+
+    @staticmethod
+    def _tracking_error(snapshot: GuiSnapshot) -> Tuple[float, float]:
+        """Return lateral and wrapped heading error for the active path.
+
+        At a figure-eight crossing, several reference points can be equally
+        close.  Prefer a nearby point whose tangent agrees with the vehicle
+        heading so the error does not jump to the opposite branch.
+        """
+        state = snapshot.state
+        path = snapshot.reference_path
+        if state is None or not path:
+            return 0.0, 0.0
+
+        distances = [
+            (point.x - state.x) ** 2 + (point.y - state.y) ** 2
+            for point in path
+        ]
+        nearest_distance = min(distances)
+        candidates = [
+            index
+            for index, distance in enumerate(distances)
+            if distance <= nearest_distance + 9.0
+        ]
+
+        def heading_error(index: int) -> float:
+            return math.atan2(
+                math.sin(state.phi - path[index].theta),
+                math.cos(state.phi - path[index].theta),
+            )
+
+        index = min(
+            candidates,
+            key=lambda item: abs(heading_error(item))
+            + 0.05 * math.sqrt(distances[item]),
+        )
+        reference = path[index]
+        dx = state.x - reference.x
+        dy = state.y - reference.y
+        ed = -math.sin(reference.theta) * dx + math.cos(reference.theta) * dy
+        return ed, heading_error(index)
 
     def poll_actions(self) -> List[GuiAction]:
         actions = []
@@ -122,6 +165,12 @@ class RosGuiView:
         if snapshot.state is None:
             self._draw_text("Waiting for /vehicle/state ...", HUD_WARNING)
         else:
+            if snapshot.status.scenario != self._history_scenario:
+                self.hud.ed_history.clear()
+                self.hud.ephi_history.clear()
+                self._history_scenario = snapshot.status.scenario
+            ed, ephi = self._tracking_error(snapshot)
+            self.hud.update_history(ed, ephi)
             self.renderer.draw_vehicle(snapshot.state)
             self.hud.render(
                 state=snapshot.state,
@@ -137,6 +186,8 @@ class RosGuiView:
                 real_time=time.monotonic() - self.started_at,
                 collision=snapshot.status.collision,
                 map_name=f"{snapshot.status.scenario} [ROS 2]",
+                ed=ed,
+                ephi=ephi,
             )
         self._draw_status(snapshot.status)
         pygame.display.flip()
