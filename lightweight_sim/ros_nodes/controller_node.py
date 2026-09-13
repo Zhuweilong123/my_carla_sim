@@ -1,17 +1,15 @@
 """ROS 2 adapter for the lateral/longitudinal vehicle controller."""
 
-import math
 from typing import Optional
 
 import rclpy
-from nav_msgs.msg import Odometry
+from lightweight_sim_msgs.msg import ControlCommand, Path as RosPath
+from lightweight_sim_msgs.msg import VehicleState as RosVehicleState
 from rclpy.node import Node
 from rclpy.qos import DurabilityPolicy, QoSProfile, ReliabilityPolicy
-from std_msgs.msg import Float64MultiArray
 
 from ..algorithms.controller.combined import VehicleController
-from .planner_node import odometry_to_state
-from .protocol import decode_path
+from .planner_node import message_to_state, path_to_tuples
 
 
 class ControllerNode(Node):
@@ -26,46 +24,53 @@ class ControllerNode(Node):
             controller_type=str(self.get_parameter("controller").value),
             target_speed_kmh=float(self.get_parameter("target_speed_kmh").value),
         )
-        self.state = None
+        self.state: Optional[object] = None
         self.state_time = None
         self.reference_path = []
         self.planned_path = []
         self.last_sequence = -1
-        self.state_sub = self.create_subscription(Odometry, "/vehicle/state", self._on_state, 10)
+
         latched_qos = QoSProfile(
             depth=1,
             reliability=ReliabilityPolicy.RELIABLE,
             durability=DurabilityPolicy.TRANSIENT_LOCAL,
         )
+        self.state_sub = self.create_subscription(
+            RosVehicleState, "/vehicle/state", self._on_state, 10
+        )
         self.reference_sub = self.create_subscription(
-            Float64MultiArray, "/reference_path", self._on_reference, latched_qos
+            RosPath, "/reference_path", self._on_reference, latched_qos
         )
         self.planned_sub = self.create_subscription(
-            Float64MultiArray, "/planned_path", self._on_planned, 1
+            RosPath, "/planned_path", self._on_planned, 1
         )
-        self.command_pub = self.create_publisher(Float64MultiArray, "/control_command", 10)
+        self.command_pub = self.create_publisher(ControlCommand, "/control_command", 10)
         period = float(self.get_parameter("control_period").value)
         self.timer = self.create_timer(period, self._on_timer)
 
-    def _on_state(self, message: Odometry) -> None:
-        self.state = odometry_to_state(message)
+    def _on_state(self, message: RosVehicleState) -> None:
+        self.state = message_to_state(message)
         self.state_time = self.get_clock().now()
 
-    def _on_reference(self, message: Float64MultiArray) -> None:
-        _sequence, path = decode_path(message.data)
+    def _on_reference(self, message: RosPath) -> None:
+        path = path_to_tuples(message)
         if path:
             self.reference_path = path
 
-    def _on_planned(self, message: Float64MultiArray) -> None:
-        sequence, path = decode_path(message.data)
-        if sequence < self.last_sequence:
+    def _on_planned(self, message: RosPath) -> None:
+        if int(message.sequence) < self.last_sequence:
             return
-        self.last_sequence = sequence
-        self.planned_path = path
+        self.last_sequence = int(message.sequence)
+        self.planned_path = path_to_tuples(message)
 
     def _publish_command(self, steer: float, throttle: float, brake: float) -> None:
-        message = Float64MultiArray()
-        message.data = [float(steer), float(throttle), float(brake)]
+        message = ControlCommand()
+        message.header.stamp = self.get_clock().now().to_msg()
+        message.header.frame_id = "base_link"
+        message.steering_angle = float(steer)
+        message.throttle = float(throttle)
+        message.brake = float(brake)
+        message.gear = 1
         self.command_pub.publish(message)
 
     def _on_timer(self) -> None:

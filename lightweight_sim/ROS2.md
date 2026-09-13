@@ -15,17 +15,16 @@ controller_node --/control_command-----------> simulator_node
 - `planner_node`：以低频周期调用现有 `MotionPlanner`，只保留最新规划请求和结果。
 - `controller_node`：以 20 Hz 调用现有 `VehicleController`，没有有效状态、路径或状态超时时自动发布全制动。
 
-## 初始消息协议
+## 消息接口
 
-为了让第一阶段保持纯 Python `ament_python` 包，路径和障碍物暂时使用 `std_msgs/msg/Float64MultiArray`，协议已在 `ros_nodes/protocol.py` 中版本化：
+当前节点使用独立的 `lightweight_sim_msgs` 消息包：
 
-- path: `[version, sequence, point_count, x, y, theta, kappa, ...]`
-- obstacle: `[id, x, y, length, width, speed, heading, ...]`
-- control: `[steer_rad, throttle_0_to_1, brake_0_to_1]`
+- `VehicleState`：车辆位姿、车体速度、横摆角速度和当前执行状态。
+- `Path` / `PathPoint`：带航向角和曲率的路径点，并带有规划序号。
+- `ObstacleArray`：障碍物几何、速度、航向和类型。
+- `ControlCommand`：前轮转角、油门、制动和挡位。
 
-车辆状态使用 `nav_msgs/msg/Odometry`，其中 `x/y/yaw` 在 `map`，`vx/vy` 在 `base_link`，单位为 SI。
-
-这是一层过渡协议。下一阶段应将它们替换为 `lightweight_sim_msgs` 自定义消息，同时保持 topic 语义不变。
+其中 `x/y/yaw` 位于 `map` 坐标系，`vx/vy` 使用车体坐标系，所有物理量使用 SI 单位；目标速度参数仍按现有控制器接口使用 km/h。
 
 ## Linux 构建与运行
 

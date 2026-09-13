@@ -4,27 +4,33 @@ import math
 from typing import Optional
 
 import rclpy
-from nav_msgs.msg import Odometry
+from lightweight_sim_msgs.msg import ObstacleArray
+from lightweight_sim_msgs.msg import Path as RosPath
+from lightweight_sim_msgs.msg import PathPoint
+from lightweight_sim_msgs.msg import VehicleState as RosVehicleState
 from rclpy.node import Node
 from rclpy.qos import DurabilityPolicy, QoSProfile, ReliabilityPolicy
-from std_msgs.msg import Float64MultiArray
 
 from ..algorithms.planner.motion_planner import MotionPlanner
 from ..simulator.data_types import Obstacle, VehicleState
-from .protocol import decode_obstacles, decode_path, encode_path
 
 
-def odometry_to_state(message: Odometry) -> VehicleState:
-    q = message.pose.pose.orientation
-    yaw = math.atan2(2.0 * (q.w * q.z), 1.0 - 2.0 * q.z * q.z)
+def message_to_state(message: RosVehicleState) -> VehicleState:
     return VehicleState(
-        x=message.pose.pose.position.x,
-        y=message.pose.pose.position.y,
-        phi=yaw,
-        vx=message.twist.twist.linear.x,
-        vy=message.twist.twist.linear.y,
-        r=message.twist.twist.angular.z,
+        x=message.x,
+        y=message.y,
+        phi=message.yaw,
+        vx=message.vx,
+        vy=message.vy,
+        r=message.yaw_rate,
+        steer=message.steering_angle,
+        accel=message.acceleration,
+        timestamp=message.header.stamp.sec + message.header.stamp.nanosec * 1e-9,
     )
+
+
+def path_to_tuples(message: RosPath):
+    return [(p.x, p.y, p.theta, p.kappa) for p in message.points]
 
 
 class PlannerNode(Node):
@@ -47,19 +53,21 @@ class PlannerNode(Node):
             durability=DurabilityPolicy.TRANSIENT_LOCAL,
         )
         self.path_sub = self.create_subscription(
-            Float64MultiArray, "/reference_path", self._on_path, latched_qos
+            RosPath, "/reference_path", self._on_path, latched_qos
         )
-        self.state_sub = self.create_subscription(Odometry, "/vehicle/state", self._on_state, 10)
+        self.state_sub = self.create_subscription(
+            RosVehicleState, "/vehicle/state", self._on_state, 10
+        )
         self.obstacle_sub = self.create_subscription(
-            Float64MultiArray, "/obstacles", self._on_obstacles, 10
+            ObstacleArray, "/obstacles", self._on_obstacles, 10
         )
-        self.result_pub = self.create_publisher(Float64MultiArray, "/planned_path", 1)
+        self.result_pub = self.create_publisher(RosPath, "/planned_path", 1)
         period = float(self.get_parameter("plan_period").value)
         self.plan_timer = self.create_timer(period, self._request_plan)
         self.poll_timer = self.create_timer(0.02, self._poll_result)
 
-    def _on_path(self, message: Float64MultiArray) -> None:
-        _sequence, path = decode_path(message.data)
+    def _on_path(self, message: RosPath) -> None:
+        path = path_to_tuples(message)
         if not path:
             return
         self.path = path
@@ -72,21 +80,22 @@ class PlannerNode(Node):
         )
         self.planner.start()
 
-    def _on_state(self, message: Odometry) -> None:
-        self.state = odometry_to_state(message)
+    def _on_state(self, message: RosVehicleState) -> None:
+        self.state = message_to_state(message)
 
-    def _on_obstacles(self, message: Float64MultiArray) -> None:
+    def _on_obstacles(self, message: ObstacleArray) -> None:
         self.obstacles = [
             Obstacle(
-                id=item[0],
-                x=item[1],
-                y=item[2],
-                length=item[3],
-                width=item[4],
-                speed=item[5],
-                heading=item[6],
+                id=item.id,
+                x=item.x,
+                y=item.y,
+                length=item.length,
+                width=item.width,
+                speed=item.speed,
+                heading=item.heading,
+                type=item.type,
             )
-            for item in decode_obstacles(message.data)
+            for item in message.obstacles
         ]
 
     def _request_plan(self) -> None:
@@ -112,8 +121,13 @@ class PlannerNode(Node):
             return
         path = self.planner.get_result() or []
         self.sequence += 1
-        message = Float64MultiArray()
-        message.data = encode_path(path, self.sequence)
+        message = RosPath()
+        message.header.stamp = self.get_clock().now().to_msg()
+        message.header.frame_id = "map"
+        message.sequence = self.sequence
+        message.points = [
+            PathPoint(x=p[0], y=p[1], theta=p[2], kappa=p[3]) for p in path
+        ]
         self.result_pub.publish(message)
         self.plan_pending = False
 

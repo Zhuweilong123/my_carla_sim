@@ -5,27 +5,20 @@ from typing import Optional
 
 import rclpy
 from builtin_interfaces.msg import Time
-from geometry_msgs.msg import Quaternion
-from nav_msgs.msg import Odometry
+from lightweight_sim_msgs.msg import ControlCommand as RosControlCommand
+from lightweight_sim_msgs.msg import Obstacle as RosObstacle
+from lightweight_sim_msgs.msg import ObstacleArray
+from lightweight_sim_msgs.msg import Path as RosPath
+from lightweight_sim_msgs.msg import PathPoint
+from lightweight_sim_msgs.msg import VehicleState as RosVehicleState
 from rclpy.node import Node
 from rclpy.qos import DurabilityPolicy, QoSProfile, ReliabilityPolicy
 from rosgraph_msgs.msg import Clock
-from std_msgs.msg import Float64MultiArray
 from std_srvs.srv import Empty, SetBool, Trigger
 
 from ..simulator.data_types import ControlCommand
 from ..simulator.engine import SimulationEngine
 from ..simulator.scenarios import make_scenario
-from .protocol import encode_obstacles, encode_path
-
-
-def yaw_to_quaternion(yaw: float) -> Quaternion:
-    return Quaternion(
-        x=0.0,
-        y=0.0,
-        z=math.sin(yaw / 2.0),
-        w=math.cos(yaw / 2.0),
-    )
 
 
 def seconds_to_time(seconds: float) -> Time:
@@ -42,32 +35,28 @@ class SimulatorNode(Node):
         self.declare_parameter("command_timeout", 0.25)
         self.declare_parameter("publish_clock", True)
         self.declare_parameter("frame_id", "map")
-        self.declare_parameter("child_frame_id", "base_link")
 
         scenario_name = str(self.get_parameter("scenario").value)
         self.physics_dt = float(self.get_parameter("physics_dt").value)
         self.command_timeout = float(self.get_parameter("command_timeout").value)
         self.publish_clock_enabled = bool(self.get_parameter("publish_clock").value)
         self.frame_id = str(self.get_parameter("frame_id").value)
-        self.child_frame_id = str(self.get_parameter("child_frame_id").value)
         self.engine = SimulationEngine(make_scenario(scenario_name))
         self.command = ControlCommand()
         self.last_command_time = self.get_clock().now()
         self.paused = False
 
-        self.state_pub = self.create_publisher(Odometry, "/vehicle/state", 10)
-        self.obstacle_pub = self.create_publisher(Float64MultiArray, "/obstacles", 10)
         latched_qos = QoSProfile(
             depth=1,
             reliability=ReliabilityPolicy.RELIABLE,
             durability=DurabilityPolicy.TRANSIENT_LOCAL,
         )
-        self.reference_pub = self.create_publisher(
-            Float64MultiArray, "/reference_path", latched_qos
-        )
+        self.state_pub = self.create_publisher(RosVehicleState, "/vehicle/state", 10)
+        self.obstacle_pub = self.create_publisher(ObstacleArray, "/obstacles", 10)
+        self.reference_pub = self.create_publisher(RosPath, "/reference_path", latched_qos)
         self.clock_pub = self.create_publisher(Clock, "/clock", 10)
         self.command_sub = self.create_subscription(
-            Float64MultiArray, "/control_command", self._on_command, 10
+            RosControlCommand, "/control_command", self._on_command, 10
         )
         self.reset_srv = self.create_service(Empty, "/sim/reset", self._on_reset)
         self.pause_srv = self.create_service(SetBool, "/sim/pause", self._on_pause)
@@ -76,14 +65,12 @@ class SimulatorNode(Node):
         self._publish_reference(sequence=0)
         self.get_logger().info("simulator ready: scenario=%s dt=%.3f", scenario_name, self.physics_dt)
 
-    def _on_command(self, message: Float64MultiArray) -> None:
-        if len(message.data) < 3:
-            self.get_logger().warning("ignoring short control command")
-            return
+    def _on_command(self, message: RosControlCommand) -> None:
         self.command = ControlCommand(
-            steer=float(message.data[0]),
-            throttle=float(message.data[1]),
-            brake=float(message.data[2]),
+            steer=float(message.steering_angle),
+            throttle=float(message.throttle),
+            brake=float(message.brake),
+            gear=int(message.gear),
         )
         self.last_command_time = self.get_clock().now()
 
@@ -130,27 +117,48 @@ class SimulatorNode(Node):
         return response
 
     def _publish_reference(self, sequence: int) -> None:
-        message = Float64MultiArray()
-        message.data = encode_path(self.engine.world.ref_path_as_tuples, sequence)
+        message = RosPath()
+        message.header.stamp = seconds_to_time(self.engine.sim_time)
+        message.header.frame_id = self.frame_id
+        message.sequence = sequence
+        message.points = [
+            PathPoint(x=p[0], y=p[1], theta=p[2], kappa=p[3])
+            for p in self.engine.world.ref_path_as_tuples
+        ]
         self.reference_pub.publish(message)
 
     def _publish_state(self) -> None:
         stamp = seconds_to_time(self.engine.sim_time)
         state = self.engine.get_state()
-        odom = Odometry()
-        odom.header.stamp = stamp
-        odom.header.frame_id = self.frame_id
-        odom.child_frame_id = self.child_frame_id
-        odom.pose.pose.position.x = state.x
-        odom.pose.pose.position.y = state.y
-        odom.pose.pose.orientation = yaw_to_quaternion(state.phi)
-        odom.twist.twist.linear.x = state.vx
-        odom.twist.twist.linear.y = state.vy
-        odom.twist.twist.angular.z = state.r
-        self.state_pub.publish(odom)
+        message = RosVehicleState()
+        message.header.stamp = stamp
+        message.header.frame_id = self.frame_id
+        message.x = state.x
+        message.y = state.y
+        message.yaw = state.phi
+        message.vx = state.vx
+        message.vy = state.vy
+        message.yaw_rate = state.r
+        message.steering_angle = state.steer
+        message.acceleration = state.accel
+        self.state_pub.publish(message)
 
-        obstacles = Float64MultiArray()
-        obstacles.data = encode_obstacles(self.engine.obstacles.get_all())
+        obstacles = ObstacleArray()
+        obstacles.header.stamp = stamp
+        obstacles.header.frame_id = self.frame_id
+        obstacles.obstacles = [
+            RosObstacle(
+                id=o.id,
+                x=o.x,
+                y=o.y,
+                length=o.length,
+                width=o.width,
+                speed=o.speed,
+                heading=o.heading,
+                type=o.type,
+            )
+            for o in self.engine.obstacles.get_all()
+        ]
         self.obstacle_pub.publish(obstacles)
 
         if self.publish_clock_enabled:
