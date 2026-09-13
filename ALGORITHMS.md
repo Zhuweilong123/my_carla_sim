@@ -6,6 +6,8 @@
 > **仿真环境**: CARLA 0.9.12
 > **文档生成**: Claude Code, 2026-05-31 (v2 增强版)
 
+> **代码位置说明**：本文引用的 CARLA 源码已归档至 `carla_legacy/`，文中的源码定位均以该目录为基准。
+
 ---
 
 ## 目录
@@ -50,7 +52,7 @@
 
 **假设4：无滑移/小滑移**。假设轮胎工作在线性区域，侧向力与侧偏角成正比（见下节）。
 
-> 📍 **代码位置**: `controller/Controller.py:16-63` (MPC 注释), `controller/Controller.py:340-372` (LQR 注释)
+> 📍 **代码位置**: `carla_legacy/controller/Controller.py:16-63` (MPC 注释), `carla_legacy/controller/Controller.py:340-372` (LQR 注释)
 
 ### 1.2 线性轮胎模型与侧偏刚度
 
@@ -71,7 +73,7 @@ $$\alpha_f = \delta - \frac{V_y + a \cdot r}{V_x}, \quad \alpha_r = -\frac{V_y -
 
 **线性轮胎力的局限**：当侧偏角超过 $5°\sim6°$ 时，轮胎进入非线性饱和区，线性模型精度急剧下降。因此 LQR/MPC 控制器需要通过约束 $|\delta| \leq 1$ 来限制前轮转角幅度，保证轮胎工作在线性区。
 
-> 📍 **代码位置**: `controller/Controller.py:134-150` (矩阵填充中的 $C_f$, $C_r$)
+> 📍 **代码位置**: `carla_legacy/controller/Controller.py:134-150` (矩阵填充中的 $C_f$, $C_r$)
 
 ### 1.3 误差动力学状态方程推导
 
@@ -124,8 +126,8 @@ $$\dot{x} = A x + B u + C \cdot \kappa_r V_x$$
 - **矩阵 C**：代表道路曲率 $\kappa_r$ 对系统产生的持续扰动。即使 $\delta=0$，弯曲的道路也会产生非零的状态导数。
 
 > 📍 **代码位置**:
-> - MPC 矩阵计算: `controller/Controller.py:116-150`
-> - LQR 矩阵计算: `controller/Controller.py:425-456`
+> - MPC 矩阵计算: `carla_legacy/controller/Controller.py:116-150`
+> - LQR 矩阵计算: `carla_legacy/controller/Controller.py:425-456`
 
 #### 1.3.2 车辆参数
 
@@ -140,7 +142,7 @@ vehicle_para = (a, b, m, Cf, Cr, Iz)
 # Iz = 1537 kg·m²    (绕Z轴转动惯量)
 ```
 
-> 📍 **代码位置**: `test_code9.py:306`
+> 📍 **代码位置**: `carla_legacy/test_code9.py:306`
 
 ### 1.4 离散化方法：双线性变换（Tustin变换）
 
@@ -188,7 +190,7 @@ self.C_bar = temp @ self.C * ts * self.k_r * self._vehicle_Vx
 
 **关于 $C_d$ 项的说明**：代码将 $\dot{\theta}_r = \kappa_r \dot{s}$ 视为常数处理。在无侧滑假设下 $\dot{s} \approx V_x$，因此 $C_d$ 的形式如上所示。这是对非线性项的**线性化处理**——因为 $\kappa_r$ 随路径点变化，严格来说不应视为常数，但在一个控制周期内变化很小，近似合理。
 
-> 📍 **代码位置**: `controller/Controller.py:152-169`
+> 📍 **代码位置**: `carla_legacy/controller/Controller.py:152-169`
 
 ---
 
@@ -243,7 +245,7 @@ $$
 
 **收敛性保证**：当 $(A_d, B_d)$ 能控且 $(A_d, Q^{1/2})$ 能观时，迭代收敛于唯一的正定解 $P^*$。对于自行车模型，这两个条件在 $V_x > 0$ 时通常成立。
 
-> 📍 **代码位置**: `controller/Controller.py:458-487`, 方法 `LQR_fun()`
+> 📍 **代码位置**: `carla_legacy/controller/Controller.py:458-487`, 方法 `LQR_fun()`
 
 #### 2.1.4 前馈控制（Feedforward Control）
 
@@ -273,7 +275,7 @@ $$u = -K \cdot e_{rr} + \delta_{ff}$$
 - $-K_4 \dot{e}_\phi$：抑制横摆角速度的过度变化
 - $+\delta_{ff}$：前馈项，消除弯道的稳态误差
 
-> 📍 **代码位置**: `controller/Controller.py:570-584`, 方法 `forward_control_fun()`
+> 📍 **代码位置**: `carla_legacy/controller/Controller.py:570-584`, 方法 `forward_control_fun()`
 
 #### 2.1.5 LQR 的稳定性分析
 
@@ -372,7 +374,7 @@ $$H = 2(C^T \bar{Q} C + \bar{R}), \quad f = 2(C^T \bar{Q} M x_0 + C^T \bar{Q} C_
 1. **避免角度多值性**：$\phi$ 和 $\theta_r$ 都在 $[-\pi, \pi]$ 范围内，直接相减可能产生 $2\pi$ 的跳变，导致控制器输出突变
 2. **小角度等价**：正常行驶中 $|\phi - \theta_r|$ 是小量，$\sin(e_\phi) \approx e_\phi$，近似误差可忽略
 
-> 📍 **代码位置**: `controller/Controller.py:237-240`, `controller/Controller.py:556-557`
+> 📍 **代码位置**: `carla_legacy/controller/Controller.py:237-240`, `carla_legacy/controller/Controller.py:556-557`
 
 ---
 
@@ -388,7 +390,7 @@ $$H = 2(C^T \bar{Q} C + \bar{R}), \quad f = 2(C^T \bar{Q} M x_0 + C^T \bar{Q} C_
 - $e_\phi$ 直接使用差值而非 $\sin$ 近似（因为前馈计算需要精确角度值）
 - 代价函数矩阵构造方式略有不同
 
-> 📍 **代码位置**: `controller/Controller.py:728-991`
+> 📍 **代码位置**: `carla_legacy/controller/Controller.py:728-991`
 
 ---
 
@@ -449,7 +451,7 @@ $$K_P = 1.15, \quad K_I = 0, \quad K_D = 0$$
 - CARLA 中的油门/刹车输入本身就是位置式（而非增量式），比例控制已能较好跟踪
 - 如果需要改进，建议先引入小微分项抑制超调，再根据需要引入积分项
 
-> 📍 **代码位置**: `controller/Controller.py:615-678`
+> 📍 **代码位置**: `carla_legacy/controller/Controller.py:615-678`
 
 ---
 
@@ -475,7 +477,7 @@ class Vehicle_control:
 
 这一逻辑基于 CARLA 的控制接口：油门和刹车不能同时施加，且正值加速度对应油门，负值对应刹车。
 
-> 📍 **代码位置**: `controller/Controller.py:681-725`
+> 📍 **代码位置**: `carla_legacy/controller/Controller.py:681-725`
 
 ---
 
@@ -506,7 +508,7 @@ $$i^* = \arg\min_i \left[ (x_i - x)^2 + (y_i - y)^2 \right]$$
 
 这一优化利用了车辆连续运动的特性：相邻两个控制周期之间，车辆位置变化很小，匹配点不会"跳跃"太远。
 
-> 📍 **代码位置**: `planner/planner_utiles.py:49-177`
+> 📍 **代码位置**: `carla_legacy/planner/planner_utiles.py:49-177`
 
 ### 5.3 Frenet-Serret 框架与投影点计算
 
@@ -527,7 +529,7 @@ $$\frac{d\vec{r}}{ds} = \vec{t}, \quad \frac{d\vec{t}}{ds} = \kappa \vec{n}, \qu
 
 **关键假设**：$ds \ll 1/\kappa$，即在曲率半径远大于弧长偏移的情况下，投影点处曲率与匹配点处曲率近似相同。
 
-> 📍 **代码位置**: `planner/planner_utiles.py:100-114`
+> 📍 **代码位置**: `carla_legacy/planner/planner_utiles.py:100-114`
 
 ### 5.4 完整坐标变换
 
@@ -537,7 +539,7 @@ $$\frac{d\vec{r}}{ds} = \vec{t}, \quad \frac{d\vec{t}}{ds} = \kappa \vec{n}, \qu
 
 $$s_i = S_i - S_{origin}, \quad S_i = \sum_{j=1}^{i} \sqrt{(x_j - x_{j-1})^2 + (y_j - y_{j-1})^2}$$
 
-> 📍 **代码位置**: `planner/planner_utiles.py:434-457`
+> 📍 **代码位置**: `carla_legacy/planner/planner_utiles.py:434-457`
 
 **L (横向偏移) 的计算**：
 
@@ -549,7 +551,7 @@ $$l = (\vec{r}_{actual} - \vec{r}_{projection}) \cdot \vec{n}_p$$
 
 代码中多处标注了 `***************************************` 注释，提醒法向量方向需要谨慎处理。
 
-> 📍 **代码位置**: `planner/planner_utiles.py:460-492`
+> 📍 **代码位置**: `carla_legacy/planner/planner_utiles.py:460-492`
 
 ### 5.5 导数变换
 
@@ -565,7 +567,7 @@ Frenet 坐标下的一、二阶导数用于 DP 规划起点的边界条件：
 | $\ddot{s}$ | $\frac{\vec{a} \cdot \vec{t}_r + 2\dot{s}^2 \kappa_r l'}{1 - \kappa_r l}$ | 纵向加速度沿参考线 |
 | $l'' = d^2l/ds^2$ | $(\ddot{l} - l'\ddot{s}) / \dot{s}^2$ | 横向偏移对弧长的二阶导 |
 
-> 📍 **代码位置**: `planner/planner_utiles.py:495-568`
+> 📍 **代码位置**: `carla_legacy/planner/planner_utiles.py:495-568`
 
 ---
 
@@ -603,7 +605,7 @@ $$h(n) = \sqrt{(x_n - x_{goal})^2 + (y_n - y_{goal})^2 + (z_n - z_{goal})^2}$$
 
 代码中使用字典（`dict`）而非优先队列实现 open_set，每次用 `min()` 遍历所有元素找最小值，导致实际复杂度为 $O(|V|^2)$。对于 CARLA Town05（通常 $< 500$ 个节点），性能可接受。如需优化，可改用 `heapq`。
 
-> 📍 **代码位置**: `planner/global_path_plan.py:167-211`
+> 📍 **代码位置**: `carla_legacy/planner/global_path_plan.py:167-211`
 
 ---
 
@@ -681,7 +683,7 @@ for each adjacent pair (s_prev, l_prev) → (s_curr, l_curr):
 
 增密后的路径点间距为 1m，总长约 90 个点，可直接用于二次规划或控制。
 
-> 📍 **代码位置**: `planner/motion_plan_path_planning.py:215-363`
+> 📍 **代码位置**: `carla_legacy/planner/motion_plan_path_planning.py:215-363`
 
 ---
 
@@ -767,7 +769,7 @@ $$H = 2 \left( w_l H_l + w_{dl} H_{dl} + w_{ddl} H_{ddl} + w_{dddl} H_{dddl}^T H
 
 所有 $H_i$ 均为对角矩阵（半正定），$H_{dddl}^T H_{dddl}$ 半正定（Gram 矩阵性质），且权重均为正。因此 $H \succ 0$（严格正定），QP 有唯一全局最优解。
 
-> 📍 **代码位置**: `planner/motion_plan_path_planning.py:21-162` (QP), `planner/motion_plan_path_planning.py:165-212` (边界计算)
+> 📍 **代码位置**: `carla_legacy/planner/motion_plan_path_planning.py:21-162` (QP), `carla_legacy/planner/motion_plan_path_planning.py:165-212` (边界计算)
 
 ---
 
@@ -780,7 +782,7 @@ $$H = 2 \left( w_l H_l + w_{dl} H_{dl} + w_{ddl} H_{ddl} + w_{dddl} H_{dddl}^T H
 3. 计算实际点：$\vec{r}_{actual} = \vec{r}_{proj} + l_i \cdot \vec{n}_{proj}$
 4. 对离散 XY 点做平滑并计算 $(\theta, \kappa)$
 
-> 📍 **代码位置**: `planner/motion_plan_path_planning.py:541-601`
+> 📍 **代码位置**: `carla_legacy/planner/motion_plan_path_planning.py:541-601`
 
 ---
 
@@ -840,7 +842,7 @@ $$s_{meet} = s_0 + dis + v_{obs} \cdot t_{meet} - L_{obs}/2$$
 
 将动态障碍物转化为在 $[s_{meet}, s_{meet} + L_{obs} \cdot \Delta t \cdot v_{obs}]$ 区间内的虚拟静态障碍物，送入路径规划 DP+QP。
 
-> 📍 **代码位置**: `planner/motion_plan_speed_planning.py` | `test_code9.py:137-169`
+> 📍 **代码位置**: `carla_legacy/planner/motion_plan_speed_planning.py` | `carla_legacy/test_code9.py:137-169`
 
 ---
 
@@ -890,7 +892,7 @@ $$\mathbf{c} = A^{-1} \cdot [l_0, l'_0, l''_0, l_f, l'_f, l''_f]^T$$
 - 路径在中间段是**平滑的**（无尖角）
 - jerk 在整段上平方积分最小
 
-> 📍 **代码位置**: `planner/planner_utiles.py:651-683`
+> 📍 **代码位置**: `carla_legacy/planner/planner_utiles.py:651-683`
 
 ---
 
@@ -937,7 +939,7 @@ $$f = -2 w_{ref} \mathbf{x}_{ref}$$
 - 紧凑性和保真性各 0.3：次要目标
 - 三者之和为 1.0，方便理解和调参
 
-> 📍 **代码位置**: `planner/planner_utiles.py:247-347`
+> 📍 **代码位置**: `carla_legacy/planner/planner_utiles.py:247-347`
 
 ---
 
@@ -965,7 +967,7 @@ $$\kappa_i = \frac{d\theta_i}{ds_i}$$
 
 **$\sin(d\theta) \approx d\theta$ 的合理性**：对于平滑道路，相邻点的航向角变化 $|d\theta| \ll 1$ rad，$\sin(d\theta) = d\theta + O(d\theta^3)$，误差三阶小。
 
-> 📍 **代码位置**: `planner/planner_utiles.py:180-214`
+> 📍 **代码位置**: `carla_legacy/planner/planner_utiles.py:180-214`
 
 ---
 
@@ -985,7 +987,7 @@ $$\phi_{pred} = \phi + \dot{\phi} \cdot t_s$$
 
 **理论依据**：假设在短时间 $t_s$ 内，$V_x$, $V_y$, $\dot{\phi}$ 近似不变（零阶保持），则车辆在 Frenet 坐标系下做匀速圆周运动。
 
-> 📍 **代码位置**: `planner/planner_utiles.py:571-594`
+> 📍 **代码位置**: `carla_legacy/planner/planner_utiles.py:571-594`
 
 ### 12.2 障碍物感知：向量点积筛选
 
@@ -1001,7 +1003,7 @@ $$d_{lat} = \vec{v}_1 \cdot \begin{bmatrix} -\sin\theta \\ \cos\theta \\ 0 \end{
 
 阈值 $-10m < d_{lat} < 12m$，覆盖约 3 条车道宽度。
 
-> 📍 **代码位置**: `test_code9.py:49-90`
+> 📍 **代码位置**: `carla_legacy/test_code9.py:49-90`
 
 ### 12.3 YOLOv3 目标检测
 
@@ -1014,7 +1016,7 @@ YOLOv3 的**多尺度检测**特性：
 
 **NMS**（IoU 阈值 0.3）用于去除重叠检测框。
 
-> 📍 **代码位置**: `sensors/Sensors_camera_lib.py:147-221`
+> 📍 **代码位置**: `carla_legacy/sensors/Sensors_camera_lib.py:147-221`
 
 ---
 
@@ -1096,13 +1098,13 @@ YOLOv3 的**多尺度检测**特性：
 
 | 文件 | 包含的算法 |
 |------|-----------|
-| `controller/Controller.py` | Bicycle Model, LQR, MPC, MPC+前馈, PID, 双线性变换, Riccati迭代, QP求解(cvxopt) |
-| `planner/global_path_plan.py` | A\*搜索, 拓扑图构建, Graph构建(NetworkX) |
-| `planner/motion_plan_path_planning.py` | DP(动态规划), QP(二次规划), SL↔XY变换, Bellman递推 |
-| `planner/motion_plan_speed_planning.py` | S-T图构建, 速度DP(未完成) |
-| `planner/planner_utiles.py` | Frenet坐标变换, 参考线QP平滑, 航向角/曲率数值计算, 五次多项式, 位置预测 |
-| `sensors/Sensors_camera_lib.py` | YOLOv3多尺度检测, NMS |
-| `test_code9.py` | 向量点积感知, 多进程规划-控制, 动态障碍物预测与相遇分析 |
+| `carla_legacy/controller/Controller.py` | Bicycle Model, LQR, MPC, MPC+前馈, PID, 双线性变换, Riccati迭代, QP求解(cvxopt) |
+| `carla_legacy/planner/global_path_plan.py` | A\*搜索, 拓扑图构建, Graph构建(NetworkX) |
+| `carla_legacy/planner/motion_plan_path_planning.py` | DP(动态规划), QP(二次规划), SL↔XY变换, Bellman递推 |
+| `carla_legacy/planner/motion_plan_speed_planning.py` | S-T图构建, 速度DP(未完成) |
+| `carla_legacy/planner/planner_utiles.py` | Frenet坐标变换, 参考线QP平滑, 航向角/曲率数值计算, 五次多项式, 位置预测 |
+| `carla_legacy/sensors/Sensors_camera_lib.py` | YOLOv3多尺度检测, NMS |
+| `carla_legacy/test_code9.py` | 向量点积感知, 多进程规划-控制, 动态障碍物预测与相遇分析 |
 
 ## 附录 B: 关键参考文献
 
