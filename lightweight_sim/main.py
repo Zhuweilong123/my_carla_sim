@@ -1,11 +1,12 @@
 """Command-line entry point for the lightweight vehicle simulator."""
+
 import argparse
 import os
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from lightweight_sim.simulator.app import SimulatorApp
+from lightweight_sim.engine.simulator.app import SimulatorApp
 
 
 SCENARIOS = {
@@ -17,7 +18,9 @@ SCENARIOS = {
 
 
 def main(argv=None):
-    parser = argparse.ArgumentParser(description="Run the lightweight vehicle simulator")
+    parser = argparse.ArgumentParser(
+        description="Run the lightweight vehicle simulator"
+    )
     parser.add_argument(
         "--scenario",
         choices=sorted(SCENARIOS),
@@ -25,9 +28,7 @@ def main(argv=None):
         help="scenario to run",
     )
     args = parser.parse_args(argv)
-
-    config = SCENARIOS[args.scenario]()
-    SimulatorApp(config).run()
+    SimulatorApp(SCENARIOS[args.scenario]()).run()
 
 
 if __name__ == "__main__":

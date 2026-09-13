@@ -1,71 +1,62 @@
-"""Pygame view and view-model types for the ROS 2 simulator client."""
+"""Public ROS GUI module with scenario shortcuts and WSLg-safe window setup."""
 
+import importlib
+import sys
 import time
-from dataclasses import dataclass, field
-from typing import List, Optional, Tuple
 
 import pygame
 
-from ..simulator.data_types import Obstacle, PathPoint, VehicleState
-from .colors import HUD_TEXT, HUD_WARNING
-from .hud import HUD
-from .pygame_compat import configure_display_driver, patch_sysfont_for_python314
-from .renderer import Camera, Renderer
+_simulator = importlib.import_module("lightweight_sim.engine.simulator")
+sys.modules.setdefault("lightweight_sim.simulator", _simulator)
+for _name in ("data_types", "obstacle", "world", "vehicle", "engine", "scenarios"):
+    _module = importlib.import_module(f"lightweight_sim.engine.simulator.{_name}")
+    sys.modules.setdefault(f"lightweight_sim.simulator.{_name}", _module)
+
+from ._ros_gui_impl import *  # noqa: F401,F403,E402
 
 
-@dataclass
-class GuiStatus:
-    running: bool = False
-    paused: bool = False
-    done: bool = False
-    collision: bool = False
-    offroad: bool = False
-    reached: bool = False
-    step_count: int = 0
-    sim_time: float = 0.0
-    scenario: str = "ROS 2"
-    termination_reason: str = ""
+_LegacyRosGuiView = RosGuiView
+_LegacyHUD = HUD
 
 
-@dataclass
-class GuiControl:
-    steering_angle: float = 0.0
-    throttle: float = 0.0
-    brake: float = 0.0
+class _ScenarioHUD(_LegacyHUD):
+    def _draw_controls_hint(self, x, y, w, h, auto_mode):
+        panel = pygame.Surface((w, h), pygame.SRCALPHA)
+        pygame.draw.rect(panel, (12, 18, 27, 215), panel.get_rect(), border_radius=7)
+        pygame.draw.rect(panel, self.BORDER, panel.get_rect(), 1, border_radius=7)
+        if auto_mode:
+            hint = "1-5 scene   Q mode   P pause   R reset   ESC quit"
+        else:
+            hint = "1-5 scene   WASD drive   Q auto   P pause   R reset"
+        self._text(hint, x + 14, y + 10, self.font_small, self.MUTED)
 
 
-@dataclass
-class GuiSnapshot:
-    state: Optional[VehicleState] = None
-    obstacles: List[Obstacle] = field(default_factory=list)
-    reference_path: List[PathPoint] = field(default_factory=list)
-    planned_path: List[Tuple[float, float, float, float]] = field(default_factory=list)
-    status: GuiStatus = field(default_factory=GuiStatus)
-    control: GuiControl = field(default_factory=GuiControl)
+HUD = _ScenarioHUD
 
 
-@dataclass(frozen=True)
-class GuiAction:
-    kind: str
-    value: Optional[bool] = None
+class RosGuiView(_LegacyRosGuiView):
+    """Use a real window and expose number-key scene selection."""
 
+    SCENARIO_KEYS = (
+        (pygame.K_1, "default"),
+        (pygame.K_2, "obstacle"),
+        (pygame.K_3, "three_lane"),
+        (pygame.K_4, "curve"),
+        (pygame.K_5, "figure_eight"),
+    )
 
-class RosGuiView:
-    """Pure GUI adapter; it knows nothing about ROS publishers or services."""
-
-    def __init__(
-        self,
-        width: int = 1200,
-        height: int = 800,
-        lane_width: float = 3.5,
-        num_lanes: int = 2,
-        target_speed_kmh: float = 40.0,
-    ) -> None:
+    def __init__(self, width=1200, height=800, lane_width=3.5,
+                 num_lanes=2, target_speed_kmh=40.0):
         configure_display_driver()
         patch_sysfont_for_python314()
         pygame.init()
         pygame.font.init()
-        self.screen = pygame.display.set_mode((width, height))
+
+        width = max(800, int(width))
+        height = max(600, int(height))
+        self.screen = pygame.display.set_mode(
+            (width, height), pygame.RESIZABLE | pygame.SHOWN
+        )
         pygame.display.set_caption("Lightweight ROS 2 Simulator")
         self.clock = pygame.time.Clock()
         self.camera = Camera(width, height)
@@ -75,99 +66,32 @@ class RosGuiView:
         self.num_lanes = num_lanes
         self.target_speed_kmh = target_speed_kmh
         self.started_at = time.monotonic()
+        self._scenario_key_state = {
+            key: False for key, _name in self.SCENARIO_KEYS
+        }
 
-    def poll_actions(self) -> List[GuiAction]:
-        actions = []
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                actions.append(GuiAction("quit"))
-            elif event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_ESCAPE:
-                    actions.append(GuiAction("quit"))
-                elif event.key == pygame.K_r:
-                    actions.append(GuiAction("reset"))
-                elif event.key == pygame.K_p:
-                    actions.append(GuiAction("toggle_pause"))
-                elif event.key == pygame.K_n:
-                    actions.append(GuiAction("step"))
-                elif event.key in (pygame.K_EQUALS, pygame.K_PLUS):
-                    self.camera.zoom(0.1)
-                elif event.key == pygame.K_MINUS:
-                    self.camera.zoom(-0.1)
-            elif event.type == pygame.MOUSEWHEEL:
-                self.camera.zoom(0.1 if event.y > 0 else -0.1)
+    def poll_actions(self):
+        actions = super().poll_actions()
+        pressed = pygame.key.get_pressed()
+        for key, name in self.SCENARIO_KEYS:
+            is_down = bool(pressed[key])
+            if is_down and not self._scenario_key_state[key]:
+                actions.append(GuiAction("switch_scenario", name))
+            self._scenario_key_state[key] = is_down
         return actions
 
-    def render(self, snapshot: GuiSnapshot) -> None:
-        if snapshot.state is not None:
-            self.camera.follow(snapshot.state.x, snapshot.state.y, smooth=0.2)
+    def render(self, snapshot):
+        # The ROS status contains the authoritative scenario name.  Keep the
+        # road drawing aligned with the active scenario's lane count.
+        self.num_lanes = (
+            3
+            if snapshot.status.scenario in {
+                "three_lane_double_obs",
+                "figure_eight_three_lane",
+            }
+            else 2
+        )
+        return super().render(snapshot)
 
-        self.renderer.clear()
-        self.renderer.draw_grid()
-        if snapshot.reference_path:
-            world = _WorldView(
-                snapshot.reference_path,
-                self.lane_width,
-                self.num_lanes,
-            )
-            self.renderer.draw_road(world)
-            self.renderer.draw_path(
-                [(p.x, p.y, p.theta, p.kappa) for p in snapshot.reference_path],
-                dashed=True,
-            )
-        if snapshot.planned_path:
-            self.renderer.draw_path(snapshot.planned_path)
-        self.renderer.draw_obstacles(snapshot.obstacles)
-
-        if snapshot.state is None:
-            self._draw_text("Waiting for /vehicle/state ...", HUD_WARNING)
-        else:
-            self.renderer.draw_vehicle(snapshot.state)
-            self.hud.render(
-                state=snapshot.state,
-                target_speed=self.target_speed_kmh,
-                control_info={
-                    "steer": snapshot.control.steering_angle,
-                    "throttle": snapshot.control.throttle,
-                    "brake": snapshot.control.brake,
-                },
-                auto_mode=True,
-                fps=self.clock.get_fps(),
-                sim_time=snapshot.status.sim_time,
-                real_time=time.monotonic() - self.started_at,
-                collision=snapshot.status.collision,
-                map_name=f"{snapshot.status.scenario} [ROS 2]",
-            )
-        self._draw_status(snapshot.status)
-        pygame.display.flip()
-        self.clock.tick(60)
-
-    def _draw_text(self, text: str, color) -> None:
-        self.screen.blit(self.renderer.font_small.render(text, True, color), (12, 12))
-
-    def _draw_status(self, status: GuiStatus) -> None:
-        if status.done:
-            text = f"ROS 2: DONE ({status.termination_reason})  [R reset]"
-            color = HUD_WARNING
-        elif status.paused:
-            text = "ROS 2: PAUSED  [P resume] [N step]"
-            color = HUD_WARNING
-        elif status.running:
-            text = "ROS 2: RUNNING  [P pause] [R reset]"
-            color = HUD_TEXT
-        else:
-            text = "ROS 2: waiting for /sim/status"
-            color = HUD_WARNING
-        self._draw_text(text, color)
-
-    def close(self) -> None:
-        pygame.quit()
-
-
-class _WorldView:
-    """Renderer-compatible road view without depending on SimulationEngine."""
-
-    def __init__(self, ref_path, lane_width: float, num_lanes: int) -> None:
-        self.ref_path = ref_path
-        self.lane_width = lane_width
-        self.num_lanes = num_lanes
+    def _draw_status(self, status):
+        return None

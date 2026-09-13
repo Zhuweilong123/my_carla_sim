@@ -10,6 +10,7 @@ def generate_launch_description():
     config = get_package_share_directory("lightweight_sim") + "/config/default.yaml"
     namespace = LaunchConfiguration("namespace")
     gui = LaunchConfiguration("gui")
+    scenario = LaunchConfiguration("scenario")
     return LaunchDescription(
         [
             DeclareLaunchArgument(
@@ -22,13 +23,21 @@ def generate_launch_description():
                 default_value="false",
                 description="Start the ROS 2 Pygame visualization client",
             ),
+            DeclareLaunchArgument(
+                "scenario",
+                default_value="obstacle",
+                description="Initial scenario key",
+            ),
             Node(
                 package="lightweight_sim",
                 executable="simulator_node",
                 name="simulator_node",
                 namespace=namespace,
                 output="screen",
-                parameters=[config, {"use_sim_time": False}],
+                parameters=[
+                    config,
+                    {"use_sim_time": False, "scenario": scenario},
+                ],
             ),
             Node(
                 package="lightweight_sim",
