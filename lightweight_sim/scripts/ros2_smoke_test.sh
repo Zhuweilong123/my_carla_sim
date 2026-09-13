@@ -3,7 +3,13 @@ set -Ee
 
 # Linux/WSL acceptance test for the ROS 2 migration.
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-install_base="${LIGHTWEIGHT_SIM_INSTALL:-/tmp/lightweight_sim_install}"
+if [[ -n "${LIGHTWEIGHT_SIM_INSTALL:-}" ]]; then
+    install_base="${LIGHTWEIGHT_SIM_INSTALL}"
+elif [[ -f "${repo_root}/install/setup.bash" ]]; then
+    install_base="${repo_root}/install"
+else
+    install_base="/tmp/lightweight_sim_install"
+fi
 ros_distro="${ROS_DISTRO:-lyrical}"
 launch_log="$(mktemp /tmp/lightweight_sim_smoke.XXXXXX.log)"
 state_output="$(mktemp /tmp/lightweight_sim_state.XXXXXX.txt)"
