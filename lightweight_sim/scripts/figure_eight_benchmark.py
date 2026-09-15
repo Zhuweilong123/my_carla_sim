@@ -66,6 +66,8 @@ def run_benchmark(
 
     dt = 0.05
     rows = []
+    progress_deltas = []
+    previous_route_progress = None
     for step in range(max(1, int(duration / dt))):
         state = engine.get_state()
         steer, throttle, brake = controller.step(
@@ -77,6 +79,12 @@ def run_benchmark(
         )
         state = engine.get_state()
         ed, ephi = tracking_error(state, path)
+        route_progress = float(
+            getattr(controller.lat, "route_progress", controller.lat.min_index)
+        )
+        if previous_route_progress is not None:
+            progress_deltas.append(route_progress - previous_route_progress)
+        previous_route_progress = route_progress
         rows.append(
             {
                 "step": step + 1,
@@ -87,6 +95,7 @@ def run_benchmark(
                 "steer_deg": math.degrees(state.steer),
                 "ed_m": ed,
                 "ephi_deg": math.degrees(ephi),
+                "route_progress": route_progress,
                 "offroad": engine.offroad_occurred,
                 "collision": engine.collision_occurred,
             }
@@ -124,6 +133,12 @@ def run_benchmark(
         },
         "lateral_error_m": metrics("ed_m"),
         "heading_error_deg": metrics("ephi_deg"),
+        "route_progress": {
+            "start": rows[0]["route_progress"],
+            "end": rows[-1]["route_progress"],
+            "max_forward_step": max(progress_deltas, default=0.0),
+            "max_backtrack": min(0.0, min(progress_deltas, default=0.0)),
+        },
         "offroad": engine.offroad_occurred,
         "collision": engine.collision_occurred,
         "riccati": {

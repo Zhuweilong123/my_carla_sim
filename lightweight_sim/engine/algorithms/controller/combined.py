@@ -20,7 +20,11 @@ class VehicleController:
 
     def update_ref_path(self, ref_path):
         self.ref_path = ref_path
-        self.lat.min_index = 0
+        reset_tracking = getattr(self.lat, "reset_tracking", None)
+        if reset_tracking is not None:
+            reset_tracking()
+        else:
+            self.lat.min_index = 0
 
     def set_target_speed(self, speed_kmh):
         self.lon.set_target(speed_kmh)

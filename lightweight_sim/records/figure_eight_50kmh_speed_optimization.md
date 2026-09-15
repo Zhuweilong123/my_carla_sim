@@ -16,3 +16,19 @@ The final controller uses `K_P=1.15`, `K_D=0.55`, filtered speed derivative,
 40 m/s^3 maximum jerk, and a 0.5 lateral-dynamic coupling compensation gain.
 The full coupling compensation was rejected because it caused underspeed
 (46.94 km/h final speed).
+
+## Route-lock evaluation
+
+The next version keeps the final speed loop and dynamic Riccati LQR unchanged,
+and changes only reference-line anchoring at the figure-eight crossing. The
+controller now uses an unwrapped route progress, a local search window
+(`2` segments behind and `48` ahead), and heading-continuity hysteresis. The
+30-second re-run is archived as
+`figure_eight_evaluation_50kmh_route_lock_v2.json/csv`:
+
+| Version | Peak speed | Final speed | Lateral RMS | Heading RMS | Max backtrack | Offroad/collision |
+| --- | ---: | ---: | ---: | ---: | ---: | --- |
+| Route lock v2 | 51.43 km/h | 50.57 km/h | 0.1154 m | 2.3505 deg | 0.0000 segment | no / no |
+
+The recorded route progress grew from `0.068` to `97.308` segments, with no
+negative progress delta and a maximum single-step advance of `0.375` segment.
