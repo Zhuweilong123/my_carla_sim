@@ -1,14 +1,18 @@
 """ROS 2 simulator node with runtime scenario switching."""
 
 from typing import Optional
+import json
+import time
 
 import rclpy
+from std_msgs.msg import String
 from rcl_interfaces.msg import SetParametersResult
 
 from ._simulator_node_impl import *  # noqa: F401,F403
 from ..simulator.data_types import ControlCommand
 from ..simulator.engine import SimulationEngine
 from ..simulator.scenarios import make_scenario
+from .route_session import encode_sequence
 
 
 _LegacySimulatorNode = SimulatorNode
@@ -20,6 +24,22 @@ class SimulatorNode(_LegacySimulatorNode):
     def __init__(self) -> None:
         super().__init__()
         self.add_on_set_parameters_callback(self._on_parameters)
+
+    def _publish_reference(self, sequence=0):
+        # Called at startup, reset and scenario switch, including by the base
+        # constructor. The context and reference are paired by this run ID.
+        if not hasattr(self, "context_pub"):
+            self.context_pub = self.create_publisher(String, "sim/context", latched_path_qos())
+        self.run_id = max(int(time.time()*1000), getattr(self, "run_id", 0)+1)
+        config = self.engine.config
+        context = dict(schema_version=1, run_id=self.run_id,
+                       route_id=config.name, scenario=config.name,
+                       target_speed_kmh=config.target_speed,
+                       vehicle_model=config.vehicle_model,
+                       lane_width=config.road.lane_width,
+                       num_lanes=config.road.num_lanes, physics_dt=self.physics_dt)
+        self.context_pub.publish(String(data=json.dumps(context)))
+        super()._publish_reference(encode_sequence(self.run_id))
 
     def _on_parameters(self, parameters):
         requested = None

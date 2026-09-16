@@ -1,47 +1,51 @@
 import math
+import pytest
 
-from lightweight_sim.engine.algorithms.controller.lat_lqr import LateralLQRController
+from lightweight_sim.engine.algorithms.controller.combined import VehicleController
+from lightweight_sim.engine.algorithms.utils.route import RouteTracker
+from lightweight_sim.engine.ros_nodes.route_session import encode_sequence, decode_sequence
 
-
-VEHICLE_PARAMS = (1.015, 1.895, 1412.0, -148970.0, -82204.0, 1537.0)
-
-
-def test_projection_does_not_jump_to_later_crossing_branch():
-    # The first horizontal branch and a later diagonal branch share (0, 0).
-    # Progress is already on the horizontal branch, so the later branch must
-    # not become eligible just because it is geometrically close.
-    ref_path = [
-        (-4.0, 0.0, 0.0, 0.0),
-        (-1.0, 0.0, 0.0, 0.0),
-        (1.0, 0.0, 0.0, 0.0),
-        (4.0, 0.0, 0.0, 0.0),
-        (4.0, 4.0, math.pi / 2.0, 0.0),
-        (0.0, 0.0, -3.0 * math.pi / 4.0, 0.0),
-        (-4.0, -4.0, -3.0 * math.pi / 4.0, 0.0),
-    ]
-    controller = LateralLQRController(VEHICLE_PARAMS)
-    controller.route_progress = 1.0
-    controller.min_index = 1
-    controller.last_ref_heading = 0.0
-    controller.search_back_segments = 1
-    controller.search_forward_segments = 2
-
-    projection, closed, _ = controller._project_reference(0.0, 0.0, 0.0, ref_path)
-
-    assert not closed
-    assert projection is not None
-    assert projection[2] < 4.0
-    assert projection[5] == 0.0
+PARAMS = (1.015, 1.895, 1412.0, -148970.0, -82204.0, 1537.0)
 
 
-def test_reset_tracking_clears_route_identity():
-    controller = LateralLQRController(VEHICLE_PARAMS)
-    controller.route_progress = 12.5
-    controller.min_index = 12
-    controller.last_ref_heading = 1.2
+def eight(count):
+    return [(78*math.cos(t), 42*math.sin(2*t), 0.0, 0.0)
+            for t in [2*math.pi*i/count for i in range(count+1)]]
 
-    controller.reset_tracking()
 
-    assert controller.route_progress == 0.0
-    assert controller.min_index == 0
-    assert controller.last_ref_heading is None
+@pytest.mark.parametrize("count", [120, 480])
+def test_crossings_and_seam_keep_metric_progress_for_two_laps(count):
+    tracker = RouteTracker(eight(count), start_s=0.0)
+    previous = 0.0
+    for i in range(1, 2401):
+        t = 4*math.pi*i/2400
+        x, y = 78*math.cos(t), 42*math.sin(2*t)
+        heading = math.atan2(84*math.cos(2*t), -78*math.sin(t))
+        p = tracker.update(x, y, heading, speed=15, dt=0.05)
+        assert -0.1 < p.s-previous < 2.0
+        assert p.distance < 0.12
+        previous = p.s
+    assert tracker.s == pytest.approx(2*tracker.geometry.length, abs=0.2)
+
+
+def test_repeated_path_preserves_progress_and_explicit_reset_clears_it():
+    controller = VehicleController(PARAMS)
+    path = [(float(i), 0.0, 0.0, 0.0) for i in range(100)]
+    controller.update_ref_path(path)
+    controller.step(50, 0, 0, 10, 0, 0)
+    progress = controller.lat.route_s
+    controller.update_ref_path(list(path), reset=False)
+    assert controller.lat.route_s == progress
+    controller.update_ref_path(path[40:], reset=False)
+    controller.step(51, 0, 0, 10, 0, 0)
+    assert controller.lat.x_pro == pytest.approx(51.5)
+    controller.update_ref_path(path, reset=True)
+    assert controller.lat.route_s == 0
+    assert controller.lon._previous_error is None
+
+
+def test_run_and_plan_version_do_not_alias():
+    assert decode_sequence(encode_sequence(1234, 99)) == (1234, 99)
+    assert encode_sequence(1235) > encode_sequence(1234, 9999)
+    with pytest.raises(ValueError):
+        encode_sequence(1234, 1 << 20)

@@ -4,6 +4,7 @@ import math
 from typing import Optional
 
 import rclpy
+from std_msgs.msg import String
 from lightweight_sim_msgs.msg import ObstacleArray
 from lightweight_sim_msgs.msg import Path as RosPath
 from lightweight_sim_msgs.msg import PathPoint
@@ -12,6 +13,7 @@ from rclpy.node import Node
 from ..algorithms.planner.motion_planner import MotionPlanner
 from ..simulator.data_types import Obstacle, VehicleState
 from .qos import latched_path_qos, sensor_data_qos
+from .route_session import decode_sequence, encode_sequence, parse_context
 
 
 def message_to_state(message: RosVehicleState) -> VehicleState:
@@ -45,6 +47,10 @@ class PlannerNode(Node):
         self.sequence = 0
         self.planner: Optional[MotionPlanner] = None
         self.plan_pending = False
+        self.route_context = None
+        self.reference_run = None
+        self.active_run = None
+        self.create_subscription(String, "sim/context", self._on_context, latched_path_qos())
 
         self.path_sub = self.create_subscription(
             RosPath, "reference_path", self._on_path, latched_path_qos()
@@ -64,14 +70,46 @@ class PlannerNode(Node):
         self.poll_timer = self.create_timer(0.02, self._poll_result)
 
     def _on_path(self, message: RosPath) -> None:
+        run, version = decode_sequence(message.sequence)
+        if version or (self.route_context and run < self.route_context["run_id"]):
+            return
         path = path_to_tuples(message)
         if not path:
             return
         self.path = path
+        self.reference_run = run
+        self._activate_reference()
+
+    def _on_context(self, message):
+        context = parse_context(message)
+        if self.route_context and context["run_id"] <= self.route_context["run_id"]:
+            return
+        self.route_context = context
+        self.active_run = None
+        self.plan_pending = False
+        self.state = None
+        self.obstacles = []
         if self.planner is not None:
             self.planner.stop()
+            self.planner = None
+        self._activate_reference()
+
+    def _activate_reference(self):
+        if not self.route_context or self.reference_run != self.route_context["run_id"]:
+            return
+        if self.active_run == self.reference_run:
+            return
+        if self.planner is not None:
+            self.planner.stop()
+        self.active_run = self.reference_run
+        self.plan_pending = False
+        self.sequence = 0
+        from rclpy.parameter import Parameter
+        self.set_parameters([
+            Parameter("lane_width", value=float(self.route_context["lane_width"])),
+            Parameter("num_lanes", value=int(self.route_context["num_lanes"]))])
         self.planner = MotionPlanner(
-            path,
+            self.path,
             lane_width=float(self.get_parameter("lane_width").value),
             num_lanes=int(self.get_parameter("num_lanes").value),
         )
@@ -96,7 +134,10 @@ class PlannerNode(Node):
         ]
 
     def _request_plan(self) -> None:
-        if self.planner is None or self.state is None or self.plan_pending:
+        if self.active_run != self.reference_run or self.planner is None or self.state is None or self.plan_pending:
+            return
+        if not self.obstacles:
+            self._publish_plan([])
             return
         prediction_time = float(self.get_parameter("prediction_time").value)
         state = self.state
@@ -117,11 +158,15 @@ class PlannerNode(Node):
         if self.planner is None or not self.plan_pending or not self.planner.poll_result():
             return
         path = self.planner.get_result() or []
+        self._publish_plan(path)
+        self.plan_pending = False
+
+    def _publish_plan(self, path):
         self.sequence += 1
         message = RosPath()
         message.header.stamp = self.get_clock().now().to_msg()
         message.header.frame_id = "map"
-        message.sequence = self.sequence
+        message.sequence = encode_sequence(self.active_run, self.sequence)
         message.points = [
             PathPoint(x=p[0], y=p[1], theta=p[2], kappa=p[3]) for p in path
         ]

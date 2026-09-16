@@ -5,6 +5,7 @@ import sys
 from typing import Optional
 
 import rclpy
+from std_msgs.msg import String
 from rcl_interfaces.msg import Parameter, ParameterType, ParameterValue
 from rcl_interfaces.srv import SetParameters
 
@@ -15,6 +16,7 @@ for _name in ("colors", "hud", "renderer", "ros_gui"):
     sys.modules.setdefault(f"lightweight_sim.engine.visualization.{_name}", _module)
 
 from ._gui_node_impl import *  # noqa: F401,F403,E402
+from .route_session import parse_context, decode_sequence
 
 
 _LegacyGuiNode = GuiNode
@@ -25,9 +27,27 @@ class GuiNode(_LegacyGuiNode):
 
     def __init__(self) -> None:
         super().__init__()
+        self.route_context = None
+        self.create_subscription(String, "sim/context", self._on_context, latched_path_qos())
         self.scenario_client = self.create_client(
-            SetParameters, "/simulator_node/set_parameters"
+            SetParameters, "simulator_node/set_parameters"
         )
+
+    def _on_context(self, message):
+        context = parse_context(message)
+        if self.route_context and context["run_id"] <= self.route_context["run_id"]:
+            return
+        self.route_context = context
+        self.view.target_speed_kmh = context["target_speed_kmh"]
+        self.view.lane_width = context["lane_width"]
+        self.view.num_lanes = context["num_lanes"]
+        self.snapshot.planned_path = []
+        self.view.hud.ed_history.clear()
+        self.view.hud.ephi_history.clear()
+
+    def _on_planned(self, message):
+        if self.route_context and decode_sequence(message.sequence)[0] == self.route_context["run_id"]:
+            super()._on_planned(message)
 
     def _handle_action(self, action: GuiAction) -> None:
         if action.kind == "switch_scenario":
