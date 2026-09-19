@@ -38,7 +38,9 @@ def test_repeated_path_preserves_progress_and_explicit_reset_clears_it():
     assert controller.lat.route_s == progress
     controller.update_ref_path(path[40:], reset=False)
     controller.step(51, 0, 0, 10, 0, 0)
-    assert controller.lat.x_pro == pytest.approx(51.5)
+    # The reference anchor now corresponds to the measured state, not a
+    # mixture of predicted position and current lateral velocities.
+    assert controller.lat.x_pro == pytest.approx(51.0)
     controller.update_ref_path(path, reset=True)
     assert controller.lat.route_s == 0
     assert controller.lon._previous_error is None

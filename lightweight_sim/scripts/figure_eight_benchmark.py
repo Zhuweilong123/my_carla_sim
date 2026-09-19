@@ -187,6 +187,10 @@ def main() -> None:
     parser.add_argument("--mass-scale", type=float, default=1.0)
     parser.add_argument("--stiffness-scale", type=float, default=1.0)
     parser.add_argument("--spacing", type=float)
+    parser.add_argument("--feedback-horizon-s", type=float)
+    parser.add_argument("--lqr-discretization", choices=("plant", "bilinear"))
+    parser.add_argument("--lqr-r", type=float)
+    parser.add_argument("--smooth-reference-heading", action=argparse.BooleanOptionalAction, default=None)
     parser.add_argument("--suite", action="store_true", help="Nominal 10 laps and five 3-lap perturbation cases")
     parser.add_argument(
         "--vehicle-model",
@@ -210,7 +214,10 @@ def main() -> None:
                    heading_offset_deg=args.heading_offset_deg, delay_steps=args.delay_steps,
                    noise_m=args.noise_m, mass_scale=args.mass_scale,
                    stiffness_scale=args.stiffness_scale, spacing=args.spacing,
-                   vehicle_model=args.vehicle_model)
+                   vehicle_model=args.vehicle_model,
+                   feedback_horizon_s=args.feedback_horizon_s,
+                   lqr_discretization=args.lqr_discretization, lqr_r=args.lqr_r,
+                   smooth_reference_heading=args.smooth_reference_heading)
     cases = [(args.label, options)]
     if args.suite:
         cases = [(args.label+"_nominal", {**options, "laps": 10, "duration": None})]

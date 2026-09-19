@@ -2,17 +2,19 @@
 import math
 
 from ._lat_lqr_impl import LateralLQRController as _DynamicLateralLQRController
-from ..utils.route import RouteTracker
+from ..utils.route import RouteTracker, wrap_angle
 
 
 class LateralLQRController(_DynamicLateralLQRController):
-    def __init__(self, vehicle_para, Q=None, R=1.0, ts=0.05):
+    def __init__(self, vehicle_para, Q=None, R=100.0, ts=0.05):
         super().__init__(vehicle_para, Q=Q, R=R, ts=ts)
         self.tracker = None
         self.route_progress = 0.0  # Legacy diagnostic: segment units.
         self.route_s = 0.0       # Unwrapped metres.
         self.last_ref_heading = None
         self._path = None
+        self.feedback_horizon_s = 0.0  # None reproduces the historical ts preview.
+        self.smooth_reference_heading = True
 
     def reset_tracking(self):
         self.tracker = None
@@ -39,18 +41,28 @@ class LateralLQRController(_DynamicLateralLQRController):
             return 0.0
         if self._path is not ref_path:
             self.set_path(ref_path, preserve=self.tracker is not None)
-        horizon = max(0.0, self.ts)
+        horizon = self.ts if self.feedback_horizon_s is None else self.feedback_horizon_s
+        horizon = max(0.0, horizon)
         px = x + (vx*math.cos(phi)-vy*math.sin(phi))*horizon
         py = y + (vx*math.sin(phi)+vy*math.cos(phi))*horizon
         pphi = phi + r*horizon
         self.x_pre, self.y_pre = px, py
-        projection = self.tracker.update(px, py, pphi, math.hypot(vx, vy), horizon)
+        projection = self.tracker.update(px, py, pphi, math.hypot(vx, vy), self.ts)
         self.route_s = projection.s
         self.route_progress = self.tracker.geometry.segment_progress(projection.s)
         self.min_index = projection.index
         self.last_ref_heading = projection.theta
         self.x_pro, self.y_pro = projection.x, projection.y
         ed, ephi = projection.errors(px, py, pphi)
+        if self.smooth_reference_heading:
+            # The route is sampled, not a sequence of instantaneous corners.
+            # Interpolate the already-computed vertex tangents continuously;
+            # independent evaluation still uses the original segment tangent.
+            a, b = ref_path[projection.index], ref_path[projection.index+1]
+            theta = a[2]+projection.ratio*wrap_angle(b[2]-a[2])
+            self.last_ref_heading = theta
+            ed = -math.sin(theta)*(px-projection.x)+math.cos(theta)*(py-projection.y)
+            ephi = wrap_angle(pphi-theta)
         kappa = projection.kappa
         ed_dot = vy*math.cos(ephi) + vx*math.sin(ephi)
         s_dot = (vx*math.cos(ephi)-vy*math.sin(ephi))/max(1e-3, 1-kappa*ed)

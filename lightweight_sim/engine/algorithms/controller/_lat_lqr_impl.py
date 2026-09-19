@@ -13,7 +13,7 @@ class LateralLQRController:
     negative, matching the sign convention used by :class:`EgoVehicle`.
     """
 
-    def __init__(self, vehicle_para, Q=None, R=1.0, ts=0.05):
+    def __init__(self, vehicle_para, Q=None, R=100.0, ts=0.05):
         if len(vehicle_para) != 6:
             raise ValueError("vehicle_para must contain (a, b, m, Cf, Cr, Iz)")
         self.a, self.b, self.m, self.Cf, self.Cr, self.Iz = map(float, vehicle_para)
@@ -46,6 +46,10 @@ class LateralLQRController:
         self.last_ed = 0.0
         self.last_ephi = 0.0
         self.last_error_state = np.zeros(4, dtype=float)
+        self.discretization = "plant"
+        self.last_feedforward = 0.0
+        self.last_feedback = 0.0
+        self.last_unclipped_steer = 0.0
 
     def _continuous_model(self, vx: float) -> tuple[np.ndarray, np.ndarray]:
         """Build the linearized lateral bicycle model at the current speed."""
@@ -104,7 +108,12 @@ class LateralLQRController:
     def update_lqr_gain(self, vx: float) -> np.ndarray:
         """Recompute ``A_d``, ``B_d``, ``P`` and ``K`` for the current speed."""
         A_c, B_c = self._continuous_model(vx)
-        A_d, B_d = self._discretize(A_c, B_c)
+        if self.discretization == "plant":
+            A_d, B_d = self._plant_discretize(vx)
+        elif self.discretization == "bilinear":
+            A_d, B_d = self._discretize(A_c, B_c)
+        else:
+            raise ValueError("unknown LQR discretization")
         P = self._solve_dare(A_d, B_d)
         self.A, self.B, self.P = A_d, B_d, P
         self.K = np.linalg.solve(
@@ -112,6 +121,36 @@ class LateralLQRController:
             B_d.T @ P @ A_d,
         )
         return self.K
+
+    def _plant_discretize(self, vx):
+        """Linearize the simulator's held-input substeps at constant speed.
+
+        z=[y, vy, phi, r]; e=[y, vy+v*phi, phi, r]. The simulator uses
+        explicit Euler for vy/r/position and the new r to advance heading.
+        Accumulate these substeps before transforming to error coordinates.
+        """
+        v = max(abs(float(vx)), 0.5)
+        n = max(1, math.ceil(v*self.ts/0.5))
+        h = self.ts/n
+        a, b, m, cf, cr, iz = self.a, self.b, self.m, self.Cf, self.Cr, self.Iz
+        m11 = (cf+cr)/(m*v)
+        m12 = (a*cf-b*cr)/(m*v)-v
+        m21 = (a*cf-b*cr)/(iz*v)
+        m22 = (a*a*cf+b*b*cr)/(iz*v)
+        steer_vy, steer_r = -cf/m, -a*cf/iz
+        F = np.eye(4)
+        G = np.zeros((4, 1))
+        F[0, 1], F[0, 2] = h, h*v
+        F[1, 1], F[1, 3] = 1+h*m11, h*m12
+        F[3, 1], F[3, 3] = h*m21, 1+h*m22
+        F[2, 1], F[2, 3] = h*h*m21, h*(1+h*m22)
+        G[1, 0], G[3, 0], G[2, 0] = h*steer_vy, h*steer_r, h*h*steer_r
+        Ad, Bd = np.eye(4), np.zeros((4, 1))
+        for _ in range(n):
+            Ad, Bd = F@Ad, F@Bd+G
+        T = np.eye(4)
+        T[1, 2] = v
+        return T@Ad@np.linalg.inv(T), T@Bd
 
     def control_from_error(self, error_state, kappa: float, vx: float) -> float:
         """Return curvature feedforward plus Riccati state feedback."""
@@ -126,6 +165,9 @@ class LateralLQRController:
         )
         delta_ff = math.atan(wheelbase * float(kappa) + understeer * float(kappa))
         delta = delta_ff - float((self.K @ error)[0])
+        self.last_feedforward = delta_ff
+        self.last_feedback = -float((self.K @ error)[0])
+        self.last_unclipped_steer = delta
         return max(-self.max_steer, min(self.max_steer, delta))
 
     def control(self, x, y, phi, vx, vy, r, ref_path):

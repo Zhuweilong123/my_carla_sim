@@ -9,25 +9,51 @@ import os
 import signal
 import subprocess
 import time
+import gzip
+import hashlib
+from dataclasses import asdict
+from pathlib import Path as FilePath
 import pytest
 
 rclpy = pytest.importorskip("rclpy")
 pytest.importorskip("lightweight_sim_msgs.msg")
 from rclpy.executors import SingleThreadedExecutor
 from rclpy.parameter import Parameter
-from lightweight_sim_msgs.msg import Path
+from lightweight_sim_msgs.msg import Path, VehicleState as RosState, ControlCommand as RosCommand
 from lightweight_sim_msgs.msg import SimulationStatus
 from std_msgs.msg import String
 from lightweight_sim.engine.ros_nodes.simulator_node import SimulatorNode
 from lightweight_sim.engine.ros_nodes.planner_node import PlannerNode
 from lightweight_sim.engine.ros_nodes.controller_node import ControllerNode
 from lightweight_sim.engine.ros_nodes.route_session import encode_sequence
-from lightweight_sim.engine.ros_nodes.qos import status_qos, sensor_data_qos, latched_path_qos
+from lightweight_sim.engine.ros_nodes.qos import status_qos, sensor_data_qos, latched_path_qos, command_qos
+from lightweight_sim.engine.ros_nodes.planner_node import message_to_state
+from lightweight_sim.engine.simulator.data_types import ControlCommand
+from lightweight_sim.engine.analysis.evaluation import provenance, archive_sources
+
+
+def archive_acceptance(name, payload, passed):
+    directory = os.environ.get("LIGHTWEIGHT_SIM_ROS_ARCHIVE")
+    if not directory:
+        return
+    directory = FilePath(directory)
+    directory.mkdir(parents=True, exist_ok=True)
+    meta = provenance()
+    meta["source_sha256"]["tests/test_ros_lifecycle.py"] = hashlib.sha256(FilePath(__file__).read_bytes()).hexdigest()
+    meta["source_tree_sha256"] = hashlib.sha256(json.dumps(meta["source_sha256"], sort_keys=True).encode()).hexdigest()
+    archive_sources(meta, directory)
+    with gzip.open(directory/(name+".json.gz"), "xt", encoding="utf-8") as stream:
+        json.dump(payload, stream)
+    with (directory/(name+".json")).open("x", encoding="utf-8") as stream:
+        json.dump(dict(passed=passed, provenance=meta, payload=name+".json.gz",
+                       counts={k: len(v) for k, v in payload.items() if isinstance(v, list)}), stream, indent=2)
 
 
 def test_ros_ten_laps_reset_switch_and_stale_plan():
     rclpy.init(args=["--ros-args", "-p", "scenario:=figure_eight"])
     nodes = []
+    payload = dict(states=[], measured=[], events=[])
+    passed = False
     executor = SingleThreadedExecutor()
     try:
         sim, planner, control = SimulatorNode(), PlannerNode(), ControllerNode()
@@ -54,9 +80,15 @@ def test_ros_ten_laps_reset_switch_and_stale_plan():
         assert control.controller.lon.target_speed == 50.0
         assert planner.planner.num_lanes == 3
         initial_run = sim.run_id
+        payload.update(context=control.route_context.copy(), reference=sim.engine.world.ref_path_as_tuples,
+                       plant_parameters=asdict(sim.engine.ego.params),
+                       controller=dict(Q=control.controller.lat.Q.tolist(), R=control.controller.lat.R.tolist(),
+                                       feedback_horizon_s=control.controller.lat.feedback_horizon_s,
+                                       discretization=control.controller.lat.discretization))
         previous_s = 0.0
         for step in range(10000):
             previous_command_time = sim.last_command_time
+            applied = ControlCommand(brake=1.) if sim._command_is_stale() else sim.command
             sim._advance_once()
             stamp = sim.engine.sim_time
             spin_until(lambda: control.last_control_stamp is not None
@@ -69,6 +101,10 @@ def test_ros_ten_laps_reset_switch_and_stale_plan():
                 planner._request_plan()
             tracker = control.controller.lat.tracker
             progress = control.controller.lat.route_s
+            payload["states"].append(dict(state=asdict(sim.engine.get_state()),
+                applied=asdict(applied), next_command=asdict(sim.command), route_s_m=progress,
+                control_ed_m=control.controller.lat.last_ed, control_ephi_rad=control.controller.lat.last_ephi,
+                collision=sim.engine.collision_occurred, offroad=sim.engine.offroad_occurred))
             assert progress-previous_s < 3.0, "branch jump"
             assert progress-previous_s > -2.0, "unexpected reverse progress"
             previous_s = progress
@@ -94,6 +130,7 @@ def test_ros_ten_laps_reset_switch_and_stale_plan():
         control._on_planned(old_plan)
         assert control.last_sequence == accepted_sequence
         assert not control.planned_path
+        payload["events"].append(dict(event="reset_and_old_plan_rejection", context=control.route_context.copy()))
 
         result = sim.set_parameters([Parameter("scenario", value="default")])
         assert result[0].successful
@@ -102,12 +139,16 @@ def test_ros_ten_laps_reset_switch_and_stale_plan():
         assert planner.planner.num_lanes == sim.engine.config.road.num_lanes
         assert control.controller.lat.ts == sim.physics_dt
         assert not control.planned_path
+        payload["events"].append(dict(event="switch_to_default", context=control.route_context.copy()))
+        payload["measured"] = measured
+        passed = True
     finally:
         for node in nodes:
             executor.remove_node(node)
             node.destroy_node()
         executor.shutdown()
         rclpy.shutdown()
+        archive_acceptance("dds_ten_laps", payload, passed)
 
 
 def test_installed_launch_routes_and_diagnostics(tmp_path):
@@ -115,9 +156,15 @@ def test_installed_launch_routes_and_diagnostics(tmp_path):
     rclpy.init()
     observer = rclpy.create_node("p1_acceptance_observer", namespace="p1_acceptance")
     contexts, metrics, statuses = [], [], []
+    states, commands = [], []
+    passed = False
     observer.create_subscription(String, "sim/context", lambda m: contexts.append(json.loads(m.data)), latched_path_qos())
     observer.create_subscription(String, "tracking/metrics", lambda m: metrics.append(json.loads(m.data)), sensor_data_qos())
     observer.create_subscription(SimulationStatus, "sim/status", statuses.append, status_qos())
+    observer.create_subscription(RosState, "vehicle/state", lambda m: states.append(asdict(message_to_state(m))), sensor_data_qos())
+    observer.create_subscription(RosCommand, "control_command", lambda m: commands.append(dict(
+        time_s=m.header.stamp.sec+m.header.stamp.nanosec/1e9, steer=m.steering_angle,
+        throttle=m.throttle, brake=m.brake)), command_qos())
     process = None
     try:
         with (tmp_path/"launch.log").open("w") as log:
@@ -138,6 +185,8 @@ def test_installed_launch_routes_and_diagnostics(tmp_path):
             assert metrics[-1]["timestamp"] >= 4
             assert metrics[-1]["route_s_m"] > 20
             assert not any(s.collision or s.offroad for s in statuses)
+            assert states and commands
+            passed = True
     finally:
         if process is not None and process.poll() is None:
             os.killpg(process.pid, signal.SIGINT)
@@ -148,3 +197,8 @@ def test_installed_launch_routes_and_diagnostics(tmp_path):
                 process.wait(timeout=5)
         observer.destroy_node()
         rclpy.shutdown()
+        archive_acceptance("installed_launch", dict(contexts=contexts, measured=metrics,
+            states=states, commands=commands,
+            statuses=[dict(time_s=s.sim_time, running=s.running, collision=s.collision,
+                           offroad=s.offroad, scenario=s.scenario) for s in statuses],
+            launch_log=(tmp_path/"launch.log").read_text()), passed)

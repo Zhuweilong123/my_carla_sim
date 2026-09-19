@@ -11,6 +11,7 @@ import platform
 import random
 import subprocess
 import time
+import zipfile
 
 import numpy as np
 
@@ -61,6 +62,18 @@ def provenance():
                 python=platform.python_version(), numpy=np.__version__, platform=platform.platform())
 
 
+def archive_sources(metadata, output_dir):
+    """Preserve experimental working-tree code, including rejected variants."""
+    folder = Path(output_dir)/"sources"
+    folder.mkdir(parents=True, exist_ok=True)
+    archive = folder/(metadata["source_tree_sha256"]+".zip")
+    if not archive.exists():
+        with zipfile.ZipFile(archive, "x", compression=zipfile.ZIP_DEFLATED) as bundle:
+            for name in metadata["source_sha256"]:
+                bundle.write(ROOT/name, arcname=name)
+    metadata["source_bundle"] = archive.relative_to(output_dir).as_posix()
+
+
 def resample(path, spacing):
     if spacing is None:
         return path
@@ -81,7 +94,8 @@ def run_evaluation(output_dir, label, *, laps=10, duration=None, speed=50.0,
                    dt=0.05, warmup=10.0, seed=2026, lateral_offset=0.0,
                    heading_offset_deg=0.0, delay_steps=0, noise_m=0.0,
                    mass_scale=1.0, stiffness_scale=1.0, spacing=None,
-                   vehicle_model="dynamic"):
+                   vehicle_model="dynamic", feedback_horizon_s=None,
+                   lqr_discretization=None, lqr_r=None, smooth_reference_heading=None):
     if (laps < 0 or (duration is not None and duration <= 0) or speed <= 0
             or dt <= 0 or warmup < 0 or delay_steps < 0 or noise_m < 0
             or mass_scale <= 0 or stiffness_scale <= 0 or (spacing is not None and spacing <= 0)):
@@ -105,6 +119,16 @@ def run_evaluation(output_dir, label, *, laps=10, duration=None, speed=50.0,
     geometry = RouteGeometry(path)
     controller = VehicleController(PARAMS, target_speed_kmh=speed)
     controller.lat.ts = controller.lon.dt = dt
+    if feedback_horizon_s is not None:
+        controller.lat.feedback_horizon_s = feedback_horizon_s
+    if lqr_discretization is not None:
+        controller.lat.discretization = lqr_discretization
+    if smooth_reference_heading is not None:
+        controller.lat.smooth_reference_heading = smooth_reference_heading
+    if lqr_r is not None:
+        if lqr_r <= 0:
+            raise ValueError("lqr_r must be positive")
+        controller.lat.R[:] = lqr_r
     controller.update_ref_path(path)
     monitor = TrackingMonitor(path)
     oracle = FigureEightOracle()
@@ -115,6 +139,7 @@ def run_evaluation(output_dir, label, *, laps=10, duration=None, speed=50.0,
     previous_s = 0.0
     previous_steer = 0.0
     metadata = provenance()
+    archive_sources(metadata, output_dir)
     for step in range(math.ceil(max_duration/dt)):
         truth = engine.get_state()
         history.append(replace(truth))
@@ -134,6 +159,10 @@ def run_evaluation(output_dir, label, *, laps=10, duration=None, speed=50.0,
                  or oracle.wrong_branch(measured["reference_heading_rad"], oracle_heading, region))
         progress_delta = measured["route_s_m"]-previous_s
         row = dict(step=step+1, time_s=state.timestamp, x_m=state.x, y_m=state.y,
+                   vx_m_s=state.vx, vy_m_s=state.vy, yaw_rate_rad_s=state.r,
+                   feedforward_rad=controller.lat.last_feedforward,
+                   feedback_rad=controller.lat.last_feedback,
+                   unclipped_steer_rad=controller.lat.last_unclipped_steer,
                    yaw_rad=state.phi, speed_kmh=state.speed_kmh,
                    speed_error_kmh=state.speed_kmh-speed,
                    steer_deg=math.degrees(state.steer),
@@ -187,6 +216,10 @@ def run_evaluation(output_dir, label, *, laps=10, duration=None, speed=50.0,
     summary["passed"] = bool(required_completed and not summary["offroad"] and not summary["collision"]
                              and not summary["wrong_branch_samples"] and not summary["unexpected_jump_samples"]
                              and not summary["riccati_failures"])
+    summary["controller_parameters"].update(
+        feedback_horizon_s=controller.lat.feedback_horizon_s,
+        discretization=controller.lat.discretization,
+        smooth_reference_heading=controller.lat.smooth_reference_heading)
     summary["pass_scope"] = "completion, route integrity, collision/offroad and solver convergence only; not ride quality"
     with gzip.open(str(prefix)+".csv.gz", "wt", newline="", encoding="utf-8") as stream:
         writer = csv.DictWriter(stream, fieldnames=rows[0].keys())
