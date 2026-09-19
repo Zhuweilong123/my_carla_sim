@@ -172,8 +172,22 @@ def run_benchmark(
 
 def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--duration", type=float, default=30.0)
+    parser.add_argument("--duration", type=float)
     parser.add_argument("--label", default="baseline")
+    parser.add_argument("--protocol", choices=("legacy", "v2"), default="v2")
+    parser.add_argument("--laps", type=int)
+    parser.add_argument("--speed", type=float, default=50.0)
+    parser.add_argument("--dt", type=float, default=0.05)
+    parser.add_argument("--warmup", type=float, default=10.0)
+    parser.add_argument("--seed", type=int, default=2026)
+    parser.add_argument("--lateral-offset", type=float, default=0.0)
+    parser.add_argument("--heading-offset-deg", type=float, default=0.0)
+    parser.add_argument("--delay-steps", type=int, default=0)
+    parser.add_argument("--noise-m", type=float, default=0.0)
+    parser.add_argument("--mass-scale", type=float, default=1.0)
+    parser.add_argument("--stiffness-scale", type=float, default=1.0)
+    parser.add_argument("--spacing", type=float)
+    parser.add_argument("--suite", action="store_true", help="Nominal 10 laps and five 3-lap perturbation cases")
     parser.add_argument(
         "--vehicle-model",
         choices=("kinematic", "dynamic"),
@@ -185,12 +199,43 @@ def main() -> None:
         default=Path(__file__).resolve().parents[1] / "records",
     )
     args = parser.parse_args()
-    run_benchmark(
-        args.duration,
-        args.output_dir,
-        args.label,
-        vehicle_model=args.vehicle_model,
-    )
+    if args.protocol == "legacy":
+        run_benchmark(args.duration or 30.0, args.output_dir, args.label,
+                      vehicle_model=args.vehicle_model)
+        return
+    from lightweight_sim.engine.analysis.evaluation import run_evaluation
+    options = dict(laps=args.laps if args.laps is not None else (0 if args.duration else 10),
+                   duration=args.duration, speed=args.speed, dt=args.dt, warmup=args.warmup,
+                   seed=args.seed, lateral_offset=args.lateral_offset,
+                   heading_offset_deg=args.heading_offset_deg, delay_steps=args.delay_steps,
+                   noise_m=args.noise_m, mass_scale=args.mass_scale,
+                   stiffness_scale=args.stiffness_scale, spacing=args.spacing,
+                   vehicle_model=args.vehicle_model)
+    cases = [(args.label, options)]
+    if args.suite:
+        cases = [(args.label+"_nominal", {**options, "laps": 10, "duration": None})]
+        for name, change in [
+            ("initial_offset", dict(lateral_offset=0.5, heading_offset_deg=5.0)),
+            ("delay_50ms", dict(delay_steps=1)),
+            ("position_noise", dict(noise_m=0.05)),
+            ("plant_mismatch", dict(mass_scale=1.1, stiffness_scale=0.9)),
+            ("dense_reference", dict(spacing=1.0)),
+        ]:
+            cases.append((args.label+"_"+name, {**options, "laps": 3, "duration": None, **change}))
+    summaries = []
+    for label, settings in cases:
+        result = run_evaluation(args.output_dir, label, **settings)
+        summaries.append(result)
+        print(json.dumps({key: result[key] for key in
+              ("label", "protocol", "completed_laps", "duration_s", "passed", "speed_kmh",
+               "steady", "wrong_branch_samples", "unexpected_jump_samples")}, indent=2), flush=True)
+    if args.suite:
+        suite_path = args.output_dir/f"{args.label}_suite.json"
+        suite_path.write_text(json.dumps([
+            {key: r[key] for key in ("label", "passed", "completed_laps", "steady", "speed_kmh")}
+            for r in summaries], indent=2)+"\n", encoding="utf-8")
+    if not all(r["passed"] for r in summaries):
+        raise SystemExit(1)
 
 
 if __name__ == "__main__":

@@ -5,6 +5,8 @@ import sys
 import time
 
 import pygame
+import math
+from ..engine.analysis.tracking import TrackingMonitor
 
 _simulator = importlib.import_module("lightweight_sim.engine.simulator")
 sys.modules.setdefault("lightweight_sim.simulator", _simulator)
@@ -44,6 +46,35 @@ class RosGuiView(_LegacyRosGuiView):
         (pygame.K_4, "curve"),
         (pygame.K_5, "figure_eight"),
     )
+
+    @staticmethod
+    def _tracking_error(snapshot):
+        state = snapshot.state
+        if state is None:
+            return 0.0, 0.0
+        measured = getattr(snapshot, "tracking_metrics", None)
+        if measured and abs(state.timestamp-measured["timestamp"]) <= 0.25:
+            return measured["ed_m"], math.radians(measured["ephi_deg"])
+        source = snapshot.planned_path or snapshot.reference_path
+        if len(source) < 2:
+            return 0.0, 0.0
+        monitor = getattr(snapshot, "_tracking_monitor", None)
+        if monitor is None or getattr(snapshot, "_measurement_path", None) is not source:
+            try:
+                monitor = TrackingMonitor([tuple(p) for p in source])
+            except ValueError:
+                return 0.0, 0.0
+            if measured:
+                monitor.tracker.s = monitor.tracker.geometry.project(
+                    measured["reference_x_m"], measured["reference_y_m"],
+                    measured["reference_heading_rad"]).s
+            snapshot._tracking_monitor = monitor
+            snapshot._measurement_path = source
+        if monitor.last_time is not None and state.timestamp < monitor.last_time:
+            monitor = TrackingMonitor([tuple(p) for p in source])
+            snapshot._tracking_monitor = monitor
+        measured = monitor.update(state)
+        return measured["ed_m"], math.radians(measured["ephi_deg"])
 
     def __init__(self, width=1200, height=800, lane_width=3.5,
                  num_lanes=2, target_speed_kmh=40.0):

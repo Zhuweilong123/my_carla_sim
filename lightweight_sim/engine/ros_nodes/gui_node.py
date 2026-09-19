@@ -2,6 +2,7 @@
 
 import importlib
 import sys
+import json
 from typing import Optional
 
 import rclpy
@@ -29,6 +30,7 @@ class GuiNode(_LegacyGuiNode):
         super().__init__()
         self.route_context = None
         self.create_subscription(String, "sim/context", self._on_context, latched_path_qos())
+        self.create_subscription(String, "tracking/metrics", self._on_tracking, sensor_data_qos())
         self.scenario_client = self.create_client(
             SetParameters, "simulator_node/set_parameters"
         )
@@ -42,8 +44,15 @@ class GuiNode(_LegacyGuiNode):
         self.view.lane_width = context["lane_width"]
         self.view.num_lanes = context["num_lanes"]
         self.snapshot.planned_path = []
+        self.snapshot.tracking_metrics = None
+        self.snapshot._tracking_monitor = None
         self.view.hud.ed_history.clear()
         self.view.hud.ephi_history.clear()
+
+    def _on_tracking(self, message):
+        measured = json.loads(message.data)
+        if self.route_context and measured["run_id"] == self.route_context["run_id"]:
+            self.snapshot.tracking_metrics = measured
 
     def _on_planned(self, message):
         if self.route_context and decode_sequence(message.sequence)[0] == self.route_context["run_id"]:

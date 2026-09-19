@@ -4,6 +4,10 @@ Physics is explicitly stepped (no wall-time waiting for ten simulated laps).
 The actual simulator, planner and controller callbacks communicate over DDS.
 """
 import math
+import json
+import os
+import signal
+import subprocess
 import time
 import pytest
 
@@ -12,10 +16,13 @@ pytest.importorskip("lightweight_sim_msgs.msg")
 from rclpy.executors import SingleThreadedExecutor
 from rclpy.parameter import Parameter
 from lightweight_sim_msgs.msg import Path
+from lightweight_sim_msgs.msg import SimulationStatus
+from std_msgs.msg import String
 from lightweight_sim.engine.ros_nodes.simulator_node import SimulatorNode
 from lightweight_sim.engine.ros_nodes.planner_node import PlannerNode
 from lightweight_sim.engine.ros_nodes.controller_node import ControllerNode
 from lightweight_sim.engine.ros_nodes.route_session import encode_sequence
+from lightweight_sim.engine.ros_nodes.qos import status_qos, sensor_data_qos, latched_path_qos
 
 
 def test_ros_ten_laps_reset_switch_and_stale_plan():
@@ -31,6 +38,9 @@ def test_ros_ten_laps_reset_switch_and_stale_plan():
         planner.plan_timer.cancel()
         planner.poll_timer.cancel()
         control.timer.cancel()
+        measured = []
+        sim.create_subscription(String, "tracking/metrics",
+                                lambda msg: measured.append(json.loads(msg.data)), sensor_data_qos())
         for node in nodes:
             executor.add_node(node)
 
@@ -72,6 +82,8 @@ def test_ros_ten_laps_reset_switch_and_stale_plan():
             pytest.fail("did not finish ten laps")
         print(f"DDS acceptance: laps=10 steps={step+1} sim_s={sim.engine.sim_time:.2f} "
               f"route_s_m={progress:.3f} collision=False offroad=False")
+        assert measured[-1]["protocol"] == "route_projection_v2"
+        assert measured[-1]["route_s_m"] > 9*tracker.geometry.length
 
         old_plan = Path(sequence=encode_sequence(initial_run, 999))
         sim._on_reset(None, object())
@@ -95,4 +107,44 @@ def test_ros_ten_laps_reset_switch_and_stale_plan():
             executor.remove_node(node)
             node.destroy_node()
         executor.shutdown()
+        rclpy.shutdown()
+
+
+def test_installed_launch_routes_and_diagnostics(tmp_path):
+    """Exercise separately launched processes and real /clock timers."""
+    rclpy.init()
+    observer = rclpy.create_node("p1_acceptance_observer", namespace="p1_acceptance")
+    contexts, metrics, statuses = [], [], []
+    observer.create_subscription(String, "sim/context", lambda m: contexts.append(json.loads(m.data)), latched_path_qos())
+    observer.create_subscription(String, "tracking/metrics", lambda m: metrics.append(json.loads(m.data)), sensor_data_qos())
+    observer.create_subscription(SimulationStatus, "sim/status", statuses.append, status_qos())
+    process = None
+    try:
+        with (tmp_path/"launch.log").open("w") as log:
+            process = subprocess.Popen(
+                ["ros2", "launch", "lightweight_sim", "lightweight_sim.launch.py",
+                 "scenario:=figure_eight", "gui:=false", "namespace:=p1_acceptance"],
+                stdout=log, stderr=subprocess.STDOUT, start_new_session=True)
+            deadline = time.monotonic()+25
+            while time.monotonic() < deadline:
+                rclpy.spin_once(observer, timeout_sec=0.05)
+                assert process.poll() is None, (tmp_path/"launch.log").read_text()
+                if metrics and metrics[-1]["timestamp"] >= 4:
+                    break
+            assert contexts and metrics and statuses, (tmp_path/"launch.log").read_text()
+            assert contexts[-1]["target_speed_kmh"] == 50
+            assert contexts[-1]["num_lanes"] == 3
+            assert contexts[-1]["vehicle_model"] == "dynamic"
+            assert metrics[-1]["timestamp"] >= 4
+            assert metrics[-1]["route_s_m"] > 20
+            assert not any(s.collision or s.offroad for s in statuses)
+    finally:
+        if process is not None and process.poll() is None:
+            os.killpg(process.pid, signal.SIGINT)
+            try:
+                process.wait(timeout=8)
+            except subprocess.TimeoutExpired:
+                os.killpg(process.pid, signal.SIGTERM)
+                process.wait(timeout=5)
+        observer.destroy_node()
         rclpy.shutdown()

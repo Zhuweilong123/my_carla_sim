@@ -1,6 +1,7 @@
 """ROS 2 adapter for the lateral/longitudinal vehicle controller."""
 
 from typing import Optional
+import json
 
 import rclpy
 from std_msgs.msg import String
@@ -11,6 +12,7 @@ from ..algorithms.controller.combined import VehicleController
 from .planner_node import message_to_state, path_to_tuples
 from .qos import command_qos, latched_path_qos, sensor_data_qos
 from .route_session import decode_sequence, parse_context
+from ..analysis.tracking import TrackingMonitor
 
 
 class ControllerNode(Node):
@@ -36,6 +38,9 @@ class ControllerNode(Node):
         self.active_run = None
         self.plan_time = None
         self.last_control_stamp = None
+        self.tracking_monitor = None
+        self.measurement_path = None
+        self.tracking_pub = self.create_publisher(String, "tracking/metrics", sensor_data_qos())
         self.create_subscription(String, "sim/context", self._on_context, latched_path_qos())
 
         sensor_qos = sensor_data_qos()
@@ -81,6 +86,8 @@ class ControllerNode(Node):
             return
         self.active_run = self.reference_run
         self.controller.update_ref_path(self.reference_path, reset=True)
+        self.tracking_monitor = TrackingMonitor(self.reference_path)
+        self.measurement_path = self.controller.ref_path
         self.controller.set_target_speed(self.route_context["target_speed_kmh"])
         self.controller.lat.ts = float(self.route_context["physics_dt"])
         self.controller.lon.dt = float(self.route_context["physics_dt"])
@@ -154,6 +161,19 @@ class ControllerNode(Node):
             self.state.vy,
             self.state.r,
         )
+        if self.measurement_path is not self.controller.ref_path:
+            # Transfer measurement state across local-plan updates separately
+            # from the controller's predicted reference state.
+            previous = self.tracking_monitor.tracker.projection
+            self.tracking_monitor = TrackingMonitor(self.controller.ref_path)
+            if previous is not None:
+                self.tracking_monitor.tracker.s = self.tracking_monitor.tracker.geometry.project(
+                    previous.x, previous.y, previous.theta).s
+            self.measurement_path = self.controller.ref_path
+        measured = self.tracking_monitor.update(self.state)
+        measured.update(run_id=self.active_run, path_sequence=self.last_sequence,
+                        reference_kind="planned" if self.planned_path else "global")
+        self.tracking_pub.publish(String(data=json.dumps(measured)))
         self._publish_command(steer, throttle, brake)
 
 
