@@ -3,6 +3,7 @@
 from typing import Optional
 import json
 import time
+from dataclasses import asdict
 
 import rclpy
 from std_msgs.msg import String
@@ -12,6 +13,7 @@ from ._simulator_node_impl import *  # noqa: F401,F403
 from ..simulator.data_types import ControlCommand
 from ..simulator.engine import SimulationEngine
 from ..simulator.scenarios import make_scenario
+from ..simulator.steering import steering_profile
 from .route_session import encode_sequence
 
 
@@ -36,6 +38,8 @@ class SimulatorNode(_LegacySimulatorNode):
                        route_id=config.name, scenario=config.name,
                        target_speed_kmh=config.target_speed,
                        vehicle_model=config.vehicle_model,
+                       vehicle_parameters=asdict(config.vehicle_params),
+                       steering_parameters=asdict(config.steering),
                        lane_width=config.road.lane_width,
                        num_lanes=config.road.num_lanes, physics_dt=self.physics_dt)
         self.context_pub.publish(String(data=json.dumps(context)))
@@ -44,6 +48,9 @@ class SimulatorNode(_LegacySimulatorNode):
     def _on_parameters(self, parameters):
         requested = None
         for parameter in parameters:
+            if parameter.name == "steering_profile":
+                return SetParametersResult(successful=False,
+                    reason="steering_profile is startup-only; restart to change the actuator")
             if parameter.name == "scenario":
                 if not isinstance(parameter.value, str):
                     return SetParametersResult(
@@ -57,6 +64,8 @@ class SimulatorNode(_LegacySimulatorNode):
 
         try:
             config = make_scenario(requested)
+            config.steering = steering_profile(str(self.get_parameter("steering_profile").value))
+            config.steering.delay_steps(self.physics_dt)
         except ValueError as exc:
             return SetParametersResult(successful=False, reason=str(exc))
 

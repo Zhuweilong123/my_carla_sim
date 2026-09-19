@@ -19,6 +19,7 @@ from std_srvs.srv import Empty, SetBool, Trigger
 from ..simulator.data_types import ControlCommand
 from ..simulator.engine import SimulationEngine
 from ..simulator.scenarios import make_scenario
+from ..simulator.steering import steering_profile
 from .qos import clock_qos, command_qos, latched_path_qos, sensor_data_qos, status_qos
 
 
@@ -32,6 +33,7 @@ class SimulatorNode(Node):
     def __init__(self) -> None:
         super().__init__("simulator_node")
         self.declare_parameter("scenario", "obstacle")
+        self.declare_parameter("steering_profile", "ideal")
         self.declare_parameter("physics_dt", 0.05)
         self.declare_parameter("command_timeout", 0.25)
         self.declare_parameter("publish_clock", True)
@@ -42,7 +44,10 @@ class SimulatorNode(Node):
         self.command_timeout = float(self.get_parameter("command_timeout").value)
         self.publish_clock_enabled = bool(self.get_parameter("publish_clock").value)
         self.frame_id = str(self.get_parameter("frame_id").value)
-        self.engine = SimulationEngine(make_scenario(scenario_name))
+        config = make_scenario(scenario_name)
+        config.steering = steering_profile(str(self.get_parameter("steering_profile").value))
+        config.steering.delay_steps(self.physics_dt)
+        self.engine = SimulationEngine(config)
         self.command = ControlCommand()
         self.last_command_time = self.get_clock().now()
         self.paused = False

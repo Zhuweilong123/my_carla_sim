@@ -2,6 +2,7 @@
 
 from typing import Optional
 import json
+import math
 
 import rclpy
 from std_msgs.msg import String
@@ -13,6 +14,8 @@ from .planner_node import message_to_state, path_to_tuples
 from .qos import command_qos, latched_path_qos, sensor_data_qos
 from .route_session import decode_sequence, parse_context
 from ..analysis.tracking import TrackingMonitor
+from ..simulator.data_types import VehicleParams
+from ..simulator.steering import SteeringParams
 
 
 class ControllerNode(Node):
@@ -38,6 +41,7 @@ class ControllerNode(Node):
         self.active_run = None
         self.plan_time = None
         self.last_control_stamp = None
+        self.actuator_timing_fault = False
         self.tracking_monitor = None
         self.measurement_path = None
         self.tracking_pub = self.create_publisher(String, "tracking/metrics", sensor_data_qos())
@@ -71,6 +75,7 @@ class ControllerNode(Node):
         if self.route_context and context["run_id"] <= self.route_context["run_id"]:
             return
         self.route_context = context
+        self.actuator_timing_fault = False
         self.active_run = None
         self.planned_path = []
         self.plan_time = None
@@ -85,6 +90,12 @@ class ControllerNode(Node):
         if self.active_run == self.reference_run:
             return
         self.active_run = self.reference_run
+        self.controller = VehicleController(
+            controller_type=str(self.get_parameter("controller").value),
+            target_speed_kmh=self.route_context["target_speed_kmh"],
+            vehicle_params=VehicleParams(**self.route_context.get("vehicle_parameters", {})),
+            steering_params=SteeringParams(**self.route_context.get("steering_parameters", {})),
+            dt=float(self.route_context["physics_dt"]))
         self.controller.update_ref_path(self.reference_path, reset=True)
         self.tracking_monitor = TrackingMonitor(self.reference_path)
         self.measurement_path = self.controller.ref_path
@@ -149,6 +160,17 @@ class ControllerNode(Node):
                 return
         if self.last_control_stamp == self.state.timestamp:
             return
+        if self.controller.lat.actuator_params.mode == "dynamic":
+            if self.last_control_stamp is not None and not math.isclose(
+                    self.state.timestamp-self.last_control_stamp, self.controller.lat.ts, abs_tol=1e-6):
+                if not self.actuator_timing_fault:
+                    self.get_logger().error("actuator command history lost time alignment; reset required")
+                self.actuator_timing_fault = True
+            if self.actuator_timing_fault:
+                # Do not extrapolate a delay FIFO through missing physics ticks.
+                # Latch a bounded hold-angle/brake request until a new run/reset.
+                self._publish_command(self.state.steer, 0.0, 1.0)
+                return
         self.last_control_stamp = self.state.timestamp
         self.controller.set_target_speed(
             float(self.get_parameter("target_speed_kmh").value)
@@ -160,6 +182,7 @@ class ControllerNode(Node):
             self.state.vx,
             self.state.vy,
             self.state.r,
+            actual_steer=self.state.steer,
         )
         if self.measurement_path is not self.controller.ref_path:
             # Transfer measurement state across local-plan updates separately

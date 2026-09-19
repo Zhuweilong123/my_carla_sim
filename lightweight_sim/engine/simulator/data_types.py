@@ -2,6 +2,7 @@
 from dataclasses import dataclass, field
 from typing import List, Tuple, Optional
 import math
+from .steering import SteeringParams
 
 @dataclass
 class PathPoint:
@@ -55,6 +56,15 @@ class VehicleParams:
     max_steer: float = 0.5
     max_accel: float = 3.0
     max_decel: float = 6.0
+    def __post_init__(self):
+        positive = (self.a, self.b, self.m, self.Iz, self.max_steer, self.max_accel, self.max_decel)
+        if not all(math.isfinite(v) and v > 0 for v in positive):
+            raise ValueError("vehicle geometry, mass, inertia and limits must be positive and finite")
+        if not all(math.isfinite(v) and v < 0 for v in (self.Cf, self.Cr)):
+            raise ValueError("cornering stiffness uses the negative-force sign convention")
+    @property
+    def lateral_tuple(self):
+        return (self.a, self.b, self.m, self.Cf, self.Cr, self.Iz)
     @property
     def wheelbase(self) -> float:
         return self.a + self.b
@@ -108,6 +118,8 @@ class ScenarioConfig:
     planner: dict = field(default_factory=dict)
     destination: Optional[Tuple[float, float]] = None
     vehicle_model: str = "kinematic"
+    vehicle_params: VehicleParams = field(default_factory=VehicleParams)
+    steering: SteeringParams = field(default_factory=SteeringParams)
 
 @dataclass
 class LogEntry:

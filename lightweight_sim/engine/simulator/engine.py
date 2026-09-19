@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import math
+from dataclasses import replace
 from typing import Optional
 
 from .data_types import ControlCommand, ScenarioConfig, VehicleParams, VehicleState
@@ -10,6 +11,7 @@ from .logging_utils import get_run_logger
 from .obstacle import ObstacleManager
 from .vehicle import EgoVehicle
 from .world import World
+from .steering import SteeringActuator
 
 
 class SimulationEngine:
@@ -26,8 +28,9 @@ class SimulationEngine:
                 phi=config.ego_start_phi,
                 vx=config.ego_start_speed,
             ),
-            VehicleParams(),
+            replace(config.vehicle_params),
         )
+        self.steering = SteeringActuator(config.steering, self.ego.params.max_steer)
         self.obstacles = ObstacleManager()
         self.obstacles.add_from_config(config.obstacles)
         self.sim_time = 0.0
@@ -78,6 +81,8 @@ class SimulationEngine:
         raw_steer = float(control.steer)
         raw_throttle = float(control.throttle)
         raw_brake = float(control.brake)
+        if not all(math.isfinite(v) for v in (raw_steer, raw_throttle, raw_brake)):
+            raise ValueError("control commands must be finite")
         steer = max(-params.max_steer, min(params.max_steer, raw_steer))
         throttle = max(0.0, min(1.0, raw_throttle))
         brake = max(0.0, min(1.0, raw_brake))
@@ -94,12 +99,14 @@ class SimulationEngine:
             )
 
         accel = throttle * params.max_accel - brake * params.max_decel
+        self.steering.begin_period(raw_steer, dt)
         substeps = max(1, int(math.ceil(self.ego.get_state().speed * dt / 0.5)))
         subdt = dt / substeps
         state = self.ego.get_state()
 
         try:
             for _ in range(substeps):
+                steer = self.steering.advance(subdt)
                 state = self.ego.step(steer, accel, subdt, self.vehicle_model)
                 self.obstacles.step(subdt)
                 collision_hit = self.obstacles.check_collision(

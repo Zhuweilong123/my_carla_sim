@@ -1,0 +1,1634 @@
+{
+  "protocol": "route_projection_v2",
+  "label": "final300_slower_actuator",
+  "provenance": {
+    "git_commit": "784c1d57819db21323491a626d5bcd96fe17c795",
+    "working_tree_status": "M ../.gitignore\n M ../.idea/inspectionProfiles/Project_Default.xml\n M ../.idea/inspectionProfiles/profiles_settings.xml\n M ../.idea/misc.xml\n M ../.idea/modules.xml\n M ../.idea/my_carla_sim.iml\n M ../.idea/vcs.xml\n M ../.idea/workspace.xml\n M ../ALGORITHMS.md\n M ../README.md\n M ../carla_legacy/code_1.py\n M ../carla_legacy/code_2.py\n M ../carla_legacy/code_3.py\n M ../carla_legacy/code_4.py\n M ../carla_legacy/controller/Controller.py\n M ../carla_legacy/planner/global_path_plan.py\n M ../carla_legacy/planner/motion_plan_path_planning.py\n M ../carla_legacy/planner/motion_plan_speed_planning.py\n M ../carla_legacy/planner/planner_utiles.py\n M ../carla_legacy/sensors/Sensors_camera_lib.py\n M ../carla_legacy/sensors/Sensors_detector_lib.py\n M ../carla_legacy/sensors/Sensors_other_lib.py\n M ../carla_legacy/test_code1.py\n M ../carla_legacy/test_code2.py\n M ../carla_legacy/test_code3.py\n M ../carla_legacy/test_code3_1.py\n M ../carla_legacy/test_code4.py\n M ../carla_legacy/test_code5.py\n M ../carla_legacy/test_code6.py\n M ../carla_legacy/test_code7.py\n M ../carla_legacy/test_code8.py\n M ../carla_legacy/test_code9.py\n M DESIGN.md\n M config/default.yaml\n M config/launch/lightweight_sim.launch.py\n M engine/algorithms/controller/_lat_lqr_geometric_impl.py\n M engine/algorithms/controller/_lat_lqr_impl.py\n M engine/algorithms/controller/_lat_lqr_opt2.py\n M engine/algorithms/controller/combined.py\n M engine/algorithms/planner/qp_path_plan.py\n M engine/analysis/evaluation.py\n M engine/ros_nodes/_simulator_node_impl.py\n M engine/ros_nodes/controller_node.py\n M engine/ros_nodes/simulator_node.py\n M engine/simulator/_app_impl.py\n M engine/simulator/data_types.py\n M engine/simulator/engine.py\n M records/figure_eight_baseline.csv\n M records/figure_eight_baseline.json\n M records/figure_eight_evaluation.csv\n M records/figure_eight_evaluation_50kmh.csv\n M records/figure_eight_evaluation_50kmh_coupling_half.csv\n M records/figure_eight_evaluation_50kmh_final.csv\n M records/figure_eight_evaluation_50kmh_route_lock_v2.csv\n M records/figure_eight_opt1.csv\n M records/figure_eight_opt1.json\n M records/figure_eight_opt2.csv\n M records/figure_eight_opt2.json\n M records/figure_eight_opt3.csv\n M records/figure_eight_riccati.csv\n M records/p1_20260917/figure_eight_p1_baseline_30s_reference.csv\n M records/p1_20260917/figure_eight_p1_delay_50ms_reference.csv\n M records/p1_20260917/figure_eight_p1_dense_reference_reference.csv\n M records/p1_20260917/figure_eight_p1_initial_offset_reference.csv\n M records/p1_20260917/figure_eight_p1_nominal_reference.csv\n M records/p1_20260917/figure_eight_p1_plant_mismatch_reference.csv\n M records/p1_20260917/figure_eight_p1_position_noise_reference.csv\n M records/p2_20260919/figure_eight_ablation_01_baseline_reference.csv\n M records/p2_20260919/figure_eight_ablation_01_current_state_reference.csv\n M records/p2_20260919/figure_eight_ablation_01_matched_current_reference.csv\n M records/p2_20260919/figure_eight_ablation_01_matched_preview_reference.csv\n M records/p2_20260919/figure_eight_p2_candidate_delay_50ms_reference.csv\n M records/p2_20260919/figure_eight_p2_candidate_dense_reference_reference.csv\n M records/p2_20260919/figure_eight_p2_candidate_initial_offset_reference.csv\n M records/p2_20260919/figure_eight_p2_candidate_nominal_reference.csv\n M records/p2_20260919/figure_eight_p2_candidate_plant_mismatch_reference.csv\n M records/p2_20260919/figure_eight_p2_candidate_position_noise_reference.csv\n M records/p2_20260919/figure_eight_smooth_01_smooth_R100_reference.csv\n M records/p2_20260919/figure_eight_smooth_01_smooth_R1_reference.csv\n M records/p2_20260919/figure_eight_smooth_01_smooth_R25_reference.csv\n M records/p2_20260919/figure_eight_weights_01_matched_R100_reference.csv\n M records/p2_20260919/figure_eight_weights_01_matched_R10_reference.csv\n M records/p2_20260919/figure_eight_weights_01_matched_R25_reference.csv\n M records/p2_20260919/figure_eight_weights_01_matched_R4_reference.csv\n M scripts/figure_eight_benchmark.py\n M tests/test_ros_lifecycle.py\n M visualization/_renderer_impl.py\n M ../lightweight_sim_msgs/CMakeLists.txt\n M ../lightweight_sim_msgs/msg/SimulationStatus.msg\n M ../lightweight_sim_msgs/package.xml\n M ../pytest.ini\n?? ../.claude/\n?? design/\n?? engine/simulator/steering.py\n?? records/actuator_20260919/\n?? records/iteration_optimization_review_20260919.md\n?? scripts/steering_actuator_experiments.py\n?? tests/test_steering_actuator.py",
+    "source_sha256": {
+      "engine/__init__.py": "9a63f7aeb116aec45e214c29894c1b5c6596f3f63766127c21e3e640644f1068",
+      "engine/algorithms/__init__.py": "416acc3ed0cefe754e1732a6f3223afd15dd484d27db94500059e94b51ac199b",
+      "engine/algorithms/controller/__init__.py": "a22721337b8e5d3b44dc3aaafda5bcd79c803a49f62e86ab1b6c932133a8f306",
+      "engine/algorithms/controller/_combined_legacy.py": "13df13286f3b4ffea998357518403dac96c6479e9d08e89177623b80cc2b44d7",
+      "engine/algorithms/controller/_lat_lqr_geometric_impl.py": "76ae3c982b2ea533459283cd47cbd4f1dcb2d5909f2c41eb7cbf774610001d47",
+      "engine/algorithms/controller/_lat_lqr_impl.py": "080e9bda1c34eccd12e10a2245e6604e0f1c073360d9cb2500a3ca30aa1a6f1a",
+      "engine/algorithms/controller/_lat_lqr_opt1.py": "40154920a9eba002ee7776473f0344ee430562ae0a13701fd1d67fec846dd6b0",
+      "engine/algorithms/controller/_lat_lqr_opt2.py": "3c709b33053634b76e0ca5f05d0db4dbffc3438c5abf9721d1d603f62d931407",
+      "engine/algorithms/controller/_lon_pid_legacy.py": "8856c3ed3359214c8ae498e9151f56a272e703bf6ad8ebff54c8e80b5fbd207c",
+      "engine/algorithms/controller/combined.py": "421b2b34c6a4695ef6e26668fe8173a9cb6aba688ac0c6ce5be88719a18ac122",
+      "engine/algorithms/controller/lat_lqr.py": "a70bac81533bea014f8184c4f878820efe199058634bd468b459995054767059",
+      "engine/algorithms/controller/lat_mpc.py": "e5be75989751c285033d1878e88bcb3ac4a2f221b9f5e8071fcd211fb825a727",
+      "engine/algorithms/controller/lon_pid.py": "c75904ba84bf9210bb7f2d4442e599f7be5ee9149238762b812ca2cceb4a33ff",
+      "engine/algorithms/planner/__init__.py": "a450600ed9228f20a8855c610c72a848a4364852140c6d3cd786d04469592a79",
+      "engine/algorithms/planner/dp_path_plan.py": "a14df7e980f4043934c41838118bf6450f6916c18f783c055dce9c36ffefc3f6",
+      "engine/algorithms/planner/motion_planner.py": "6ad68ae1a0837428678e1604548b6017f43fd3270d6fe19a4a070141ea83efd0",
+      "engine/algorithms/planner/qp_path_plan.py": "2ef86fc84ee59f5921c7b3f373e272a577c0f0076a654d038d1dc8ae44d15181",
+      "engine/algorithms/utils/__init__.py": "c616e36fd297af23a46bbd238d83b35985fde0e768d222dca068254769f736f4",
+      "engine/algorithms/utils/frenet.py": "2056fcda31099711ca063a7cc82e953d63c1ba85ac706d4c1ade91e83301e0d4",
+      "engine/algorithms/utils/geometry.py": "f336bf17fc6e0e220d6f165d055e51bf953b8447d690d88a9af1c298f71b94b0",
+      "engine/algorithms/utils/quintic.py": "2cde7272b409b6a0876f775b31237575ff885e6cace7764e0064790b444dc3e0",
+      "engine/algorithms/utils/reference_line.py": "735beee02f80c102d95d2c28f14cd15537d98e7008e54ad63c7fbbf37202da04",
+      "engine/algorithms/utils/route.py": "cb677dff9ff7b029dcefd25b4d7cfbbe3d2875c31c46ad4d5d90fdeacc8378bb",
+      "engine/analysis/__init__.py": "3f6c235f6b0168541de89a8f76731ebc0a0a3127ecfbc985f7a8a5053cc18323",
+      "engine/analysis/evaluation.py": "e4637d6620b6f549d176dd7512d8431e24e2a42bb64fe3eded2c7e2514a9b3e4",
+      "engine/analysis/tracking.py": "4482227b3932cb2b5b1648a760b82f6e4b3eec004dca36ddd326d63fafef25b2",
+      "engine/ros_nodes/__init__.py": "3836d1d0a73431259d2b2a18303aec4f606044e46dca1e9419b7868b712b67fa",
+      "engine/ros_nodes/_gui_node_impl.py": "8ebe98c05016c66b20f141b4278c858a24785d76bb9c4f3a75b33b6d3d2a1e98",
+      "engine/ros_nodes/_simulator_node_impl.py": "37182697dca3189695b66c3736c15a247d8132d9602d8b8a43c077ec5fb5229b",
+      "engine/ros_nodes/controller_node.py": "68b5c4905540c9ec2ec033703168b3a4374952d9a9360d21a6a70541c44f8e9d",
+      "engine/ros_nodes/gui_node.py": "2e92fecb3344def88be065a9d897b58f9c9231242c31dffb4e3bad0bee1fdbbf",
+      "engine/ros_nodes/planner_node.py": "d2a0c8aced850299263de60b393b8a8d2cdbac5cc4ffab2e05d3bdaeb711e06e",
+      "engine/ros_nodes/qos.py": "9b0d5ffa27d17d6a2a4330bcbf0661a911bd8ea92a677184e3a2a932b697f8a4",
+      "engine/ros_nodes/route_session.py": "9fa69ee4c5285043a427f5b7353e12c8b1bb8a9b8a43c38669441b8177e6b1bd",
+      "engine/ros_nodes/simulator_node.py": "344bac2e4a27a3ab3f3980393c86203607dce2846c5a8bdb43a5511ea0c6dc26",
+      "engine/simulator/__init__.py": "b3a1d61b680f8890535d62ea0d170dcd747e6c12426de3850551b5f5047e9161",
+      "engine/simulator/_app_impl.py": "19124375467d6016fcfadb0892f3af8fb5c60b31a88e266a680b8cf418120243",
+      "engine/simulator/_scenarios_impl.py": "77cd5fa5990909bdda17aa15231e659dab4317ecd3ac894bd77291e687d187c3",
+      "engine/simulator/_world_impl.py": "0ff282365fb079874e33c344fee48499cb9f4b3eb5b955b4c24b438a980a4167",
+      "engine/simulator/app.py": "98644805fb9347b6c67bfd639ccd6599b284b448c5edea7799f6f6a3446457d6",
+      "engine/simulator/data_types.py": "0f205b307a3c7a38c885bb4ed5ffc1e0852da8fd378506e5a525dc6b9249e6dd",
+      "engine/simulator/engine.py": "fc6a57559894a0d87674b3f42890992ed0eb4cd76d6fe14f79953e9f2d31b4e1",
+      "engine/simulator/logging_utils.py": "fa85210cc398339569129d0b3c2d5f415f285b773a2d8dcf2bb325831fb1af41",
+      "engine/simulator/obstacle.py": "807f11a1d271051fdc361f7f87aebc6b4669d40d450a07f6e46219eac5d5c490",
+      "engine/simulator/scenarios.py": "4580a21226ad61f3b6ec79347ee802326af8ea0fd3bd43ac67f80164b83e7842",
+      "engine/simulator/steering.py": "41b3417cc0790005817cf83ecd767f913514751906e82a9146a83dd25c8e9a57",
+      "engine/simulator/vehicle.py": "d6ff36e29820dae2e05710e76eba2cfdd5ba297f3a9551548b1200771841efe8",
+      "engine/simulator/world.py": "0e4a5e1212ac677ec0e9b287de3361de653c9700fe3afbb39818db771587a8a7",
+      "visualization/__init__.py": "5580b3d6cdfcd4c2559dfab52f9d5b2a7edac2351326576bffa00287029a0fe3",
+      "visualization/_renderer_impl.py": "64179475cd59415d743df48c1f528d98b2224f97e9d738997d747f0166c233bd",
+      "visualization/_ros_gui_impl.py": "8f99002eae10f49c9d39f31f51ef1811a3752f7bc631158eaea21989114536ab",
+      "visualization/colors.py": "6ae2e32a90242f7e3eb0a479c2889a9e72a0c66b2c188a1e1e47a66f0e91ee61",
+      "visualization/hud.py": "e123c410be2b04ca327d062d79cd6dda9157733049a7f358a2c207e0060de86e",
+      "visualization/pygame_compat.py": "f72b5babda70ff1c775876b9e392ba491063ffd9b23fae1ae10ac5dab3b25dd2",
+      "visualization/renderer.py": "23fb7f665d9aaf0a80348f6286261a230559fa111dc821699e5701a060dc4b65",
+      "visualization/ros_gui.py": "057fc8c63564b927481377194c54e79098ceaa9640da08a939108fa27bdb6825",
+      "scripts/figure_eight_benchmark.py": "a81f7df22ea0aec54c42ef75d7a1c78ddd53e6615b89c8579c63dcfce6e0c4d2",
+      "scripts/p2_controller_experiments.py": "2f4a1c19b8767313b5360457b0d48f4b06ce50beb002bf697f51455bc9c52f9e",
+      "scripts/ros2_smoke_test.sh": "c3356445bcc6b70b4e720007777d3e88b6d250678f941952beab2da3d0f13259",
+      "scripts/start_sim.sh": "ec8a5a2e20769582c2e66b4e037ba0f112fa2a11daef13f693e234d42fd4f016",
+      "scripts/steering_actuator_experiments.py": "a10210f2542d1cbfca8760f56d2ca73c2e348ec2faaa4d2b81fe020f3d675a2e",
+      "config/default.yaml": "87f1c91d18f0599bd441a7d0c715ac8ce7b02902c32f67eeab99421dc727ec7d",
+      "config/launch/lightweight_sim.launch.py": "d2a6907bc6d0ee8480d2c68cdc8bc2e713080850e84d8a451243033acc68b981"
+    },
+    "source_tree_sha256": "e6b121480e717c7161e5f6b037a607d74e4cb60def3a484c6b347de85a1998da",
+    "python": "3.14.4",
+    "numpy": "2.5.2",
+    "platform": "Linux-6.18.33.2-microsoft-standard-WSL2-x86_64-with-glibc2.43",
+    "source_bundle": "sources/e6b121480e717c7161e5f6b037a607d74e4cb60def3a484c6b347de85a1998da.zip"
+  },
+  "settings": {
+    "laps": 3,
+    "duration": null,
+    "max_duration_s": 179.9444455285627,
+    "speed_kmh": 50.0,
+    "dt_s": 0.05,
+    "warmup_s": 10.0,
+    "seed": 2026,
+    "lateral_offset_m": 0.0,
+    "heading_offset_deg": 0.0,
+    "delay_steps": 0,
+    "noise_std_m": 0.0,
+    "mass_scale": 1.0,
+    "stiffness_scale": 1.0,
+    "max_segment_spacing_m": null
+  },
+  "scenario": {
+    "name": "figure_eight_three_lane",
+    "description": "Closed figure-eight road with three lanes",
+    "road": {
+      "segments": [
+        {
+          "type": "waypoints",
+          "params": {
+            "points": [
+              [
+                78.0,
+                0.0
+              ],
+              [
+                77.97327134809346,
+                2.198110162203641
+              ],
+              [
+                77.89310371085676,
+                4.390195457241445
+              ],
+              [
+                77.75955203118399,
+                6.570247531689697
+              ],
+              [
+                77.57270783872532,
+                8.732291014345892
+              ],
+              [
+                77.3326991871572,
+                10.870399894305871
+              ],
+              [
+                77.03969056642075,
+                12.978713763747791
+              ],
+              [
+                76.69388278998846,
+                15.051453880902612
+              ],
+              [
+                76.29551285723684,
+                17.082939009183605
+              ],
+              [
+                75.84485379101878,
+                19.067600989060963
+              ],
+              [
+                75.34221445054733,
+                20.999999999999996
+              ],
+              [
+                74.78793931971906,
+                22.874839470631134
+              ],
+              [
+                74.18240827102197,
+                24.68698059628387
+              ],
+              [
+                73.52603630518992,
+                26.431456424093174
+              ],
+              [
+                72.81927326678174,
+                28.103485467072048
+              ],
+              [
+                72.06260353588037,
+                29.698484809834994
+              ],
+              [
+                71.25654569612287,
+                31.212082670050552
+              ],
+              [
+                70.40165217928913,
+                32.640130381192776
+              ],
+              [
+                69.49850888669269,
+                33.97871376374779
+              ],
+              [
+                68.5477347876333,
+                35.22416385370781
+              ],
+              [
+                67.54998149518622,
+                36.373066958946424
+              ],
+              [
+                66.50593281961919,
+                37.42227401591145
+              ],
+              [
+                65.41630429974308,
+                38.36890922098924
+              ],
+              [
+                64.28184271251722,
+                39.21037791288247
+              ],
+              [
+                63.1033255612459,
+                39.944373684396446
+              ],
+              [
+                61.88156054271634,
+                40.56888470414087
+              ],
+              [
+                60.61738499364373,
+                41.08219923081984
+              ],
+              [
+                59.31166531680241,
+                41.482910304995784
+              ],
+              [
+                57.96529638723675,
+                41.76991960546748
+              ],
+              [
+                56.57920093895844,
+                41.9424404596921
+              ],
+              [
+                55.15432893255071,
+                42.0
+              ],
+              [
+                53.69165690411281,
+                41.9424404596921
+              ],
+              [
+                52.19218729599094,
+                41.769919605467486
+              ],
+              [
+                50.656947769754325,
+                41.482910304995784
+              ],
+              [
+                49.08699050188733,
+                41.08219923081984
+              ],
+              [
+                47.48339146268021,
+                40.56888470414087
+              ],
+              [
+                45.84724967881291,
+                39.94437368439645
+              ],
+              [
+                44.17968648013696,
+                39.21037791288247
+              ],
+              [
+                42.481844731172124,
+                38.36890922098924
+              ],
+              [
+                40.75488804784401,
+                37.422274015911455
+              ],
+              [
+                39.00000000000001,
+                36.373066958946424
+              ],
+              [
+                37.21838330024947,
+                35.22416385370782
+              ],
+              [
+                35.41125897968465,
+                33.97871376374779
+              ],
+              [
+                33.57986555104703,
+                32.64013038119278
+              ],
+              [
+                31.725458159912428,
+                31.212082670050567
+              ],
+              [
+                29.849307724477008,
+                29.698484809834998
+              ],
+              [
+                27.95270006453343,
+                28.10348546707205
+              ],
+              [
+                26.03693502023413,
+                26.43145642409317
+              ],
+              [
+                24.103325561245903,
+                24.686980596283878
+              ],
+              [
+                22.153196886905974,
+                22.874839470631148
+              ],
+              [
+                20.18788551799662,
+                20.999999999999996
+              ],
+              [
+                18.20873838076063,
+                19.067600989060967
+              ],
+              [
+                16.21711188378522,
+                17.0829390091836
+              ],
+              [
+                14.2143709883875,
+                15.051453880902608
+              ],
+              [
+                12.201888273138012,
+                12.978713763747795
+              ],
+              [
+                10.181042993164017,
+                10.870399894305864
+              ],
+              [
+                8.15322013487697,
+                8.732291014345892
+              ],
+              [
+                6.11980946677191,
+                6.570247531689701
+              ],
+              [
+                4.082204586949612,
+                4.390195457241438
+              ],
+              [
+                2.041801968014105,
+                2.19811016220364
+              ],
+              [
+                2.209560170082712e-14,
+                2.3795263370121516e-14
+              ],
+              [
+                -2.0418019680140955,
+                -2.19811016220363
+              ],
+              [
+                -4.082204586949603,
+                -4.390195457241428
+              ],
+              [
+                -6.1198094667719,
+                -6.570247531689691
+              ],
+              [
+                -8.15322013487696,
+                -8.732291014345881
+              ],
+              [
+                -10.181042993164008,
+                -10.870399894305855
+              ],
+              [
+                -12.201888273138003,
+                -12.978713763747786
+              ],
+              [
+                -14.21437098838749,
+                -15.0514538809026
+              ],
+              [
+                -16.21711188378523,
+                -17.082939009183608
+              ],
+              [
+                -18.208738380760614,
+                -19.06760098906096
+              ],
+              [
+                -20.18788551799661,
+                -20.99999999999999
+              ],
+              [
+                -22.153196886905967,
+                -22.874839470631137
+              ],
+              [
+                -24.103325561245892,
+                -24.686980596283867
+              ],
+              [
+                -26.03693502023412,
+                -26.43145642409316
+              ],
+              [
+                -27.95270006453342,
+                -28.103485467072048
+              ],
+              [
+                -29.849307724476997,
+                -29.698484809834994
+              ],
+              [
+                -31.725458159912403,
+                -31.21208267005055
+              ],
+              [
+                -33.579865551047,
+                -32.64013038119276
+              ],
+              [
+                -35.41125897968464,
+                -33.97871376374779
+              ],
+              [
+                -37.21838330024946,
+                -35.22416385370781
+              ],
+              [
+                -38.999999999999986,
+                -36.37306695894641
+              ],
+              [
+                -40.754888047844005,
+                -37.42227401591145
+              ],
+              [
+                -42.48184473117209,
+                -38.368909220989224
+              ],
+              [
+                -44.17968648013698,
+                -39.21037791288248
+              ],
+              [
+                -45.847249678812894,
+                -39.944373684396446
+              ],
+              [
+                -47.48339146268021,
+                -40.56888470414087
+              ],
+              [
+                -49.08699050188731,
+                -41.08219923081983
+              ],
+              [
+                -50.65694776975432,
+                -41.482910304995784
+              ],
+              [
+                -52.19218729599092,
+                -41.76991960546748
+              ],
+              [
+                -53.691656904112826,
+                -41.94244045969211
+              ],
+              [
+                -55.154328932550705,
+                -42.0
+              ],
+              [
+                -56.57920093895844,
+                -41.9424404596921
+              ],
+              [
+                -57.965296387236734,
+                -41.769919605467486
+              ],
+              [
+                -59.31166531680241,
+                -41.482910304995784
+              ],
+              [
+                -60.61738499364373,
+                -41.08219923081983
+              ],
+              [
+                -61.88156054271635,
+                -40.568884704140864
+              ],
+              [
+                -63.103325561245896,
+                -39.94437368439645
+              ],
+              [
+                -64.2818427125172,
+                -39.210377912882485
+              ],
+              [
+                -65.41630429974306,
+                -38.368909220989245
+              ],
+              [
+                -66.50593281961919,
+                -37.422274015911455
+              ],
+              [
+                -67.54998149518622,
+                -36.373066958946424
+              ],
+              [
+                -68.54773478763329,
+                -35.22416385370782
+              ],
+              [
+                -69.49850888669269,
+                -33.9787137637478
+              ],
+              [
+                -70.40165217928912,
+                -32.6401303811928
+              ],
+              [
+                -71.25654569612287,
+                -31.21208267005055
+              ],
+              [
+                -72.06260353588037,
+                -29.698484809835
+              ],
+              [
+                -72.81927326678174,
+                -28.10348546707204
+              ],
+              [
+                -73.5260363051899,
+                -26.431456424093188
+              ],
+              [
+                -74.18240827102197,
+                -24.68698059628388
+              ],
+              [
+                -74.78793931971904,
+                -22.874839470631166
+              ],
+              [
+                -75.34221445054733,
+                -20.999999999999986
+              ],
+              [
+                -75.84485379101878,
+                -19.067600989060974
+              ],
+              [
+                -76.29551285723684,
+                -17.082939009183605
+              ],
+              [
+                -76.69388278998845,
+                -15.051453880902633
+              ],
+              [
+                -77.03969056642073,
+                -12.9787137637478
+              ],
+              [
+                -77.3326991871572,
+                -10.87039989430587
+              ],
+              [
+                -77.57270783872532,
+                -8.732291014345877
+              ],
+              [
+                -77.75955203118399,
+                -6.570247531689707
+              ],
+              [
+                -77.89310371085676,
+                -4.390195457241443
+              ],
+              [
+                -77.97327134809346,
+                -2.1981101622036636
+              ],
+              [
+                -78.0,
+                -4.759052674024303e-14
+              ],
+              [
+                -77.97327134809346,
+                2.198110162203643
+              ],
+              [
+                -77.89310371085676,
+                4.390195457241423
+              ],
+              [
+                -77.75955203118399,
+                6.570247531689686
+              ],
+              [
+                -77.57270783872532,
+                8.732291014345858
+              ],
+              [
+                -77.33269918715722,
+                10.87039989430585
+              ],
+              [
+                -77.03969056642075,
+                12.97871376374778
+              ],
+              [
+                -76.69388278998846,
+                15.051453880902613
+              ],
+              [
+                -76.29551285723684,
+                17.082939009183587
+              ],
+              [
+                -75.84485379101878,
+                19.067600989060956
+              ],
+              [
+                -75.34221445054733,
+                20.999999999999968
+              ],
+              [
+                -74.78793931971906,
+                22.874839470631148
+              ],
+              [
+                -74.18240827102198,
+                24.686980596283863
+              ],
+              [
+                -73.52603630518992,
+                26.431456424093174
+              ],
+              [
+                -72.81927326678175,
+                28.103485467072026
+              ],
+              [
+                -72.06260353588037,
+                29.698484809834987
+              ],
+              [
+                -71.25654569612287,
+                31.21208267005056
+              ],
+              [
+                -70.40165217928912,
+                32.64013038119279
+              ],
+              [
+                -69.49850888669269,
+                33.978713763747784
+              ],
+              [
+                -68.5477347876333,
+                35.22416385370781
+              ],
+              [
+                -67.54998149518623,
+                36.37306695894641
+              ],
+              [
+                -66.5059328196192,
+                37.42227401591144
+              ],
+              [
+                -65.41630429974308,
+                38.36890922098924
+              ],
+              [
+                -64.28184271251722,
+                39.21037791288248
+              ],
+              [
+                -63.10332556124591,
+                39.944373684396446
+              ],
+              [
+                -61.88156054271636,
+                40.56888470414086
+              ],
+              [
+                -60.61738499364374,
+                41.08219923081983
+              ],
+              [
+                -59.31166531680242,
+                41.482910304995784
+              ],
+              [
+                -57.96529638723675,
+                41.76991960546748
+              ],
+              [
+                -56.57920093895845,
+                41.9424404596921
+              ],
+              [
+                -55.15432893255072,
+                42.0
+              ],
+              [
+                -53.69165690411284,
+                41.94244045969211
+              ],
+              [
+                -52.19218729599096,
+                41.769919605467486
+              ],
+              [
+                -50.65694776975431,
+                41.482910304995784
+              ],
+              [
+                -49.08699050188735,
+                41.082199230819846
+              ],
+              [
+                -47.48339146268023,
+                40.56888470414087
+              ],
+              [
+                -45.847249678812915,
+                39.94437368439645
+              ],
+              [
+                -44.17968648013696,
+                39.21037791288247
+              ],
+              [
+                -42.4818447311721,
+                38.36890922098923
+              ],
+              [
+                -40.75488804784399,
+                37.42227401591144
+              ],
+              [
+                -39.000000000000036,
+                36.373066958946445
+              ],
+              [
+                -37.21838330024948,
+                35.22416385370782
+              ],
+              [
+                -35.41125897968466,
+                33.978713763747805
+              ],
+              [
+                -33.57986555104702,
+                32.640130381192776
+              ],
+              [
+                -31.725458159912467,
+                31.2120826700506
+              ],
+              [
+                -29.849307724477047,
+                29.69848480983503
+              ],
+              [
+                -27.952700064533392,
+                28.10348546707202
+              ],
+              [
+                -26.03693502023409,
+                26.43145642409314
+              ],
+              [
+                -24.10332556124591,
+                24.68698059628388
+              ],
+              [
+                -22.153196886905967,
+                22.874839470631137
+              ],
+              [
+                -20.18788551799661,
+                20.99999999999999
+              ],
+              [
+                -18.208738380760668,
+                19.067600989061013
+              ],
+              [
+                -16.217111883785265,
+                17.082939009183647
+              ],
+              [
+                -14.214370988387527,
+                15.051453880902637
+              ],
+              [
+                -12.201888273138021,
+                12.978713763747807
+              ],
+              [
+                -10.181042993164095,
+                10.870399894305946
+              ],
+              [
+                -8.15322013487703,
+                8.732291014345956
+              ],
+              [
+                -6.119809466771885,
+                6.570247531689675
+              ],
+              [
+                -4.0822045869495875,
+                4.390195457241411
+              ],
+              [
+                -2.0418019680141315,
+                2.198110162203669
+              ],
+              [
+                -1.432836755002403e-14,
+                1.543054966925665e-14
+              ],
+              [
+                2.041801968014103,
+                -2.198110162203638
+              ],
+              [
+                4.0822045869496275,
+                -4.390195457241455
+              ],
+              [
+                6.119809466771857,
+                -6.570247531689644
+              ],
+              [
+                8.153220134876932,
+                -8.732291014345853
+              ],
+              [
+                10.181042993163999,
+                -10.870399894305846
+              ],
+              [
+                12.201888273137993,
+                -12.978713763747777
+              ],
+              [
+                14.214370988387499,
+                -15.051453880902608
+              ],
+              [
+                16.217111883785236,
+                -17.082939009183615
+              ],
+              [
+                18.208738380760643,
+                -19.067600989060985
+              ],
+              [
+                20.187885517996648,
+                -21.00000000000003
+              ],
+              [
+                22.153196886905942,
+                -22.874839470631116
+              ],
+              [
+                24.103325561245885,
+                -24.686980596283856
+              ],
+              [
+                26.03693502023413,
+                -26.43145642409317
+              ],
+              [
+                27.952700064533364,
+                -28.103485467071994
+              ],
+              [
+                29.849307724476954,
+                -29.698484809834955
+              ],
+              [
+                31.72545815991238,
+                -31.21208267005053
+              ],
+              [
+                33.57986555104699,
+                -32.64013038119276
+              ],
+              [
+                35.41125897968464,
+                -33.978713763747784
+              ],
+              [
+                37.21838330024945,
+                -35.22416385370781
+              ],
+              [
+                39.00000000000001,
+                -36.373066958946424
+              ],
+              [
+                40.75488804784403,
+                -37.42227401591146
+              ],
+              [
+                42.481844731172075,
+                -38.368909220989224
+              ],
+              [
+                44.17968648013694,
+                -39.210377912882464
+              ],
+              [
+                45.84724967881289,
+                -39.944373684396446
+              ],
+              [
+                47.4833914626802,
+                -40.568884704140864
+              ],
+              [
+                49.08699050188727,
+                -41.082199230819825
+              ],
+              [
+                50.65694776975428,
+                -41.48291030499578
+              ],
+              [
+                52.19218729599096,
+                -41.769919605467486
+              ],
+              [
+                53.69165690411284,
+                -41.94244045969211
+              ],
+              [
+                55.15432893255069,
+                -42.0
+              ],
+              [
+                56.57920093895844,
+                -41.9424404596921
+              ],
+              [
+                57.96529638723675,
+                -41.76991960546748
+              ],
+              [
+                59.31166531680242,
+                -41.482910304995784
+              ],
+              [
+                60.617384993643704,
+                -41.082199230819846
+              ],
+              [
+                61.88156054271633,
+                -40.56888470414087
+              ],
+              [
+                63.103325561245896,
+                -39.94437368439646
+              ],
+              [
+                64.28184271251718,
+                -39.2103779128825
+              ],
+              [
+                65.41630429974305,
+                -38.368909220989266
+              ],
+              [
+                66.5059328196192,
+                -37.42227401591144
+              ],
+              [
+                67.54998149518623,
+                -36.37306695894641
+              ],
+              [
+                68.54773478763329,
+                -35.22416385370782
+              ],
+              [
+                69.49850888669269,
+                -33.978713763747805
+              ],
+              [
+                70.40165217928912,
+                -32.64013038119278
+              ],
+              [
+                71.25654569612287,
+                -31.212082670050552
+              ],
+              [
+                72.06260353588034,
+                -29.698484809835037
+              ],
+              [
+                72.81927326678172,
+                -28.10348546707208
+              ],
+              [
+                73.5260363051899,
+                -26.4314564240932
+              ],
+              [
+                74.18240827102197,
+                -24.686980596283885
+              ],
+              [
+                74.78793931971903,
+                -22.87483947063121
+              ],
+              [
+                75.34221445054733,
+                -20.999999999999996
+              ],
+              [
+                75.84485379101878,
+                -19.06760098906095
+              ],
+              [
+                76.29551285723684,
+                -17.08293900918358
+              ],
+              [
+                76.69388278998845,
+                -15.051453880902642
+              ],
+              [
+                77.03969056642073,
+                -12.978713763747812
+              ],
+              [
+                77.3326991871572,
+                -10.87039989430588
+              ],
+              [
+                77.57270783872532,
+                -8.732291014345888
+              ],
+              [
+                77.75955203118399,
+                -6.570247531689754
+              ],
+              [
+                77.89310371085676,
+                -4.39019545724149
+              ],
+              [
+                77.97327134809346,
+                -2.198110162203674
+              ],
+              [
+                78.0,
+                -9.518105348048606e-14
+              ]
+            ]
+          },
+          "lane_width": 3.5,
+          "num_lanes": 2
+        }
+      ],
+      "lane_width": 3.5,
+      "num_lanes": 3
+    },
+    "ego_start_x": 78.0,
+    "ego_start_y": 0.0,
+    "ego_start_phi": 1.5707963267948966,
+    "ego_start_speed": 6.0,
+    "target_speed": 50.0,
+    "obstacles": [],
+    "controller": "LQR_controller",
+    "planner": {},
+    "destination": null,
+    "vehicle_model": "dynamic",
+    "vehicle_params": {
+      "a": 1.015,
+      "b": 1.895,
+      "m": 1412.0,
+      "Cf": -148970.0,
+      "Cr": -82204.0,
+      "Iz": 1537.0,
+      "max_steer": 0.5,
+      "max_accel": 3.0,
+      "max_decel": 6.0
+    },
+    "steering": {
+      "mode": "dynamic",
+      "time_constant_s": 0.2,
+      "delay_s": 0.1,
+      "rate_limit_rad_s": 0.6,
+      "source": "engineering_assumption_not_vehicle_calibrated"
+    }
+  },
+  "plant_parameters": {
+    "a": 1.015,
+    "b": 1.895,
+    "m": 1412.0,
+    "Cf": -148970.0,
+    "Cr": -82204.0,
+    "Iz": 1537.0,
+    "max_steer": 0.5,
+    "max_accel": 3.0,
+    "max_decel": 6.0
+  },
+  "controller_parameters": {
+    "vehicle": [
+      1.015,
+      1.895,
+      1412.0,
+      -148970.0,
+      -82204.0,
+      1537.0
+    ],
+    "Q": [
+      [
+        200.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      [
+        0.0,
+        1.0,
+        0.0,
+        0.0
+      ],
+      [
+        0.0,
+        0.0,
+        50.0,
+        0.0
+      ],
+      [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    ],
+    "R": [
+      [
+        300.0
+      ]
+    ],
+    "speed_loop": {
+      "K_P": 1.15,
+      "K_I": 0.0,
+      "K_D": 0.55,
+      "dt": 0.05,
+      "max_accel": 3.0,
+      "max_decel": 6.0,
+      "max_jerk": 40.0,
+      "coupling_gain": 0.5
+    },
+    "steering": {
+      "mode": "dynamic",
+      "time_constant_s": 0.15,
+      "delay_s": 0.05,
+      "rate_limit_rad_s": 0.6,
+      "source": "engineering_assumption_not_vehicle_calibrated"
+    },
+    "feedback_horizon_s": 0.0,
+    "discretization": "plant",
+    "smooth_reference_heading": true
+  },
+  "reference": {
+    "points": 121,
+    "length_m": 493.6556960758108,
+    "sha256": "4ad93d16d21659f0d07af0318daf14d13cf56be949ce7e283f18d3d1c517d3ce"
+  },
+  "samples": 2144,
+  "duration_s": 107.2,
+  "completed_laps": 3,
+  "speed_kmh": {
+    "mean": 49.71848011905657,
+    "max": 50.530732210119616,
+    "final": 50.10816312878256,
+    "overshoot": 0.5307322101196164
+  },
+  "termination": "completed",
+  "all": {
+    "samples": 2144,
+    "lateral_error_m": {
+      "mean": 0.00017176252438049657,
+      "mean_abs": 0.03619248206842096,
+      "rms": 0.0565517549900705,
+      "p95_abs": 0.14159270006539895,
+      "max_abs": 0.19624470376422296,
+      "peak_time_s": 5.1500000000000075,
+      "peak_region": "other"
+    },
+    "heading_error_deg": {
+      "mean": -0.011030360170216483,
+      "mean_abs": 1.0308319309149876,
+      "rms": 1.5200680164818958,
+      "p95_abs": 3.5681327101436633,
+      "max_abs": 6.318045353726349,
+      "peak_time_s": 75.14999999999996,
+      "peak_region": "other"
+    },
+    "speed_error_kmh": {
+      "mean": -0.28151988094341995,
+      "mean_abs": 0.5722410550462282,
+      "rms": 2.64550212807822,
+      "p95_abs": 0.5266262463351761,
+      "max_abs": 28.04,
+      "peak_time_s": 0.05,
+      "peak_region": "seam"
+    },
+    "steer_rate_deg_s": {
+      "mean": 0.009837988026720375,
+      "mean_abs": 3.003183089860242,
+      "rms": 4.639496590454376,
+      "p95_abs": 10.437350031036521,
+      "max_abs": 26.671237850158047,
+      "peak_time_s": 71.94999999999924,
+      "peak_region": "seam"
+    },
+    "lateral_accel_m_s2": {
+      "mean": -0.019866921754888734,
+      "mean_abs": 3.7265871329272873,
+      "rms": 5.221202099762317,
+      "p95_abs": 12.293093069312697,
+      "max_abs": 13.984921990306798,
+      "peak_time_s": 92.95000000000401,
+      "peak_region": "other"
+    },
+    "control_ms": {
+      "mean": 1.9899939794776564,
+      "mean_abs": 1.9899939794776564,
+      "rms": 2.0041971037034148,
+      "p95_abs": 2.2430050000011192,
+      "max_abs": 7.6470099999994545,
+      "peak_time_s": 72.44999999999935,
+      "peak_region": "seam"
+    }
+  },
+  "startup": {
+    "samples": 199,
+    "lateral_error_m": {
+      "mean": 0.0370178960103153,
+      "mean_abs": 0.03945561570622082,
+      "rms": 0.058194186574828236,
+      "p95_abs": 0.14327114839936927,
+      "max_abs": 0.19624470376422296,
+      "peak_time_s": 5.1500000000000075,
+      "peak_region": "other"
+    },
+    "heading_error_deg": {
+      "mean": -0.5973164517403367,
+      "mean_abs": 1.0552659208758548,
+      "rms": 1.53090921120721,
+      "p95_abs": 3.3821858779621286,
+      "max_abs": 4.975533793966717,
+      "peak_time_s": 3.699999999999992,
+      "peak_region": "other"
+    },
+    "speed_error_kmh": {
+      "mean": -4.598409131994992,
+      "mean_abs": 4.598409131994992,
+      "rms": 8.654924971665361,
+      "p95_abs": 22.66230977981679,
+      "max_abs": 28.04,
+      "peak_time_s": 0.05,
+      "peak_region": "seam"
+    },
+    "steer_rate_deg_s": {
+      "mean": -0.0007454006946041469,
+      "mean_abs": 3.5766745607988284,
+      "rms": 5.227573639141817,
+      "p95_abs": 10.701340801057585,
+      "max_abs": 18.924690457296737,
+      "peak_time_s": 0.2,
+      "peak_region": "seam"
+    },
+    "lateral_accel_m_s2": {
+      "mean": 3.144301144721321,
+      "mean_abs": 3.2305777417573016,
+      "rms": 4.683930225279978,
+      "p95_abs": 11.507682696929814,
+      "max_abs": 13.00028875950642,
+      "peak_time_s": 4.399999999999997,
+      "peak_region": "other"
+    },
+    "control_ms": {
+      "mean": 2.1913689798998663,
+      "mean_abs": 2.1913689798998663,
+      "rms": 2.236970137508603,
+      "p95_abs": 3.0541591000009305,
+      "max_abs": 5.2440990000022225,
+      "peak_time_s": 0.49999999999999994,
+      "peak_region": "seam"
+    }
+  },
+  "steady": {
+    "samples": 1945,
+    "lateral_error_m": {
+      "mean": -0.0035980989479593634,
+      "mean_abs": 0.03585861903812678,
+      "rms": 0.05638101387371549,
+      "p95_abs": 0.14093639233107347,
+      "max_abs": 0.18641983566134435,
+      "peak_time_s": 86.70000000000259,
+      "peak_region": "other"
+    },
+    "heading_error_deg": {
+      "mean": 0.048954694957009194,
+      "mean_abs": 1.0283320008367294,
+      "rms": 1.5189544512286655,
+      "p95_abs": 3.573293409247284,
+      "max_abs": 6.318045353726349,
+      "peak_time_s": 75.14999999999996,
+      "peak_region": "other"
+    },
+    "speed_error_kmh": {
+      "mean": 0.16015670566802626,
+      "mean_abs": 0.16030920552807698,
+      "rms": 0.22507996860364524,
+      "p95_abs": 0.48617349585329206,
+      "max_abs": 0.5307322101196164,
+      "peak_time_s": 93.25000000000408,
+      "peak_region": "other"
+    },
+    "steer_rate_deg_s": {
+      "mean": 0.01092081288818234,
+      "mean_abs": 2.9445070987462167,
+      "rms": 4.575067630755643,
+      "p95_abs": 10.431392348713306,
+      "max_abs": 26.671237850158047,
+      "peak_time_s": 71.94999999999924,
+      "peak_region": "seam"
+    },
+    "lateral_accel_m_s2": {
+      "mean": -0.343604425728547,
+      "mean_abs": 3.777335651612545,
+      "rms": 5.273086268736334,
+      "p95_abs": 12.404414643587398,
+      "max_abs": 13.984921990306798,
+      "peak_time_s": 92.95000000000401,
+      "peak_region": "other"
+    },
+    "control_ms": {
+      "mean": 1.969390573264793,
+      "mean_abs": 1.969390573264793,
+      "rms": 1.9788377941883375,
+      "p95_abs": 2.1832997999979398,
+      "max_abs": 7.6470099999994545,
+      "peak_time_s": 72.44999999999935,
+      "peak_region": "seam"
+    }
+  },
+  "regions": {
+    "crossing_1": {
+      "samples": 147,
+      "lateral_error_m": {
+        "mean": 0.005571148344012242,
+        "mean_abs": 0.005574835343791175,
+        "rms": 0.006165391634366777,
+        "p95_abs": 0.010167576347192807,
+        "max_abs": 0.012525031593806805,
+        "peak_time_s": 44.34999999999855,
+        "peak_region": "crossing_1"
+      },
+      "heading_error_deg": {
+        "mean": -0.022014934131444105,
+        "mean_abs": 0.08262245330422748,
+        "rms": 0.11197046992168562,
+        "p95_abs": 0.23987191361438107,
+        "max_abs": 0.3136284788777876,
+        "peak_time_s": 8.600000000000056,
+        "peak_region": "crossing_1"
+      },
+      "speed_error_kmh": {
+        "mean": 0.01333750225095639,
+        "mean_abs": 0.019996343129692187,
+        "rms": 0.023666017847604026,
+        "p95_abs": 0.04626500774370397,
+        "max_abs": 0.05215312899007074,
+        "peak_time_s": 43.99999999999857,
+        "peak_region": "crossing_1"
+      },
+      "steer_rate_deg_s": {
+        "mean": -0.3110154715099991,
+        "mean_abs": 0.376977406077395,
+        "rms": 0.4583044110493043,
+        "p95_abs": 0.918349185059332,
+        "max_abs": 1.0431086274245878,
+        "peak_time_s": 11.00000000000009,
+        "peak_region": "crossing_1"
+      },
+      "lateral_accel_m_s2": {
+        "mean": 0.004291512023988464,
+        "mean_abs": 0.1908348634310861,
+        "rms": 0.22526949992107137,
+        "p95_abs": 0.3774897578086567,
+        "max_abs": 0.4515114896593167,
+        "peak_time_s": 81.80000000000148,
+        "peak_region": "crossing_1"
+      },
+      "control_ms": {
+        "mean": 1.9803482244899318,
+        "mean_abs": 1.9803482244899318,
+        "rms": 1.9835926190774977,
+        "p95_abs": 2.17736930000143,
+        "max_abs": 2.5352990000016007,
+        "peak_time_s": 10.050000000000077,
+        "peak_region": "crossing_1"
+      }
+    },
+    "crossing_2": {
+      "samples": 147,
+      "lateral_error_m": {
+        "mean": -0.005563043746860305,
+        "mean_abs": 0.0055703985900552935,
+        "rms": 0.006158712794107042,
+        "p95_abs": 0.010225976521674476,
+        "max_abs": 0.012525270805839143,
+        "peak_time_s": 62.049999999997546,
+        "peak_region": "crossing_2"
+      },
+      "heading_error_deg": {
+        "mean": 0.025217870074390532,
+        "mean_abs": 0.08300404412104861,
+        "rms": 0.11281260309614169,
+        "p95_abs": 0.2435786407613652,
+        "max_abs": 0.3086530255546798,
+        "peak_time_s": 26.299999999999574,
+        "peak_region": "crossing_2"
+      },
+      "speed_error_kmh": {
+        "mean": 0.024992571346895733,
+        "mean_abs": 0.024992571346895733,
+        "rms": 0.027874224835743044,
+        "p95_abs": 0.048445962546225727,
+        "max_abs": 0.05218153398846681,
+        "peak_time_s": 26.299999999999574,
+        "peak_region": "crossing_2"
+      },
+      "steer_rate_deg_s": {
+        "mean": 0.31103200416675225,
+        "mean_abs": 0.3778231999273912,
+        "rms": 0.4605344686435203,
+        "p95_abs": 0.938020172039411,
+        "max_abs": 1.0631741871461975,
+        "peak_time_s": 61.74999999999756,
+        "peak_region": "crossing_2"
+      },
+      "lateral_accel_m_s2": {
+        "mean": -0.003381963507021469,
+        "mean_abs": 0.19062074150609978,
+        "rms": 0.22511258976484583,
+        "p95_abs": 0.3813372922246,
+        "max_abs": 0.4543321024819955,
+        "peak_time_s": 99.5000000000055,
+        "peak_region": "crossing_2"
+      },
+      "control_ms": {
+        "mean": 1.9528672993195768,
+        "mean_abs": 1.9528672993195768,
+        "rms": 1.955374833158629,
+        "p95_abs": 2.1236089999980834,
+        "max_abs": 2.4286000000017793,
+        "peak_time_s": 27.299999999999518,
+        "peak_region": "crossing_2"
+      }
+    },
+    "seam": {
+      "samples": 121,
+      "lateral_error_m": {
+        "mean": 0.009451408511094474,
+        "mean_abs": 0.024926525676271318,
+        "rms": 0.028076972496983616,
+        "p95_abs": 0.044975804354132475,
+        "max_abs": 0.06105956282898249,
+        "peak_time_s": 0.65,
+        "peak_region": "seam"
+      },
+      "heading_error_deg": {
+        "mean": -0.5107735960225603,
+        "mean_abs": 0.8548549171086264,
+        "rms": 1.0100600962314263,
+        "p95_abs": 1.7971038196498037,
+        "max_abs": 2.204388049227175,
+        "peak_time_s": 1.2000000000000004,
+        "peak_region": "seam"
+      },
+      "speed_error_kmh": {
+        "mean": -4.910280617582096,
+        "mean_abs": 5.098543997043811,
+        "rms": 10.317467200899461,
+        "p95_abs": 24.776896771282797,
+        "max_abs": 28.04,
+        "peak_time_s": 0.05,
+        "peak_region": "seam"
+      },
+      "steer_rate_deg_s": {
+        "mean": 0.2623861051901573,
+        "mean_abs": 4.327900707068365,
+        "rms": 6.715441329813441,
+        "p95_abs": 14.213620906308844,
+        "max_abs": 26.671237850158047,
+        "peak_time_s": 71.94999999999924,
+        "peak_region": "seam"
+      },
+      "lateral_accel_m_s2": {
+        "mean": 1.9276487770974517,
+        "mean_abs": 2.0691015780541266,
+        "rms": 2.210624458786536,
+        "p95_abs": 3.5375306646096525,
+        "max_abs": 4.592590003047794,
+        "peak_time_s": 72.04999999999926,
+        "peak_region": "seam"
+      },
+      "control_ms": {
+        "mean": 2.1611200000001505,
+        "mean_abs": 2.1611200000001505,
+        "rms": 2.27382405477105,
+        "p95_abs": 3.0061989999978778,
+        "max_abs": 7.6470099999994545,
+        "peak_time_s": 72.44999999999935,
+        "peak_region": "seam"
+      }
+    },
+    "other": {
+      "samples": 1729,
+      "lateral_error_m": {
+        "mean": -0.0004491341546280993,
+        "mean_abs": 0.042187520277380146,
+        "rms": 0.062482750892577404,
+        "p95_abs": 0.1459579996227227,
+        "max_abs": 0.19624470376422296,
+        "peak_time_s": 5.1500000000000075,
+        "peak_region": "other"
+      },
+      "heading_error_deg": {
+        "mean": 0.021795073065455466,
+        "mean_abs": 1.2043488257895165,
+        "rms": 1.6708261737064254,
+        "p95_abs": 3.7425636999151397,
+        "max_abs": 6.318045353726349,
+        "peak_time_s": 75.14999999999996,
+        "peak_region": "other"
+      },
+      "speed_error_kmh": {
+        "mean": -0.008715552824836917,
+        "mean_abs": 0.3489575638801351,
+        "rms": 1.1084905371628122,
+        "p95_abs": 0.5215193270035527,
+        "max_abs": 12.037863737089978,
+        "peak_time_s": 1.5499999999999998,
+        "peak_region": "other"
+      },
+      "steer_rate_deg_s": {
+        "mean": -0.006164547541505665,
+        "mean_abs": 3.35696522268501,
+        "rms": 4.847628416631971,
+        "p95_abs": 10.821176032328898,
+        "max_abs": 19.422668600166205,
+        "peak_time_s": 68.74999999999851,
+        "peak_region": "other"
+      },
+      "lateral_accel_m_s2": {
+        "mean": -0.15961474025637185,
+        "mean_abs": 4.443821600998143,
+        "rms": 5.783908021593925,
+        "p95_abs": 12.508024652902535,
+        "max_abs": 13.984921990306798,
+        "peak_time_s": 92.95000000000401,
+        "peak_region": "other"
+      },
+      "control_ms": {
+        "mean": 1.9819947310584614,
+        "mean_abs": 1.9819947310584614,
+        "rms": 1.9898504151424632,
+        "p95_abs": 2.226339399996391,
+        "max_abs": 4.058999000001506,
+        "peak_time_s": 20.499999999999904,
+        "peak_region": "other"
+      }
+    }
+  },
+  "wrong_branch_samples": 0,
+  "unexpected_jump_samples": 0,
+  "max_backtrack_m": 0.0,
+  "riccati_failures": 0,
+  "steer_saturation_fraction": 0.0,
+  "offroad": false,
+  "collision": false,
+  "passed": true,
+  "actuator": {
+    "parameters": {
+      "mode": "dynamic",
+      "time_constant_s": 0.2,
+      "delay_s": 0.1,
+      "rate_limit_rad_s": 0.6,
+      "source": "engineering_assumption_not_vehicle_calibrated"
+    },
+    "rate_limited_fraction": 0.0,
+    "peak_rate_rad_s": 0.5261104927623451,
+    "command_rate_deg_s": {
+      "mean": -0.0017250477248719016,
+      "mean_abs": 9.723378393433675,
+      "rms": 16.701918602406767,
+      "p95_abs": 38.51002824060981,
+      "max_abs": 136.7916194769538,
+      "peak_time_s": 71.84999999999921,
+      "peak_region": "seam"
+    },
+    "command_angle_saturation_fraction": 0.0,
+    "actual_angle_saturation_fraction": 0.0,
+    "tracking_error_rad": {
+      "mean": 2.950080050771136e-05,
+      "mean_abs": 0.013948246354953852,
+      "rms": 0.02107915528220148,
+      "p95_abs": 0.04809114578654636,
+      "max_abs": 0.10120282395113991,
+      "peak_time_s": 71.84999999999921,
+      "peak_region": "seam"
+    },
+    "limit_violations": 0
+  },
+  "pass_scope": "completion, route integrity, collision/offroad, solver convergence and configured actuator limits; not ride quality, friction feasibility or real-vehicle calibration"
+}

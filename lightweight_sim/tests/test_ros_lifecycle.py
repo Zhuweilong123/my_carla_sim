@@ -49,8 +49,9 @@ def archive_acceptance(name, payload, passed):
                        counts={k: len(v) for k, v in payload.items() if isinstance(v, list)}), stream, indent=2)
 
 
-def test_ros_ten_laps_reset_switch_and_stale_plan():
-    rclpy.init(args=["--ros-args", "-p", "scenario:=figure_eight"])
+@pytest.mark.parametrize("steering_profile", ["ideal", "assumed"])
+def test_ros_ten_laps_reset_switch_and_stale_plan(steering_profile):
+    rclpy.init(args=["--ros-args", "-p", "scenario:=figure_eight", "-p", "steering_profile:="+steering_profile])
     nodes = []
     payload = dict(states=[], measured=[], events=[])
     passed = False
@@ -79,6 +80,8 @@ def test_ros_ten_laps_reset_switch_and_stale_plan():
         spin_until(lambda: control.active_run == sim.run_id and planner.active_run == sim.run_id)
         assert control.controller.lon.target_speed == 50.0
         assert planner.planner.num_lanes == 3
+        assert control.route_context["steering_parameters"]["mode"] == sim.engine.config.steering.mode
+        assert control.controller.lat.actuator_params == sim.engine.config.steering
         initial_run = sim.run_id
         payload.update(context=control.route_context.copy(), reference=sim.engine.world.ref_path_as_tuples,
                        plant_parameters=asdict(sim.engine.ego.params),
@@ -104,12 +107,17 @@ def test_ros_ten_laps_reset_switch_and_stale_plan():
             payload["states"].append(dict(state=asdict(sim.engine.get_state()),
                 applied=asdict(applied), next_command=asdict(sim.command), route_s_m=progress,
                 control_ed_m=control.controller.lat.last_ed, control_ephi_rad=control.controller.lat.last_ephi,
+                actuator_delayed_rad=sim.engine.steering.delayed,
+                actuator_peak_rate_rad_s=sim.engine.steering.peak_rate_rad_s,
+                actuator_rate_limited=sim.engine.steering.rate_limited,
                 collision=sim.engine.collision_occurred, offroad=sim.engine.offroad_occurred))
             assert progress-previous_s < 3.0, "branch jump"
             assert progress-previous_s > -2.0, "unexpected reverse progress"
             previous_s = progress
             assert math.isfinite(expected)
             assert not sim.engine.is_done
+            if steering_profile == "assumed":
+                assert sim.engine.steering.peak_rate_rad_s <= sim.engine.config.steering.rate_limit_rad_s+1e-9
             if step == 200:
                 assert progress > 80, (progress, sim.command, control.controller.lon.target_speed)
             if progress >= 10*tracker.geometry.length:
@@ -130,6 +138,8 @@ def test_ros_ten_laps_reset_switch_and_stale_plan():
         control._on_planned(old_plan)
         assert control.last_sequence == accepted_sequence
         assert not control.planned_path
+        assert sim.engine.steering.queue is None
+        assert all(v == 0 for v in control.controller.lat.command_history)
         payload["events"].append(dict(event="reset_and_old_plan_rejection", context=control.route_context.copy()))
 
         result = sim.set_parameters([Parameter("scenario", value="default")])
@@ -148,10 +158,11 @@ def test_ros_ten_laps_reset_switch_and_stale_plan():
             node.destroy_node()
         executor.shutdown()
         rclpy.shutdown()
-        archive_acceptance("dds_ten_laps", payload, passed)
+        archive_acceptance("dds_ten_laps_"+steering_profile, payload, passed)
 
 
-def test_installed_launch_routes_and_diagnostics(tmp_path):
+@pytest.mark.parametrize("steering_profile", ["ideal", "assumed"])
+def test_installed_launch_routes_and_diagnostics(tmp_path, steering_profile):
     """Exercise separately launched processes and real /clock timers."""
     rclpy.init()
     observer = rclpy.create_node("p1_acceptance_observer", namespace="p1_acceptance")
@@ -170,22 +181,29 @@ def test_installed_launch_routes_and_diagnostics(tmp_path):
         with (tmp_path/"launch.log").open("w") as log:
             process = subprocess.Popen(
                 ["ros2", "launch", "lightweight_sim", "lightweight_sim.launch.py",
-                 "scenario:=figure_eight", "gui:=false", "namespace:=p1_acceptance"],
+                 "scenario:=figure_eight", "gui:=false", "namespace:=p1_acceptance",
+                 "steering_profile:="+steering_profile],
                 stdout=log, stderr=subprocess.STDOUT, start_new_session=True)
-            deadline = time.monotonic()+25
+            deadline = time.monotonic()+40
             while time.monotonic() < deadline:
                 rclpy.spin_once(observer, timeout_sec=0.05)
                 assert process.poll() is None, (tmp_path/"launch.log").read_text()
-                if metrics and metrics[-1]["timestamp"] >= 4:
+                if metrics and metrics[-1]["timestamp"] >= 15:
                     break
             assert contexts and metrics and statuses, (tmp_path/"launch.log").read_text()
             assert contexts[-1]["target_speed_kmh"] == 50
             assert contexts[-1]["num_lanes"] == 3
             assert contexts[-1]["vehicle_model"] == "dynamic"
-            assert metrics[-1]["timestamp"] >= 4
+            assert metrics[-1]["timestamp"] >= 15
+            assert contexts[-1]["steering_parameters"]["mode"] == ("dynamic" if steering_profile == "assumed" else "ideal")
             assert metrics[-1]["route_s_m"] > 20
             assert not any(s.collision or s.offroad for s in statuses)
             assert states and commands
+            if steering_profile == "assumed":
+                for previous, current in zip(states, states[1:]):
+                    elapsed = current["timestamp"]-previous["timestamp"]
+                    if elapsed > 0:
+                        assert abs(current["steer"]-previous["steer"])/elapsed <= 0.6+1e-6
             passed = True
     finally:
         if process is not None and process.poll() is None:
@@ -197,8 +215,40 @@ def test_installed_launch_routes_and_diagnostics(tmp_path):
                 process.wait(timeout=5)
         observer.destroy_node()
         rclpy.shutdown()
-        archive_acceptance("installed_launch", dict(contexts=contexts, measured=metrics,
+        archive_acceptance("installed_launch_"+steering_profile, dict(contexts=contexts, measured=metrics,
             states=states, commands=commands,
             statuses=[dict(time_s=s.sim_time, running=s.running, collision=s.collision,
                            offroad=s.offroad, scenario=s.scenario) for s in statuses],
             launch_log=(tmp_path/"launch.log").read_text()), passed)
+
+
+def test_dynamic_controller_latches_timing_gap_until_reset():
+    from lightweight_sim.engine.algorithms.controller.combined import VehicleController
+    from lightweight_sim.engine.simulator.steering import steering_profile
+    from lightweight_sim.engine.simulator.data_types import VehicleState
+    rclpy.init()
+    node = ControllerNode()
+    try:
+        node.timer.cancel()
+        path = [(0., 0., 0., 0.), (1000., 0., 0., 0.)]
+        node.controller = VehicleController(steering_params=steering_profile("assumed"))
+        node.controller.update_ref_path(path)
+        node.reference_path = path
+        node.active_run = 1
+        node.last_control_stamp = 1.0
+        node.state = VehicleState(x=20, vx=10, steer=0.02, timestamp=1.10)
+        node.state_time = node.get_clock().now()
+        sent = []
+        node._publish_command = lambda *command: sent.append(command)
+        node._on_timer()
+        assert node.actuator_timing_fault
+        assert sent[-1] == (0.02, 0.0, 1.0)
+        node.state.timestamp = 1.15
+        node._on_timer()
+        assert node.actuator_timing_fault
+        assert sent[-1][2] == 1.0
+        node._on_context(String(data=json.dumps(dict(schema_version=1, run_id=2))))
+        assert not node.actuator_timing_fault
+    finally:
+        node.destroy_node()
+        rclpy.shutdown()

@@ -3,6 +3,8 @@ simulator_node:
     # The simulator owns /clock and uses a wall timer to advance fixed-step physics.
     use_sim_time: false
     scenario: obstacle
+    # Opt in with launch steering_profile:=assumed; not real-vehicle calibration.
+    steering_profile: ideal
     physics_dt: 0.05
     command_timeout: 0.25
     publish_clock: true

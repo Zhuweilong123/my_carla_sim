@@ -11,8 +11,11 @@ def generate_launch_description():
     namespace = LaunchConfiguration("namespace")
     gui = LaunchConfiguration("gui")
     scenario = LaunchConfiguration("scenario")
+    steering = LaunchConfiguration("steering_profile")
     return LaunchDescription(
         [
+            DeclareLaunchArgument("steering_profile", default_value="ideal",
+                description="ideal or assumed (uncalibrated steering delay/lag/rate limits)"),
             DeclareLaunchArgument(
                 "namespace",
                 default_value="",
@@ -36,7 +39,7 @@ def generate_launch_description():
                 output="screen",
                 parameters=[
                     config,
-                    {"use_sim_time": False, "scenario": scenario},
+                    {"use_sim_time": False, "scenario": scenario, "steering_profile": steering},
                 ],
             ),
             Node(
