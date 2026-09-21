@@ -12,6 +12,7 @@ from lightweight_sim_msgs.msg import VehicleState as RosVehicleState
 from rclpy.node import Node
 from ..algorithms.planner.motion_planner import MotionPlanner
 from ..simulator.data_types import Obstacle, VehicleState
+from ..runtime_config import DEFAULT_RUNTIME_CONFIG
 from .qos import latched_path_qos, sensor_data_qos
 from .route_session import decode_sequence, encode_sequence, parse_context
 
@@ -37,10 +38,10 @@ def path_to_tuples(message: RosPath):
 class PlannerNode(Node):
     def __init__(self) -> None:
         super().__init__("planner_node")
-        self.declare_parameter("plan_period", 0.5)
-        self.declare_parameter("lane_width", 3.5)
-        self.declare_parameter("num_lanes", 2)
-        self.declare_parameter("prediction_time", 0.2)
+        self.declare_parameter("plan_period", DEFAULT_RUNTIME_CONFIG.plan_period)
+        self.declare_parameter("lane_width", DEFAULT_RUNTIME_CONFIG.lane_width)
+        self.declare_parameter("num_lanes", DEFAULT_RUNTIME_CONFIG.num_lanes)
+        self.declare_parameter("prediction_time", DEFAULT_RUNTIME_CONFIG.prediction_time)
         self.path = []
         self.state: Optional[VehicleState] = None
         self.obstacles = []

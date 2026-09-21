@@ -68,3 +68,6 @@ ros2 service call /sim/pause std_srvs/srv/SetBool "{data: true}"
 `gui:=true` 启动的是 ROS 2 GUI 客户端，不会创建第二个 `SimulationEngine`。仿真仍由 `simulator_node` 推进，GUI 只订阅状态、障碍物、参考路径、规划路径和 `/sim/status`，并通过服务控制仿真。
 
 GUI 依赖 Pygame；首次使用前执行 `python3 -m pip install -r requirements.txt`。WSL 下会自动优先使用 WSLg 的 X11 桥接；也可以通过 `SDL_VIDEODRIVER` 显式覆盖。GUI 需要 WSLg 或其他 Linux 图形环境；如果只做后台测试，可以不传 `gui:=true`。快捷键：`R` 重置，`P` 暂停/继续，`N` 单步，`+/-` 或鼠标滚轮缩放，`ESC` 退出 GUI。
+## Runtime parameter alignment
+
+Both execution paths use the same core `VehicleController`, `MotionPlanner` and `SimulationEngine`. Shared timing and safety defaults are maintained in `engine/runtime_config.py`: physics/control period 0.05 s, planning period 0.5 s, prediction horizon 0.2 s, and the common timeout values. Scenario-specific vehicle, road and target-speed values are carried by `sim/context` in ROS 2; ROS transport and stale-data braking remain adapter behavior.

@@ -261,3 +261,6 @@ SimulatorApp 内置四个场景工厂：
 - 纵向执行器仍为线性加速度映射；轮胎饱和、附着约束、状态估计和可行速度规划属于后续工作。
 
 实验、失败对照和限制见 [执行器适配报告](records/actuator_20260919/README.md)。
+## Runtime alignment
+
+The standalone and ROS 2 entry points share the controller, planner, vehicle model and runtime defaults from `engine/runtime_config.py`. The standalone adapter uses the same 0.05 s physics/control period and 0.5 s planning period as the ROS configuration. Transport, timers and ROS safety timeouts remain adapter-specific.

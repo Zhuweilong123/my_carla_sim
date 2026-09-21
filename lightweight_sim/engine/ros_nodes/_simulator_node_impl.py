@@ -20,6 +20,7 @@ from ..simulator.data_types import ControlCommand
 from ..simulator.engine import SimulationEngine
 from ..simulator.scenarios import make_scenario
 from ..simulator.steering import steering_profile
+from ..runtime_config import DEFAULT_RUNTIME_CONFIG
 from .qos import clock_qos, command_qos, latched_path_qos, sensor_data_qos, status_qos
 
 
@@ -34,8 +35,8 @@ class SimulatorNode(Node):
         super().__init__("simulator_node")
         self.declare_parameter("scenario", "obstacle")
         self.declare_parameter("steering_profile", "ideal")
-        self.declare_parameter("physics_dt", 0.05)
-        self.declare_parameter("command_timeout", 0.25)
+        self.declare_parameter("physics_dt", DEFAULT_RUNTIME_CONFIG.physics_dt)
+        self.declare_parameter("command_timeout", DEFAULT_RUNTIME_CONFIG.command_timeout)
         self.declare_parameter("publish_clock", True)
         self.declare_parameter("frame_id", "map")
 
@@ -45,6 +46,7 @@ class SimulatorNode(Node):
         self.publish_clock_enabled = bool(self.get_parameter("publish_clock").value)
         self.frame_id = str(self.get_parameter("frame_id").value)
         config = make_scenario(scenario_name)
+        config.physics_dt = self.physics_dt
         config.steering = steering_profile(str(self.get_parameter("steering_profile").value))
         config.steering.delay_steps(self.physics_dt)
         self.engine = SimulationEngine(config)

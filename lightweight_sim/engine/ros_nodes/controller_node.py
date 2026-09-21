@@ -16,20 +16,23 @@ from .route_session import decode_sequence, parse_context
 from ..analysis.tracking import TrackingMonitor
 from ..simulator.data_types import VehicleParams
 from ..simulator.steering import SteeringParams
+from ..runtime_config import DEFAULT_RUNTIME_CONFIG
 
 
 class ControllerNode(Node):
     def __init__(self) -> None:
         super().__init__("controller_node")
-        self.declare_parameter("controller", "LQR_controller")
-        self.declare_parameter("target_speed_kmh", 40.0)
-        self.declare_parameter("control_period", 0.05)
-        self.declare_parameter("state_timeout", 0.25)
-        self.declare_parameter("plan_timeout", 1.5)
+        self.declare_parameter("controller", DEFAULT_RUNTIME_CONFIG.controller)
+        self.declare_parameter("target_speed_kmh", DEFAULT_RUNTIME_CONFIG.target_speed_kmh)
+        self.declare_parameter("control_period", DEFAULT_RUNTIME_CONFIG.control_period)
+        self.declare_parameter("state_timeout", DEFAULT_RUNTIME_CONFIG.state_timeout)
+        self.declare_parameter("plan_timeout", DEFAULT_RUNTIME_CONFIG.plan_timeout)
         self.controller = VehicleController(
-            (1.015, 1.895, 1412.0, -148970.0, -82204.0, 1537.0),
+            vehicle_params=VehicleParams(),
+            steering_params=SteeringParams(),
             controller_type=str(self.get_parameter("controller").value),
             target_speed_kmh=float(self.get_parameter("target_speed_kmh").value),
+            dt=DEFAULT_RUNTIME_CONFIG.physics_dt,
         )
         self.state: Optional[object] = None
         self.state_time = None

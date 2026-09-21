@@ -3,6 +3,7 @@ from dataclasses import dataclass, field
 from typing import List, Tuple, Optional
 import math
 from .steering import SteeringParams
+from ..runtime_config import DEFAULT_RUNTIME_CONFIG
 
 @dataclass
 class PathPoint:
@@ -94,14 +95,14 @@ class Obstacle:
 class RoadSegment:
     type: str = "waypoints"
     params: dict = field(default_factory=dict)
-    lane_width: float = 3.5
-    num_lanes: int = 2
+    lane_width: float = DEFAULT_RUNTIME_CONFIG.lane_width
+    num_lanes: int = DEFAULT_RUNTIME_CONFIG.num_lanes
 
 @dataclass
 class RoadDef:
     segments: List[RoadSegment] = field(default_factory=list)
-    lane_width: float = 3.5
-    num_lanes: int = 2
+    lane_width: float = DEFAULT_RUNTIME_CONFIG.lane_width
+    num_lanes: int = DEFAULT_RUNTIME_CONFIG.num_lanes
 
 @dataclass
 class ScenarioConfig:
@@ -114,12 +115,13 @@ class ScenarioConfig:
     ego_start_speed: float = 10.0
     target_speed: float = 50.0
     obstacles: List[dict] = field(default_factory=list)
-    controller: str = "LQR_controller"
+    controller: str = DEFAULT_RUNTIME_CONFIG.controller
     planner: dict = field(default_factory=dict)
     destination: Optional[Tuple[float, float]] = None
     vehicle_model: str = "kinematic"
     vehicle_params: VehicleParams = field(default_factory=VehicleParams)
     steering: SteeringParams = field(default_factory=SteeringParams)
+    physics_dt: float = DEFAULT_RUNTIME_CONFIG.physics_dt
 
 @dataclass
 class LogEntry:

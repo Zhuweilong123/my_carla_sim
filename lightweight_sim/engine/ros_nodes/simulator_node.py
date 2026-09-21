@@ -64,6 +64,7 @@ class SimulatorNode(_LegacySimulatorNode):
 
         try:
             config = make_scenario(requested)
+            config.physics_dt = self.physics_dt
             config.steering = steering_profile(str(self.get_parameter("steering_profile").value))
             config.steering.delay_steps(self.physics_dt)
         except ValueError as exc:

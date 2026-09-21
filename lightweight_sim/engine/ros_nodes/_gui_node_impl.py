@@ -7,6 +7,7 @@ from rclpy.node import Node
 from std_srvs.srv import Empty, SetBool, Trigger
 
 from ..simulator.data_types import Obstacle, PathPoint
+from ..runtime_config import DEFAULT_RUNTIME_CONFIG
 from ..visualization.ros_gui import GuiAction, GuiControl, GuiSnapshot, GuiStatus, RosGuiView
 from .planner_node import message_to_state, path_to_tuples
 from .qos import command_qos, latched_path_qos, sensor_data_qos, status_qos
@@ -19,9 +20,9 @@ class GuiNode(Node):
         super().__init__("simulator_gui")
         self.declare_parameter("screen_width", 1200)
         self.declare_parameter("screen_height", 800)
-        self.declare_parameter("lane_width", 3.5)
-        self.declare_parameter("num_lanes", 2)
-        self.declare_parameter("target_speed_kmh", 40.0)
+        self.declare_parameter("lane_width", DEFAULT_RUNTIME_CONFIG.lane_width)
+        self.declare_parameter("num_lanes", DEFAULT_RUNTIME_CONFIG.num_lanes)
+        self.declare_parameter("target_speed_kmh", DEFAULT_RUNTIME_CONFIG.target_speed_kmh)
 
         self.snapshot = GuiSnapshot()
         self.view = RosGuiView(

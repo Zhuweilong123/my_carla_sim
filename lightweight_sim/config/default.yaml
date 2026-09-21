@@ -1,5 +1,6 @@
 simulator_node:
   ros__parameters:
+    # Shared defaults are defined in engine/runtime_config.py.
     # The simulator owns /clock and uses a wall timer to advance fixed-step physics.
     use_sim_time: false
     scenario: obstacle
@@ -28,3 +29,4 @@ controller_node:
     target_speed_kmh: 40.0
     control_period: 0.05
     state_timeout: 0.25
+    plan_timeout: 1.5
