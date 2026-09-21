@@ -17,7 +17,7 @@ from rosgraph_msgs.msg import Clock
 from std_srvs.srv import Empty, SetBool, Trigger
 
 from ..simulator.data_types import ControlCommand
-from ..simulator.engine import SimulationEngine
+from ..simulator.reverse_engine import SimulationEngine
 from ..simulator.scenarios import make_scenario
 from ..simulator.steering import steering_profile
 from ..runtime_config import DEFAULT_RUNTIME_CONFIG

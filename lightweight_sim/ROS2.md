@@ -116,3 +116,20 @@ rm -rf build/lightweight_sim install/lightweight_sim log
 colcon build
 source install/setup.bash
 ```
+## Reverse parking scene
+
+The `reverse_parking` scene provides a perpendicular parking slot bounded by
+two side walls and a rear wall. It is intended for an external parking
+controller rather than the built-in forward tracking controller.
+
+```bash
+ros2 launch lightweight_sim lightweight_sim.launch.py \
+  scenario:=reverse_parking \
+  controller_enabled:=false \
+  gui:=true
+```
+
+The external controller should publish `lightweight_sim_msgs/msg/ControlCommand`
+with `gear: -1` for reverse motion. The simulator publishes the resulting
+signed longitudinal velocity in `VehicleState.vx`. Use `controller_enabled:=true`
+only when testing the standard forward tracking controller.

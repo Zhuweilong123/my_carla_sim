@@ -40,6 +40,8 @@ class SimulatorNode(_LegacySimulatorNode):
                        vehicle_model=config.vehicle_model,
                        vehicle_parameters=asdict(config.vehicle_params),
                        steering_parameters=asdict(config.steering),
+                       maneuver=getattr(config, "maneuver", "cruise"),
+                       parking_goal=getattr(config, "parking_goal", None),
                        lane_width=config.road.lane_width,
                        num_lanes=config.road.num_lanes, physics_dt=self.physics_dt)
         self.context_pub.publish(String(data=json.dumps(context)))

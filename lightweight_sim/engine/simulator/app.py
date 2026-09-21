@@ -12,6 +12,12 @@ for _name in ("colors", "hud", "renderer", "ros_gui"):
 from ._app_impl import *  # noqa: F401,F403,E402
 
 from ..runtime_config import DEFAULT_RUNTIME_CONFIG
+from . import _app_impl as _app_impl_module
+from .reverse_engine import SimulationEngine as _RuntimeSimulationEngine
+
+# Keep the application implementation unchanged while routing both front ends
+# through the reverse-capable engine adapter.
+_app_impl_module.SimulationEngine = _RuntimeSimulationEngine
 
 
 _LegacySimulatorApp = SimulatorApp

@@ -12,6 +12,7 @@ class EgoVehicle:
         self.length = self.params.wheelbase + 1.0
         self.width = 2.0
         self._prev_state: Optional[VehicleState] = None
+        self.allow_reverse = False
 
     def _clamp_steer(self, steer: float) -> float:
         return max(-self.params.max_steer, min(self.params.max_steer, float(steer)))
@@ -19,8 +20,14 @@ class EgoVehicle:
     def kinematic_step(self, steer: float, accel: float, dt: float) -> VehicleState:
         prev = self._state
         steer = self._clamp_steer(steer)
-        v0 = max(0.0, prev.vx)
-        v1 = max(0.0, v0 + float(accel) * dt)
+        v0 = float(prev.vx)
+        v1 = v0 + float(accel) * dt
+        # Preserve signed longitudinal velocity for reverse maneuvers while
+        # preventing a braking step from crossing through zero.
+        if (v0 == 0.0 and v1 < 0.0 and not self.allow_reverse) or (
+            (v0 > 0.0 > v1) or (v0 < 0.0 < v1)
+        ):
+            v1 = 0.0
         yaw_rate = v1 / self.params.wheelbase * math.tan(steer)
         phi = prev.phi + yaw_rate * dt
         x = prev.x + v1 * math.cos(phi) * dt

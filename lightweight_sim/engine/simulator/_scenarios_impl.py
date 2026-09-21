@@ -108,11 +108,53 @@ def curve_scenario() -> ScenarioConfig:
     )
 
 
+def reverse_parking() -> ScenarioConfig:
+    """Static parking-lot scene for reverse-in maneuver development.
+
+    The global path is the driving aisle. The parking slot is bounded by two
+    side walls and a rear wall; an external parking controller should publish
+    ``ControlCommand(gear=-1, throttle=..., steer=...)`` to enter it.
+    """
+
+    slot_x = 46.0
+    slot_y = 7.5
+    slot_heading = math.pi / 2.0
+    road = RoadDef(
+        segments=[RoadSegment("straight", {"length": 100, "heading": 0, "start": (0, 0)})],
+        lane_width=3.5,
+        num_lanes=8,
+    )
+    obstacles = [
+        # Slot side walls: 4.2 m clear width, 6 m usable depth.
+        {"id": 101, "x": slot_x - 2.25, "y": slot_y, "length": 6.0, "width": 0.25, "heading": slot_heading},
+        {"id": 102, "x": slot_x + 2.25, "y": slot_y, "length": 6.0, "width": 0.25, "heading": slot_heading},
+        # Rear wall.
+        {"id": 103, "x": slot_x, "y": slot_y + 3.0, "length": 4.5, "width": 0.25, "heading": 0.0},
+    ]
+    return ScenarioConfig(
+        name="reverse_parking",
+        description="Reverse parking into a bounded perpendicular slot",
+        road=road,
+        ego_start_x=30.0,
+        ego_start_y=0.0,
+        ego_start_phi=0.0,
+        ego_start_speed=0.0,
+        target_speed=8.0,
+        obstacles=obstacles,
+        controller="LQR_controller",
+        destination=(slot_x, slot_y),
+        vehicle_model="kinematic",
+        maneuver="reverse_parking",
+        parking_goal=(slot_x, slot_y, slot_heading),
+    )
+
+
 SCENARIOS = {
     "default": default_config,
     "obstacle": straight_with_obstacle,
     "three_lane": three_lane_double_obstacle,
     "curve": curve_scenario,
+    "reverse_parking": reverse_parking,
 }
 
 

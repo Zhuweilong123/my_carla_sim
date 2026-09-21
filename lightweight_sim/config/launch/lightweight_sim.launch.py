@@ -10,6 +10,7 @@ def generate_launch_description():
     config = get_package_share_directory("lightweight_sim") + "/config/default.yaml"
     namespace = LaunchConfiguration("namespace")
     gui = LaunchConfiguration("gui")
+    controller_enabled = LaunchConfiguration("controller_enabled")
     scenario = LaunchConfiguration("scenario")
     steering = LaunchConfiguration("steering_profile")
     return LaunchDescription(
@@ -25,6 +26,11 @@ def generate_launch_description():
                 "gui",
                 default_value="false",
                 description="Start the ROS 2 Pygame visualization client",
+            ),
+            DeclareLaunchArgument(
+                "controller_enabled",
+                default_value="true",
+                description="Start the built-in forward tracking controller",
             ),
             DeclareLaunchArgument(
                 "scenario",
@@ -56,6 +62,7 @@ def generate_launch_description():
                 name="controller_node",
                 namespace=namespace,
                 output="screen",
+                condition=IfCondition(controller_enabled),
                 parameters=[config, {"use_sim_time": True}],
             ),
             Node(
