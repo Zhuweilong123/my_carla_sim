@@ -2,29 +2,30 @@ import math
 
 import pytest
 
-from lightweight_sim.algorithms.planner.motion_planner import MotionPlanner
-from lightweight_sim.algorithms.controller.lat_lqr import LateralLQRController
-from lightweight_sim.algorithms.controller.combined import VehicleController
-from lightweight_sim.simulator.data_types import (
+from lightweight_sim.engine.algorithms.planner.motion_planner import MotionPlanner
+from lightweight_sim.engine.algorithms.controller.lat_lqr import LateralLQRController
+from lightweight_sim.engine.algorithms.controller.combined import VehicleController
+from lightweight_sim.engine.simulator.data_types import (
     ControlCommand,
     Obstacle,
+    PathPoint,
     RoadDef,
     RoadSegment,
     ScenarioConfig,
     VehicleState,
 )
-from lightweight_sim.simulator.engine import SimulationEngine
-from lightweight_sim.simulator.obstacle import ObstacleManager
-from lightweight_sim.simulator.vehicle import EgoVehicle, VehicleParams
-from lightweight_sim.simulator.world import World
+from lightweight_sim.engine.simulator.engine import SimulationEngine
+from lightweight_sim.engine.simulator.obstacle import ObstacleManager
+from lightweight_sim.engine.simulator.scenarios import make_scenario
+from lightweight_sim.engine.simulator.vehicle import EgoVehicle, VehicleParams
+from lightweight_sim.engine.simulator.world import World
+from lightweight_sim.visualization.ros_gui import RosGuiView
+from lightweight_sim.visualization._ros_gui_impl import GuiSnapshot
 
 
 def test_engine_uses_fixed_physics_and_clamps_commands():
     engine = SimulationEngine(ScenarioConfig(ego_start_speed=0.0))
-    state = engine.step(
-        ControlCommand(steer=99.0, throttle=2.0, brake=-1.0),
-        dt=0.1,
-    )
+    state = engine.step(ControlCommand(steer=99.0, throttle=2.0, brake=-1.0), dt=0.1)
 
     assert engine.step_count == 1
     assert engine.sim_time == pytest.approx(0.1)
@@ -33,10 +34,7 @@ def test_engine_uses_fixed_physics_and_clamps_commands():
 
 
 def test_dynamic_vehicle_model_produces_lateral_state():
-    vehicle = EgoVehicle(
-        VehicleState(vx=15.0),
-        VehicleParams(),
-    )
+    vehicle = EgoVehicle(VehicleState(vx=15.0), VehicleParams())
     state = vehicle.step(0.1, 0.0, 0.05, model="dynamic")
 
     assert state.vx > 0.0
@@ -64,6 +62,33 @@ def test_disconnected_road_is_rejected():
         World(road)
 
 
+def test_figure_eight_scenario_has_three_lanes_and_a_closed_path():
+    config = make_scenario("figure_eight")
+    engine = SimulationEngine(config)
+    path = engine.world.ref_path
+
+    assert config.road.num_lanes == 3
+    assert config.road.lane_width == pytest.approx(3.5)
+    assert len(path) >= 100
+    assert math.hypot(path[0].x - path[-1].x, path[0].y - path[-1].y) < 2.0
+    assert engine.get_state().position == pytest.approx((78.0, 0.0))
+
+
+def test_gui_tracking_error_prefers_heading_at_figure_eight_crossing():
+    snapshot = GuiSnapshot(
+        state=VehicleState(x=0.0, y=0.0, phi=0.0),
+        reference_path=[
+            PathPoint(0.0, 0.0, 0.0, 0.0),
+            PathPoint(0.0, 0.0, math.pi, 0.0),
+        ],
+    )
+
+    ed, ephi = RosGuiView._tracking_error(snapshot)
+
+    assert ed == pytest.approx(0.0)
+    assert ephi == pytest.approx(0.0)
+
+
 def test_latest_planner_can_choose_a_free_lane():
     road = RoadDef(num_lanes=3)
     world = World(road)
@@ -76,6 +101,8 @@ def test_latest_planner_can_choose_a_free_lane():
 
     assert result
     assert max(abs(point[1]) for point in result) > 2.0
+
+
 def test_road_boundary_uses_segment_projection():
     world = World(RoadDef(num_lanes=3))
     assert world.is_on_road(24.17, -3.5)
@@ -104,6 +131,8 @@ def test_lateral_controller_converges_toward_reference():
         engine.step(ControlCommand(steer=steer, throttle=0.0), dt=0.05)
     assert abs(engine.get_state().y) < abs(start_y)
     assert not engine.offroad_occurred
+
+
 def test_replanning_preserves_safe_lane_change():
     road = RoadDef(
         segments=[

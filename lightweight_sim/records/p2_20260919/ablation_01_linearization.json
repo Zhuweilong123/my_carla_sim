@@ -1,0 +1,1297 @@
+{
+  "provenance": {
+    "git_commit": "101a30ce395f2cb8548c871fd2aea9168b3d9767",
+    "working_tree_status": "M ../.gitignore\n M ../.idea/inspectionProfiles/Project_Default.xml\n M ../.idea/inspectionProfiles/profiles_settings.xml\n M ../.idea/misc.xml\n M ../.idea/modules.xml\n M ../.idea/my_carla_sim.iml\n M ../.idea/vcs.xml\n M ../.idea/workspace.xml\n M ../ALGORITHMS.md\n M ../README.md\n M ../carla_legacy/code_1.py\n M ../carla_legacy/code_2.py\n M ../carla_legacy/code_3.py\n M ../carla_legacy/code_4.py\n M ../carla_legacy/controller/Controller.py\n M ../carla_legacy/planner/global_path_plan.py\n M ../carla_legacy/planner/motion_plan_path_planning.py\n M ../carla_legacy/planner/motion_plan_speed_planning.py\n M ../carla_legacy/planner/planner_utiles.py\n M ../carla_legacy/sensors/Sensors_camera_lib.py\n M ../carla_legacy/sensors/Sensors_detector_lib.py\n M ../carla_legacy/sensors/Sensors_other_lib.py\n M ../carla_legacy/test_code1.py\n M ../carla_legacy/test_code2.py\n M ../carla_legacy/test_code3.py\n M ../carla_legacy/test_code3_1.py\n M ../carla_legacy/test_code4.py\n M ../carla_legacy/test_code5.py\n M ../carla_legacy/test_code6.py\n M ../carla_legacy/test_code7.py\n M ../carla_legacy/test_code8.py\n M ../carla_legacy/test_code9.py\n M DESIGN.md\n M engine/algorithms/controller/_lat_lqr_geometric_impl.py\n M engine/algorithms/controller/_lat_lqr_impl.py\n M engine/algorithms/controller/_lat_lqr_opt2.py\n M engine/algorithms/planner/qp_path_plan.py\n M engine/analysis/evaluation.py\n M engine/simulator/_app_impl.py\n M engine/simulator/engine.py\n M records/figure_eight_baseline.csv\n M records/figure_eight_baseline.json\n M records/figure_eight_evaluation.csv\n M records/figure_eight_evaluation_50kmh.csv\n M records/figure_eight_evaluation_50kmh_coupling_half.csv\n M records/figure_eight_evaluation_50kmh_final.csv\n M records/figure_eight_evaluation_50kmh_route_lock_v2.csv\n M records/figure_eight_opt1.csv\n M records/figure_eight_opt1.json\n M records/figure_eight_opt2.csv\n M records/figure_eight_opt2.json\n M records/figure_eight_opt3.csv\n M records/figure_eight_riccati.csv\n M records/p1_20260917/figure_eight_p1_baseline_30s_reference.csv\n M records/p1_20260917/figure_eight_p1_delay_50ms_reference.csv\n M records/p1_20260917/figure_eight_p1_dense_reference_reference.csv\n M records/p1_20260917/figure_eight_p1_initial_offset_reference.csv\n M records/p1_20260917/figure_eight_p1_nominal_reference.csv\n M records/p1_20260917/figure_eight_p1_plant_mismatch_reference.csv\n M records/p1_20260917/figure_eight_p1_position_noise_reference.csv\n M visualization/_renderer_impl.py\n M ../lightweight_sim_msgs/CMakeLists.txt\n M ../lightweight_sim_msgs/msg/SimulationStatus.msg\n M ../lightweight_sim_msgs/package.xml\n M ../pytest.ini\n?? ../.claude/\n?? design/\n?? scripts/p2_controller_experiments.py",
+    "source_sha256": {
+      "engine/__init__.py": "9a63f7aeb116aec45e214c29894c1b5c6596f3f63766127c21e3e640644f1068",
+      "engine/algorithms/__init__.py": "416acc3ed0cefe754e1732a6f3223afd15dd484d27db94500059e94b51ac199b",
+      "engine/algorithms/controller/__init__.py": "a22721337b8e5d3b44dc3aaafda5bcd79c803a49f62e86ab1b6c932133a8f306",
+      "engine/algorithms/controller/_combined_legacy.py": "13df13286f3b4ffea998357518403dac96c6479e9d08e89177623b80cc2b44d7",
+      "engine/algorithms/controller/_lat_lqr_geometric_impl.py": "76ae3c982b2ea533459283cd47cbd4f1dcb2d5909f2c41eb7cbf774610001d47",
+      "engine/algorithms/controller/_lat_lqr_impl.py": "d5fd0606bf2f358414d4399acbcb0b865cec6904e4f931fb159b0392af37c2cb",
+      "engine/algorithms/controller/_lat_lqr_opt1.py": "40154920a9eba002ee7776473f0344ee430562ae0a13701fd1d67fec846dd6b0",
+      "engine/algorithms/controller/_lat_lqr_opt2.py": "dc9d4aa6374d06ac3402328c2bb4fbc20d3556ee8c2ab4272dca08143681816d",
+      "engine/algorithms/controller/_lon_pid_legacy.py": "8856c3ed3359214c8ae498e9151f56a272e703bf6ad8ebff54c8e80b5fbd207c",
+      "engine/algorithms/controller/combined.py": "569b799c1027d904720062ce48017e389677d74215a79f272b32bacc81b0452c",
+      "engine/algorithms/controller/lat_lqr.py": "a70bac81533bea014f8184c4f878820efe199058634bd468b459995054767059",
+      "engine/algorithms/controller/lat_mpc.py": "e5be75989751c285033d1878e88bcb3ac4a2f221b9f5e8071fcd211fb825a727",
+      "engine/algorithms/controller/lon_pid.py": "c75904ba84bf9210bb7f2d4442e599f7be5ee9149238762b812ca2cceb4a33ff",
+      "engine/algorithms/planner/__init__.py": "a450600ed9228f20a8855c610c72a848a4364852140c6d3cd786d04469592a79",
+      "engine/algorithms/planner/dp_path_plan.py": "a14df7e980f4043934c41838118bf6450f6916c18f783c055dce9c36ffefc3f6",
+      "engine/algorithms/planner/motion_planner.py": "6ad68ae1a0837428678e1604548b6017f43fd3270d6fe19a4a070141ea83efd0",
+      "engine/algorithms/planner/qp_path_plan.py": "2ef86fc84ee59f5921c7b3f373e272a577c0f0076a654d038d1dc8ae44d15181",
+      "engine/algorithms/utils/__init__.py": "c616e36fd297af23a46bbd238d83b35985fde0e768d222dca068254769f736f4",
+      "engine/algorithms/utils/frenet.py": "2056fcda31099711ca063a7cc82e953d63c1ba85ac706d4c1ade91e83301e0d4",
+      "engine/algorithms/utils/geometry.py": "f336bf17fc6e0e220d6f165d055e51bf953b8447d690d88a9af1c298f71b94b0",
+      "engine/algorithms/utils/quintic.py": "2cde7272b409b6a0876f775b31237575ff885e6cace7764e0064790b444dc3e0",
+      "engine/algorithms/utils/reference_line.py": "735beee02f80c102d95d2c28f14cd15537d98e7008e54ad63c7fbbf37202da04",
+      "engine/algorithms/utils/route.py": "cb677dff9ff7b029dcefd25b4d7cfbbe3d2875c31c46ad4d5d90fdeacc8378bb",
+      "engine/analysis/__init__.py": "3f6c235f6b0168541de89a8f76731ebc0a0a3127ecfbc985f7a8a5053cc18323",
+      "engine/analysis/evaluation.py": "50d37cc8cd30ecaab25fbab313cc53dd9a1b508dd9eff9112a55086a4fa1cd34",
+      "engine/analysis/tracking.py": "4482227b3932cb2b5b1648a760b82f6e4b3eec004dca36ddd326d63fafef25b2",
+      "engine/ros_nodes/__init__.py": "3836d1d0a73431259d2b2a18303aec4f606044e46dca1e9419b7868b712b67fa",
+      "engine/ros_nodes/_gui_node_impl.py": "8ebe98c05016c66b20f141b4278c858a24785d76bb9c4f3a75b33b6d3d2a1e98",
+      "engine/ros_nodes/_simulator_node_impl.py": "b3ad4b40ecda25fe808f8f0dd9ed337d911a9f4ccc0dee84cc92a5ad273042ca",
+      "engine/ros_nodes/controller_node.py": "1090d7180d2fa9311ef31642798c189e61682bdab1405a45f17016e2a1fc691a",
+      "engine/ros_nodes/gui_node.py": "2e92fecb3344def88be065a9d897b58f9c9231242c31dffb4e3bad0bee1fdbbf",
+      "engine/ros_nodes/planner_node.py": "d2a0c8aced850299263de60b393b8a8d2cdbac5cc4ffab2e05d3bdaeb711e06e",
+      "engine/ros_nodes/qos.py": "9b0d5ffa27d17d6a2a4330bcbf0661a911bd8ea92a677184e3a2a932b697f8a4",
+      "engine/ros_nodes/route_session.py": "9fa69ee4c5285043a427f5b7353e12c8b1bb8a9b8a43c38669441b8177e6b1bd",
+      "engine/ros_nodes/simulator_node.py": "a62214dc3ad3ed6939d016ce5557569b1c29353ae255604d9bbeee4b431f2e29",
+      "engine/simulator/__init__.py": "b3a1d61b680f8890535d62ea0d170dcd747e6c12426de3850551b5f5047e9161",
+      "engine/simulator/_app_impl.py": "48b66bd31261933a8bbf139fc4dd244deea33c357fd8d3877c81c2df7d9f0320",
+      "engine/simulator/_scenarios_impl.py": "77cd5fa5990909bdda17aa15231e659dab4317ecd3ac894bd77291e687d187c3",
+      "engine/simulator/_world_impl.py": "0ff282365fb079874e33c344fee48499cb9f4b3eb5b955b4c24b438a980a4167",
+      "engine/simulator/app.py": "98644805fb9347b6c67bfd639ccd6599b284b448c5edea7799f6f6a3446457d6",
+      "engine/simulator/data_types.py": "bd579c8d1c3a861afeac43751e0ea9383d6a92fc460d9e73632b454633431599",
+      "engine/simulator/engine.py": "88f1ff2477d3f4efa671e3d51cf6f4dd8700d87acb4bc22ced2fad1117433aaa",
+      "engine/simulator/logging_utils.py": "fa85210cc398339569129d0b3c2d5f415f285b773a2d8dcf2bb325831fb1af41",
+      "engine/simulator/obstacle.py": "807f11a1d271051fdc361f7f87aebc6b4669d40d450a07f6e46219eac5d5c490",
+      "engine/simulator/scenarios.py": "4580a21226ad61f3b6ec79347ee802326af8ea0fd3bd43ac67f80164b83e7842",
+      "engine/simulator/vehicle.py": "d6ff36e29820dae2e05710e76eba2cfdd5ba297f3a9551548b1200771841efe8",
+      "engine/simulator/world.py": "0e4a5e1212ac677ec0e9b287de3361de653c9700fe3afbb39818db771587a8a7",
+      "visualization/__init__.py": "5580b3d6cdfcd4c2559dfab52f9d5b2a7edac2351326576bffa00287029a0fe3",
+      "visualization/_renderer_impl.py": "64179475cd59415d743df48c1f528d98b2224f97e9d738997d747f0166c233bd",
+      "visualization/_ros_gui_impl.py": "8f99002eae10f49c9d39f31f51ef1811a3752f7bc631158eaea21989114536ab",
+      "visualization/colors.py": "6ae2e32a90242f7e3eb0a479c2889a9e72a0c66b2c188a1e1e47a66f0e91ee61",
+      "visualization/hud.py": "e123c410be2b04ca327d062d79cd6dda9157733049a7f358a2c207e0060de86e",
+      "visualization/pygame_compat.py": "f72b5babda70ff1c775876b9e392ba491063ffd9b23fae1ae10ac5dab3b25dd2",
+      "visualization/renderer.py": "23fb7f665d9aaf0a80348f6286261a230559fa111dc821699e5701a060dc4b65",
+      "visualization/ros_gui.py": "057fc8c63564b927481377194c54e79098ceaa9640da08a939108fa27bdb6825",
+      "scripts/figure_eight_benchmark.py": "ae8442d63cfc1ffe53a12f413edcd00b88c9f6622bb9521111dff70944d12326",
+      "scripts/p2_controller_experiments.py": "61ab23affa7e2aa320f26f64197cff0e44fa755921b8a32959a7cbb148db3129",
+      "scripts/ros2_smoke_test.sh": "c3356445bcc6b70b4e720007777d3e88b6d250678f941952beab2da3d0f13259",
+      "scripts/start_sim.sh": "ec8a5a2e20769582c2e66b4e037ba0f112fa2a11daef13f693e234d42fd4f016",
+      "config/default.yaml": "98ed078941fbdd0d7f75a2fe6ec2bbab7f5bd6630fa60ba02b794436f31b53ad",
+      "config/launch/lightweight_sim.launch.py": "57cb17478b501cc0091ce8cf16fadd14e706c3adf709be1ed12cf4c9dac365b0"
+    },
+    "source_tree_sha256": "efadb569c36f6a7b6ede491f269819c09df475f71d06ad5a4163d111986c980b",
+    "python": "3.14.4",
+    "numpy": "2.5.2",
+    "platform": "Linux-6.18.33.2-microsoft-standard-WSL2-x86_64-with-glibc2.43",
+    "source_bundle": "sources/efadb569c36f6a7b6ede491f269819c09df475f71d06ad5a4163d111986c980b.zip"
+  },
+  "description": "Central-difference actual held-input closed loop at zero straight-line error; no steering saturation",
+  "runs": [
+    {
+      "speed_kmh": 21.6,
+      "settings": {
+        "feedback_horizon_s": 0.05,
+        "lqr_discretization": "bilinear"
+      },
+      "closed_loop_matrix": [
+        [
+          1.0,
+          0.05,
+          0.29999999999995003,
+          0.0
+        ],
+        [
+          -13.476211696682558,
+          -1.6074083938583703,
+          -15.663296161242418,
+          -0.9384161227228731
+        ],
+        [
+          -0.6282965868396718,
+          -0.056715633113530874,
+          0.26973575821830176,
+          -0.10265280688887338
+        ],
+        [
+          -12.565931736793436,
+          -1.1343126622706174,
+          -14.605284835633965,
+          -2.0530561377774674
+        ]
+      ],
+      "eigenvalues": [
+        [
+          -3.3635086816730664,
+          0.0
+        ],
+        [
+          -0.6501588399235774,
+          0.0
+        ],
+        [
+          0.811469374089556,
+          0.029442202575854726
+        ],
+        [
+          0.811469374089556,
+          -0.029442202575854726
+        ]
+      ],
+      "spectral_radius": 3.3635086816730664,
+      "K": [
+        [
+          2.554663477977549,
+          0.10791301689497616,
+          1.5553883690554966,
+          0.015995337321143156
+        ]
+      ],
+      "riccati_converged": true
+    },
+    {
+      "speed_kmh": 21.6,
+      "settings": {
+        "feedback_horizon_s": 0.0,
+        "lqr_discretization": "bilinear"
+      },
+      "closed_loop_matrix": [
+        [
+          1.0,
+          0.05,
+          0.29999999999995003,
+          0.0
+        ],
+        [
+          -13.476211696682558,
+          -0.9335978090242422,
+          -11.620432652238323,
+          -0.3573944901108604
+        ],
+        [
+          -0.6282965868396718,
+          -0.02530080377154728,
+          0.4582247342701718,
+          -0.07556404360237746
+        ],
+        [
+          -12.565931736793436,
+          -0.5060160754309456,
+          -10.835505314596563,
+          -1.5112808720475492
+        ]
+      ],
+      "eigenvalues": [
+        [
+          -1.9912936712303808,
+          0.0
+        ],
+        [
+          -0.4364140333842727,
+          0.0
+        ],
+        [
+          0.5898051369108668,
+          0.0
+        ],
+        [
+          0.8512486209021666,
+          0.0
+        ]
+      ],
+      "spectral_radius": 1.9912936712303808,
+      "K": [
+        [
+          2.554663477977549,
+          0.10791301689497616,
+          1.5553883690554966,
+          0.015995337321143156
+        ]
+      ],
+      "riccati_converged": true
+    },
+    {
+      "speed_kmh": 21.6,
+      "settings": {
+        "feedback_horizon_s": 0.05,
+        "lqr_discretization": "plant"
+      },
+      "closed_loop_matrix": [
+        [
+          1.0,
+          0.05,
+          0.29999999999995003,
+          0.0
+        ],
+        [
+          -5.680491222547139,
+          -0.7989655905225114,
+          -7.593100972991857,
+          0.44340079168193125
+        ],
+        [
+          -0.26483950586630156,
+          -0.0190238941127213,
+          0.6459895753912664,
+          -0.03822885225690598
+        ],
+        [
+          -5.296790117326031,
+          -0.38047788225442597,
+          -7.08020849217467,
+          -0.7645770451381196
+        ]
+      ],
+      "eigenvalues": [
+        [
+          -0.7755507339562462,
+          0.2545010966981278
+        ],
+        [
+          -0.7755507339562462,
+          -0.2545010966981278
+        ],
+        [
+          0.8167742038215644,
+          0.027873722368773744
+        ],
+        [
+          0.8167742038215644,
+          -0.027873722368773744
+        ]
+      ],
+      "spectral_radius": 0.817249683038814,
+      "K": [
+        [
+          1.076841458848971,
+          0.028548933812976816,
+          0.9450657301415819,
+          -0.19162808517884847
+        ]
+      ],
+      "riccati_converged": true
+    },
+    {
+      "speed_kmh": 21.6,
+      "settings": {
+        "feedback_horizon_s": 0.0,
+        "lqr_discretization": "plant"
+      },
+      "closed_loop_matrix": [
+        [
+          1.0,
+          0.05,
+          0.29999999999995003,
+          0.0
+        ],
+        [
+          -5.680491222547139,
+          -0.5149410293951543,
+          -5.888953606227998,
+          0.7378484719933803
+        ],
+        [
+          -0.26483950586630156,
+          -0.00578191881940622,
+          0.7254414271511437,
+          -0.02450092361446089
+        ],
+        [
+          -5.296790117326031,
+          -0.11563837638812441,
+          -5.491171456977126,
+          -0.4900184722892178
+        ]
+      ],
+      "eigenvalues": [
+        [
+          -0.6667646624339829,
+          0.0
+        ],
+        [
+          -0.00993361992835034,
+          0.0
+        ],
+        [
+          0.5398544801473498,
+          0.0
+        ],
+        [
+          0.8573257276817557,
+          0.0
+        ]
+      ],
+      "spectral_radius": 0.8573257276817557,
+      "K": [
+        [
+          1.076841458848971,
+          0.028548933812976816,
+          0.9450657301415819,
+          -0.19162808517884847
+        ]
+      ],
+      "riccati_converged": true
+    },
+    {
+      "speed_kmh": 30.000000000000004,
+      "settings": {
+        "feedback_horizon_s": 0.05,
+        "lqr_discretization": "bilinear"
+      },
+      "closed_loop_matrix": [
+        [
+          1.0,
+          0.05,
+          0.4166666666665973,
+          0.0
+        ],
+        [
+          -11.702800496051774,
+          -1.232132751115505,
+          -18.675404342943764,
+          -1.2600712231620013
+        ],
+        [
+          -0.5456154721838476,
+          -0.057376908791272614,
+          0.12930331827520689,
+          -0.07780122410793701
+        ],
+        [
+          -10.912309443676955,
+          -1.1475381758254521,
+          -17.413933634495862,
+          -1.55602448215874
+        ]
+      ],
+      "eigenvalues": [
+        [
+          -3.131189639709382,
+          0.0
+        ],
+        [
+          0.7976857171724359,
+          0.09023301253211614
+        ],
+        [
+          0.7976857171724359,
+          -0.09023301253211614
+        ],
+        [
+          -0.1230357096345292,
+          0.0
+        ]
+      ],
+      "spectral_radius": 3.131189639709382,
+      "K": [
+        [
+          2.2184808082734917,
+          0.12599982943597215,
+          1.5659003684117878,
+          0.03277079256470697
+        ]
+      ],
+      "riccati_converged": true
+    },
+    {
+      "speed_kmh": 30.000000000000004,
+      "settings": {
+        "feedback_horizon_s": 0.0,
+        "lqr_discretization": "bilinear"
+      },
+      "closed_loop_matrix": [
+        [
+          1.0,
+          0.05,
+          0.4166666666665973,
+          0.0
+        ],
+        [
+          -11.702800496051774,
+          -0.6469927263129166,
+          -13.799237469589666,
+          -0.5701093496824032
+        ],
+        [
+          -0.5456154721838476,
+          -0.03009613518208023,
+          0.3566430983517722,
+          -0.04563337902552027
+        ],
+        [
+          -10.912309443676955,
+          -0.6019227036416046,
+          -12.867138032964554,
+          -0.9126675805104052
+        ]
+      ],
+      "eigenvalues": [
+        [
+          -1.567869777587576,
+          0.0
+        ],
+        [
+          0.7692079720868413,
+          0.0
+        ],
+        [
+          0.6278045192460832,
+          0.0
+        ],
+        [
+          -0.03215992221689846,
+          0.0
+        ]
+      ],
+      "spectral_radius": 1.567869777587576,
+      "K": [
+        [
+          2.2184808082734917,
+          0.12599982943597215,
+          1.5659003684117878,
+          0.03277079256470697
+        ]
+      ],
+      "riccati_converged": true
+    },
+    {
+      "speed_kmh": 30.000000000000004,
+      "settings": {
+        "feedback_horizon_s": 0.05,
+        "lqr_discretization": "plant"
+      },
+      "closed_loop_matrix": [
+        [
+          1.0,
+          0.05,
+          0.4166666666665973,
+          0.0
+        ],
+        [
+          -5.910266830668079,
+          -0.5915842281339493,
+          -10.699956188213214,
+          -0.2280820937506549
+        ],
+        [
+          -0.27555225167133635,
+          -0.027512844634906098,
+          0.5011397784702859,
+          -0.029687164885758937
+        ],
+        [
+          -5.511045033426726,
+          -0.550256892698122,
+          -9.977204430594282,
+          -0.5937432977151788
+        ]
+      ],
+      "eigenvalues": [
+        [
+          -1.1290860992700356,
+          0.0
+        ],
+        [
+          0.7999295067376021,
+          0.08204376329210089
+        ],
+        [
+          0.7999295067376021,
+          -0.08204376329210089
+        ],
+        [
+          -0.1549606615840111,
+          0.0
+        ]
+      ],
+      "spectral_radius": 1.1290860992700356,
+      "K": [
+        [
+          1.1203996462245187,
+          0.05947614847015777,
+          1.0659054914927082,
+          -0.11014375976056494
+        ]
+      ],
+      "riccati_converged": true
+    },
+    {
+      "speed_kmh": 30.000000000000004,
+      "settings": {
+        "feedback_horizon_s": 0.0,
+        "lqr_discretization": "plant"
+      },
+      "closed_loop_matrix": [
+        [
+          1.0,
+          0.05,
+          0.4166666666665973,
+          0.0
+        ],
+        [
+          -5.910266830668079,
+          -0.29607088660054537,
+          -8.237345008768592,
+          0.18378515668784315
+        ],
+        [
+          -0.27555225167133635,
+          -0.013735232051339289,
+          0.6159532166666567,
+          -0.010484825719088594
+        ],
+        [
+          -5.511045033426726,
+          -0.27470464102678577,
+          -7.680935666666866,
+          -0.2096965143817719
+        ]
+      ],
+      "eigenvalues": [
+        [
+          0.7960115672875367,
+          0.0
+        ],
+        [
+          0.5402218744957383,
+          0.0
+        ],
+        [
+          0.0003990972307464247,
+          0.0
+        ],
+        [
+          -0.22644672332968305,
+          0.0
+        ]
+      ],
+      "spectral_radius": 0.7960115672875367,
+      "K": [
+        [
+          1.1203996462245187,
+          0.05947614847015777,
+          1.0659054914927082,
+          -0.11014375976056494
+        ]
+      ],
+      "riccati_converged": true
+    },
+    {
+      "speed_kmh": 40.0,
+      "settings": {
+        "feedback_horizon_s": 0.05,
+        "lqr_discretization": "bilinear"
+      },
+      "closed_loop_matrix": [
+        [
+          0.8343447887438386,
+          0.021100253465783373,
+          0.20410738543694765,
+          -0.02099729727009172
+        ],
+        [
+          -7.259832006759788,
+          -0.4678263354174322,
+          -15.402199875250805,
+          -0.9919791004024157
+        ],
+        [
+          -0.28836221562449477,
+          -0.03402636089768828,
+          0.38822103908421807,
+          -0.01744882076697569
+        ],
+        [
+          -6.6269788514378085,
+          -0.7830441788932947,
+          -14.059561260352233,
+          -0.5488354550257891
+        ]
+      ],
+      "eigenvalues": [
+        [
+          -1.729601822756997,
+          0.0
+        ],
+        [
+          0.7792204731250073,
+          0.13151390025191448
+        ],
+        [
+          0.7792204731250073,
+          -0.13151390025191448
+        ],
+        [
+          0.37706491389181485,
+          0.0
+        ]
+      ],
+      "spectral_radius": 1.729601822756997,
+      "K": [
+        [
+          1.9954009378511497,
+          0.13797116725235586,
+          1.591802201025882,
+          0.043935128336126464
+        ]
+      ],
+      "riccati_converged": true
+    },
+    {
+      "speed_kmh": 40.0,
+      "settings": {
+        "feedback_horizon_s": 0.0,
+        "lqr_discretization": "bilinear"
+      },
+      "closed_loop_matrix": [
+        [
+          0.8343447887438386,
+          0.029383014028591496,
+          0.29613805835700785,
+          -0.008026422410162347
+        ],
+        [
+          -7.259832006759788,
+          -0.1048347350794428,
+          -11.368959871496035,
+          -0.42353110682751915
+        ],
+        [
+          -0.28836221562449477,
+          -0.019608250116463537,
+          0.5484222699866887,
+          0.005130065733693637
+        ],
+        [
+          -6.6269788514378085,
+          -0.4516952363214042,
+          -10.377906342887394,
+          -0.029940137881333054
+        ]
+      ],
+      "eigenvalues": [
+        [
+          -0.47513347258690103,
+          0.0
+        ],
+        [
+          0.6673855930165348,
+          0.11757275827811532
+        ],
+        [
+          0.6673855930165348,
+          -0.11757275827811532
+        ],
+        [
+          0.3883544723235828,
+          0.0
+        ]
+      ],
+      "spectral_radius": 0.6776628094083044,
+      "K": [
+        [
+          1.9954009378511497,
+          0.13797116725235586,
+          1.591802201025882,
+          0.043935128336126464
+        ]
+      ],
+      "riccati_converged": true
+    },
+    {
+      "speed_kmh": 40.0,
+      "settings": {
+        "feedback_horizon_s": 0.05,
+        "lqr_discretization": "plant"
+      },
+      "closed_loop_matrix": [
+        [
+          0.8632092682686506,
+          0.024033123399391385,
+          0.25410955994130074,
+          -0.01423624575112015
+        ],
+        [
+          -5.994847520466421,
+          -0.33929344560241986,
+          -13.210856879629599,
+          -0.6956763288531401
+        ],
+        [
+          -0.23811673764945068,
+          -0.02892100462316775,
+          0.47526169247980243,
+          -0.005679605774112193
+        ],
+        [
+          -5.4722654324141375,
+          -0.6657157418543718,
+          -12.059241738535976,
+          -0.27836195111397505
+        ]
+      ],
+      "eigenvalues": [
+        [
+          -1.198160936655135,
+          0.0
+        ],
+        [
+          0.7724249973944799,
+          0.12493319868517484
+        ],
+        [
+          0.7724249973944799,
+          -0.12493319868517484
+        ],
+        [
+          0.37412650589823304,
+          0.0
+        ]
+      ],
+      "spectral_radius": 1.198160936655135,
+      "K": [
+        [
+          1.6477136596928328,
+          0.12002762706513764,
+          1.382032946545582,
+          -0.017048066088688408
+        ]
+      ],
+      "riccati_converged": true
+    },
+    {
+      "speed_kmh": 40.0,
+      "settings": {
+        "feedback_horizon_s": 0.0,
+        "lqr_discretization": "plant"
+      },
+      "closed_loop_matrix": [
+        [
+          0.8632092682686506,
+          0.030872659985958888,
+          0.3301044109031341,
+          -0.0029636885184977503
+        ],
+        [
+          -5.994847520466421,
+          -0.03955106957909892,
+          -9.880386034926586,
+          -0.2016570271067287
+        ],
+        [
+          -0.23811673764945068,
+          -0.017015167740695215,
+          0.6075487689516974,
+          0.013942955778306194
+        ],
+        [
+          -5.4722654324141375,
+          -0.39210247023366473,
+          -9.019094276084184,
+          0.17259276269030904
+        ]
+      ],
+      "eigenvalues": [
+        [
+          0.004646895888943181,
+          0.0
+        ],
+        [
+          0.6425169656815366,
+          0.0
+        ],
+        [
+          0.5858256391962894,
+          0.0
+        ],
+        [
+          0.3708102295647895,
+          0.0
+        ]
+      ],
+      "spectral_radius": 0.6425169656815366,
+      "K": [
+        [
+          1.6477136596928328,
+          0.12002762706513764,
+          1.382032946545582,
+          -0.017048066088688408
+        ]
+      ],
+      "riccati_converged": true
+    },
+    {
+      "speed_kmh": 50.0,
+      "settings": {
+        "feedback_horizon_s": 0.05,
+        "lqr_discretization": "bilinear"
+      },
+      "closed_loop_matrix": [
+        [
+          0.8378581609663452,
+          0.02186689267164649,
+          0.26368572884714675,
+          -0.024743497283261147
+        ],
+        [
+          -6.795317035000247,
+          -0.3766074758141766,
+          -18.05297174078289,
+          -1.2547407204658203
+        ],
+        [
+          -0.28327888067004975,
+          -0.03606921287982453,
+          0.24741912685508255,
+          -0.018066916817213827
+        ],
+        [
+          -6.7626937613116205,
+          -0.8617259725051001,
+          -17.96630219542406,
+          -0.6244765045460638
+        ]
+      ],
+      "eigenvalues": [
+        [
+          -1.976339240050446,
+          0.0
+        ],
+        [
+          0.7656510734437982,
+          0.1751302306990151
+        ],
+        [
+          0.7656510734437982,
+          -0.1751302306990151
+        ],
+        [
+          0.5292304006240376,
+          0.0
+        ]
+      ],
+      "spectral_radius": 1.976339240050446,
+      "K": [
+        [
+          1.8575433801320653,
+          0.14555270419794594,
+          1.6233692907422719,
+          0.05063753866386123
+        ]
+      ],
+      "riccati_converged": true
+    },
+    {
+      "speed_kmh": 50.0,
+      "settings": {
+        "feedback_horizon_s": 0.0,
+        "lqr_discretization": "bilinear"
+      },
+      "closed_loop_matrix": [
+        [
+          0.8378581609663452,
+          0.029973984623329272,
+          0.3762842281760415,
+          -0.008835486469838982
+        ],
+        [
+          -6.795317035000247,
+          -0.03684162406416425,
+          -13.33400157758906,
+          -0.5880406415862565
+        ],
+        [
+          -0.28327888067004975,
+          -0.02190526884632204,
+          0.4441405717648067,
+          0.009726054594550464
+        ],
+        [
+          -6.7626937613116205,
+          -0.5235912844395191,
+          -13.269987083402881,
+          0.039022849624190545
+        ]
+      ],
+      "eigenvalues": [
+        [
+          -0.5396803813169011,
+          0.0
+        ],
+        [
+          0.6761171785814204,
+          0.2061916628245025
+        ],
+        [
+          0.6761171785814204,
+          -0.2061916628245025
+        ],
+        [
+          0.4716259824452382,
+          0.0
+        ]
+      ],
+      "spectral_radius": 0.7068588550702564,
+      "K": [
+        [
+          1.8575433801320653,
+          0.14555270419794594,
+          1.6233692907422719,
+          0.05063753866386123
+        ]
+      ],
+      "riccati_converged": true
+    },
+    {
+      "speed_kmh": 50.0,
+      "settings": {
+        "feedback_horizon_s": 0.05,
+        "lqr_discretization": "plant"
+      },
+      "closed_loop_matrix": [
+        [
+          0.8694272198981223,
+          0.025193266436578328,
+          0.33397406471524227,
+          -0.016644482512123242
+        ],
+        [
+          -5.472267011535873,
+          -0.23720012454485132,
+          -15.10720814926967,
+          -0.9153133809892502
+        ],
+        [
+          -0.22812440770182024,
+          -0.030257687351089652,
+          0.3702202571959307,
+          -0.0039170844693648356
+        ],
+        [
+          -5.445995497860344,
+          -0.722987894523723,
+          -15.034680762602324,
+          -0.2866787036084775
+        ]
+      ],
+      "eigenvalues": [
+        [
+          -1.3312852546726384,
+          0.0
+        ],
+        [
+          0.7523142032452801,
+          0.17083992880527635
+        ],
+        [
+          0.7523142032452801,
+          -0.17083992880527635
+        ],
+        [
+          0.5424254971228019,
+          0.0
+        ]
+      ],
+      "spectral_radius": 1.3312852546726384,
+      "K": [
+        [
+          1.4958791928672939,
+          0.12552802232398463,
+          1.3474022365814136,
+          -0.014442714060202118
+        ]
+      ],
+      "riccati_converged": true
+    },
+    {
+      "speed_kmh": 50.0,
+      "settings": {
+        "feedback_horizon_s": 0.0,
+        "lqr_discretization": "plant"
+      },
+      "closed_loop_matrix": [
+        [
+          0.8694272198981223,
+          0.03172190544167224,
+          0.4246496064526269,
+          -0.003154740612531206
+        ],
+        [
+          -5.472267011535873,
+          0.036413226031942456,
+          -11.307022724592613,
+          -0.34996224475952553
+        ],
+        [
+          -0.22812440770182024,
+          -0.018851466965998636,
+          0.5286399847666128,
+          0.019650916292308442
+        ],
+        [
+          -5.445995497860344,
+          -0.4506881196307058,
+          -11.252739444644384,
+          0.2759582686238351
+        ]
+      ],
+      "eigenvalues": [
+        [
+          0.006407379763124691,
+          0.0
+        ],
+        [
+          0.6095440521351589,
+          0.19042020928265616
+        ],
+        [
+          0.6095440521351589,
+          -0.19042020928265616
+        ],
+        [
+          0.4849432152870714,
+          0.0
+        ]
+      ],
+      "spectral_radius": 0.6385951828792633,
+      "K": [
+        [
+          1.4958791928672939,
+          0.12552802232398463,
+          1.3474022365814136,
+          -0.014442714060202118
+        ]
+      ],
+      "riccati_converged": true
+    },
+    {
+      "speed_kmh": 60.00000000000001,
+      "settings": {
+        "feedback_horizon_s": 0.05,
+        "lqr_discretization": "bilinear"
+      },
+      "closed_loop_matrix": [
+        [
+          0.8385764952233372,
+          0.02201246249001404,
+          0.31672004799257186,
+          -0.028578597667578247
+        ],
+        [
+          -6.372787052849068,
+          -0.2970553259759406,
+          -20.395211098311606,
+          -1.495139699121294
+        ],
+        [
+          -0.2782611991280893,
+          -0.037483209109034715,
+          0.10946406185822473,
+          -0.019703379474891213
+        ],
+        [
+          -6.7943322240862,
+          -0.9156665615386675,
+          -21.74430729179128,
+          -0.701854128663336
+        ]
+      ],
+      "eigenvalues": [
+        [
+          -2.2090372407134353,
+          0.0
+        ],
+        [
+          0.7705202781941998,
+          0.21978634344734824
+        ],
+        [
+          0.7705202781941998,
+          -0.21978634344734824
+        ],
+        [
+          0.6171277867673222,
+          0.0
+        ]
+      ],
+      "spectral_radius": 2.2090372407134353,
+      "K": [
+        [
+          1.7630712551902545,
+          0.15097845699479287,
+          1.6569285965273723,
+          0.054983726026110215
+        ]
+      ],
+      "riccati_converged": true
+    },
+    {
+      "speed_kmh": 60.00000000000001,
+      "settings": {
+        "feedback_horizon_s": 0.0,
+        "lqr_discretization": "bilinear"
+      },
+      "closed_loop_matrix": [
+        [
+          0.8385764952233372,
+          0.030083637728847222,
+          0.4512396353064232,
+          -0.009473912766230655
+        ],
+        [
+          -6.372787052849068,
+          0.021584026666512816,
+          -15.08455522093827,
+          -0.7409119380742547
+        ],
+        [
+          -0.2782611991280893,
+          -0.023570149152630258,
+          0.34134839446492726,
+          0.013229200801867892
+        ],
+        [
+          -6.7943322240862,
+          -0.5759499503343578,
+          -16.082363771720388,
+          0.10226405992281723
+        ]
+      ],
+      "eigenvalues": [
+        [
+          -0.6005479867832263,
+          0.0
+        ],
+        [
+          0.7018795479510989,
+          0.25751115426585414
+        ],
+        [
+          0.7018795479510989,
+          -0.25751115426585414
+        ],
+        [
+          0.5005618671586224,
+          0.0
+        ]
+      ],
+      "spectral_radius": 0.747627510464517,
+      "K": [
+        [
+          1.7630712551902545,
+          0.15097845699479287,
+          1.6569285965273723,
+          0.054983726026110215
+        ]
+      ],
+      "riccati_converged": true
+    },
+    {
+      "speed_kmh": 60.00000000000001,
+      "settings": {
+        "feedback_horizon_s": 0.05,
+        "lqr_discretization": "plant"
+      },
+      "closed_loop_matrix": [
+        [
+          0.8726752977735074,
+          0.02578834053443788,
+          0.4107934007442205,
+          -0.019045654451132907
+        ],
+        [
+          -5.026611304094053,
+          -0.1479886411215056,
+          -16.68131921333919,
+          -1.1187916747777484
+        ],
+        [
+          -0.2194818181477916,
+          -0.030974365469092296,
+          0.2716273352854282,
+          -0.00327052965975359
+        ],
+        [
+          -5.35911005312718,
+          -0.7567394591508049,
+          -17.78475002091726,
+          -0.3006115501708756
+        ]
+      ],
+      "eigenvalues": [
+        [
+          -1.4519780612118458,
+          0.0
+        ],
+        [
+          0.7556466328783602,
+          0.22369583053439365
+        ],
+        [
+          0.7556466328783602,
+          -0.22369583053439365
+        ],
+        [
+          0.6363872372216778,
+          0.0
+        ]
+      ],
+      "spectral_radius": 1.4519780612118458,
+      "K": [
+        [
+          1.390643344547436,
+          0.12835962513602128,
+          1.316794383702033,
+          -0.013279563226104652
+        ]
+      ],
+      "riccati_converged": true
+    },
+    {
+      "speed_kmh": 60.00000000000001,
+      "settings": {
+        "feedback_horizon_s": 0.0,
+        "lqr_discretization": "plant"
+      },
+      "closed_loop_matrix": [
+        [
+          0.8726752977735074,
+          0.03215457564576253,
+          0.5168973192662645,
+          -0.0032238537477784638
+        ],
+        [
+          -5.026611304094053,
+          0.10334192408319708,
+          -12.49247645992818,
+          -0.49416785178123557
+        ],
+        [
+          -0.2194818181477916,
+          -0.020000274561702718,
+          0.4545288504085574,
+          0.024003027819823074
+        ],
+        [
+          -5.35911005312718,
+          -0.4887839564944459,
+          -13.318824976645354,
+          0.36532969866150283
+        ]
+      ],
+      "eigenvalues": [
+        [
+          0.007236821172924688,
+          0.0
+        ],
+        [
+          0.6456658202821994,
+          0.26554622930815874
+        ],
+        [
+          0.6456658202821994,
+          -0.26554622930815874
+        ],
+        [
+          0.4973073091894424,
+          0.0
+        ]
+      ],
+      "spectral_radius": 0.698139779256609,
+      "K": [
+        [
+          1.390643344547436,
+          0.12835962513602128,
+          1.316794383702033,
+          -0.013279563226104652
+        ]
+      ],
+      "riccati_converged": true
+    }
+  ]
+}

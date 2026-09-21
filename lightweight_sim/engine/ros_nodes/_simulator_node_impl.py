@@ -1,0 +1,222 @@
+"""ROS 2 node that exposes the deterministic SimulationEngine."""
+
+import math
+from typing import Optional
+
+import rclpy
+from builtin_interfaces.msg import Time
+from lightweight_sim_msgs.msg import ControlCommand as RosControlCommand
+from lightweight_sim_msgs.msg import Obstacle as RosObstacle
+from lightweight_sim_msgs.msg import ObstacleArray
+from lightweight_sim_msgs.msg import Path as RosPath
+from lightweight_sim_msgs.msg import PathPoint
+from lightweight_sim_msgs.msg import SimulationStatus
+from lightweight_sim_msgs.msg import VehicleState as RosVehicleState
+from rclpy.node import Node
+from rosgraph_msgs.msg import Clock
+from std_srvs.srv import Empty, SetBool, Trigger
+
+from ..simulator.data_types import ControlCommand
+from ..simulator.engine import SimulationEngine
+from ..simulator.scenarios import make_scenario
+from .qos import clock_qos, command_qos, latched_path_qos, sensor_data_qos, status_qos
+
+
+def seconds_to_time(seconds: float) -> Time:
+    seconds = max(0.0, float(seconds))
+    whole = int(seconds)
+    return Time(sec=whole, nanosec=int((seconds - whole) * 1e9))
+
+
+class SimulatorNode(Node):
+    def __init__(self) -> None:
+        super().__init__("simulator_node")
+        self.declare_parameter("scenario", "obstacle")
+        self.declare_parameter("physics_dt", 0.05)
+        self.declare_parameter("command_timeout", 0.25)
+        self.declare_parameter("publish_clock", True)
+        self.declare_parameter("frame_id", "map")
+
+        scenario_name = str(self.get_parameter("scenario").value)
+        self.physics_dt = float(self.get_parameter("physics_dt").value)
+        self.command_timeout = float(self.get_parameter("command_timeout").value)
+        self.publish_clock_enabled = bool(self.get_parameter("publish_clock").value)
+        self.frame_id = str(self.get_parameter("frame_id").value)
+        self.engine = SimulationEngine(make_scenario(scenario_name))
+        self.command = ControlCommand()
+        self.last_command_time = self.get_clock().now()
+        self.paused = False
+
+        sensor_qos = sensor_data_qos()
+        self.state_pub = self.create_publisher(RosVehicleState, "vehicle/state", sensor_qos)
+        self.obstacle_pub = self.create_publisher(ObstacleArray, "obstacles", sensor_qos)
+        self.reference_pub = self.create_publisher(
+            RosPath, "reference_path", latched_path_qos()
+        )
+        self.status_pub = self.create_publisher(
+            SimulationStatus, "sim/status", status_qos()
+        )
+        self.clock_pub = self.create_publisher(Clock, "/clock", clock_qos())
+        self.command_sub = self.create_subscription(
+            RosControlCommand, "control_command", self._on_command, command_qos()
+        )
+        self.reset_srv = self.create_service(Empty, "sim/reset", self._on_reset)
+        self.pause_srv = self.create_service(SetBool, "sim/pause", self._on_pause)
+        self.step_srv = self.create_service(Trigger, "sim/step", self._on_step)
+        self.timer = self.create_timer(self.physics_dt, self._on_timer)
+        self._publish_reference(sequence=0)
+        self._publish_status()
+        self.get_logger().info(
+            f"simulator ready: scenario={scenario_name} dt={self.physics_dt:.3f}"
+        )
+
+    def _on_command(self, message: RosControlCommand) -> None:
+        self.command = ControlCommand(
+            steer=float(message.steering_angle),
+            throttle=float(message.throttle),
+            brake=float(message.brake),
+            gear=int(message.gear),
+        )
+        self.last_command_time = self.get_clock().now()
+
+    def _command_is_stale(self) -> bool:
+        age = (self.get_clock().now() - self.last_command_time).nanoseconds / 1e9
+        return age > self.command_timeout
+
+    def _advance_once(self) -> None:
+        command = ControlCommand(brake=1.0) if self._command_is_stale() else self.command
+        self.engine.step(command, dt=self.physics_dt)
+        self._publish_state()
+        if self.engine.is_done:
+            self.paused = True
+            self.get_logger().warning(
+                "simulation stopped: "
+                f"collision={self.engine.collision_occurred} "
+                f"offroad={self.engine.offroad_occurred} "
+                f"reached={self.engine.reached_destination}"
+            )
+        self._publish_status()
+
+    def _on_timer(self) -> None:
+        if not self.paused:
+            self._advance_once()
+
+    def _on_step(self, _request, response):
+        self._advance_once()
+        response.success = True
+        response.message = f"step={self.engine.step_count} sim_time={self.engine.sim_time:.3f}"
+        return response
+
+    def _on_reset(self, _request, response):
+        self.engine.reset()
+        self.command = ControlCommand()
+        self.last_command_time = self.get_clock().now()
+        self.paused = False
+        self._publish_reference(sequence=0)
+        self._publish_state()
+        self._publish_status()
+        return response
+
+    def _on_pause(self, request, response):
+        self.paused = bool(request.data)
+        self._publish_status()
+        response.success = True
+        response.message = "paused" if self.paused else "running"
+        return response
+
+    def _publish_reference(self, sequence: int) -> None:
+        message = RosPath()
+        message.header.stamp = seconds_to_time(self.engine.sim_time)
+        message.header.frame_id = self.frame_id
+        message.sequence = sequence
+        message.points = [
+            PathPoint(x=p[0], y=p[1], theta=p[2], kappa=p[3])
+            for p in self.engine.world.ref_path_as_tuples
+        ]
+        self.reference_pub.publish(message)
+
+    def _publish_state(self) -> None:
+        stamp = seconds_to_time(self.engine.sim_time)
+        state = self.engine.get_state()
+        message = RosVehicleState()
+        message.header.stamp = stamp
+        message.header.frame_id = self.frame_id
+        message.x = state.x
+        message.y = state.y
+        message.yaw = state.phi
+        message.vx = state.vx
+        message.vy = state.vy
+        message.yaw_rate = state.r
+        message.steering_angle = state.steer
+        message.acceleration = state.accel
+        self.state_pub.publish(message)
+
+        obstacles = ObstacleArray()
+        obstacles.header.stamp = stamp
+        obstacles.header.frame_id = self.frame_id
+        obstacles.obstacles = [
+            RosObstacle(
+                id=o.id,
+                x=o.x,
+                y=o.y,
+                length=o.length,
+                width=o.width,
+                speed=o.speed,
+                heading=o.heading,
+                type=o.type,
+            )
+            for o in self.engine.obstacles.get_all()
+        ]
+        self.obstacle_pub.publish(obstacles)
+
+        if self.publish_clock_enabled:
+            clock = Clock()
+            clock.clock = stamp
+            self.clock_pub.publish(clock)
+
+    def _termination_reason(self) -> str:
+        if self.engine.collision_occurred:
+            return "collision"
+        if self.engine.offroad_occurred:
+            return "offroad"
+        if self.engine.reached_destination:
+            return "reached"
+        if self.paused:
+            return "paused"
+        return ""
+
+    def _publish_status(self, stamp: Optional[Time] = None) -> None:
+        message = SimulationStatus()
+        message.header.stamp = stamp or seconds_to_time(self.engine.sim_time)
+        message.header.frame_id = self.frame_id
+        message.running = not self.paused and not self.engine.is_done
+        message.paused = self.paused
+        message.done = self.engine.is_done
+        message.collision = self.engine.collision_occurred
+        message.offroad = self.engine.offroad_occurred
+        message.reached = self.engine.reached_destination
+        message.step_count = self.engine.step_count
+        message.sim_time = self.engine.sim_time
+        message.scenario = self.engine.config.name
+        message.termination_reason = self._termination_reason()
+        self.status_pub.publish(message)
+
+
+def main(args=None) -> None:
+    rclpy.init(args=args)
+    node: Optional[SimulatorNode] = None
+    try:
+        node = SimulatorNode()
+        rclpy.spin(node)
+    except KeyboardInterrupt:
+        pass
+    finally:
+        if node is not None:
+            try:
+                node.destroy_node()
+            except KeyboardInterrupt:
+                pass
+        try:
+            rclpy.shutdown()
+        except (KeyboardInterrupt, RuntimeError):
+            pass

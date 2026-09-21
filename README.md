@@ -5,9 +5,11 @@
 本仓库包含两套环境：
 
 - lightweight_sim：脱离 CARLA 的二维规划控制仿真器，适合快速调试；
-- 根目录 CARLA 代码：原始高保真仿真实现，需要 CARLA 运行时和对应 Python API。
+- `carla_legacy/`：归档的 CARLA 原始高保真仿真实现，需要 CARLA 运行时和对应 Python API。
 
 本文主要介绍 lightweight_sim。
+
+CARLA 历史源码和测试已统一归档到 `carla_legacy/`，当前轻量仿真与 ROS 2 开发不依赖该目录。
 
 ## 2. 安装依赖
 
@@ -163,7 +165,7 @@ cvxopt 是可选依赖。当前默认规划链不要求它；只有直接使用�
 
     python -m pytest lightweight_sim/tests/test_core.py
 
-根目录的 test_code*.py 属于 CARLA 测试，需要先安装并配置 CARLA 0.9.12 及其 Python API。
+`carla_legacy/test_code*.py` 属于 CARLA 测试，需要先安装并配置 CARLA 0.9.12 及其 Python API。
 
 ## 9. 运行日志和问题排查
 

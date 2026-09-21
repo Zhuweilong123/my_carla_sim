@@ -1,0 +1,11 @@
+std_msgs/Header header
+bool running
+bool paused
+bool done
+bool collision
+bool offroad
+bool reached
+uint64 step_count
+float64 sim_time
+string scenario
+string termination_reason

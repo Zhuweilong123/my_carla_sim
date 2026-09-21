@@ -1,0 +1,28 @@
+simulator_node:
+  ros__parameters:
+    # The simulator owns /clock and uses a wall timer to advance fixed-step physics.
+    use_sim_time: false
+    scenario: obstacle
+    physics_dt: 0.05
+    command_timeout: 0.25
+    publish_clock: true
+    frame_id: map
+    child_frame_id: base_link
+
+planner_node:
+  ros__parameters:
+    # Planner timers and output timestamps follow the simulator clock.
+    use_sim_time: true
+    plan_period: 0.5
+    prediction_time: 0.2
+    lane_width: 3.5
+    num_lanes: 2
+
+controller_node:
+  ros__parameters:
+    # Controller timers, freshness checks and command timestamps follow /clock.
+    use_sim_time: true
+    controller: LQR_controller
+    target_speed_kmh: 40.0
+    control_period: 0.05
+    state_timeout: 0.25
