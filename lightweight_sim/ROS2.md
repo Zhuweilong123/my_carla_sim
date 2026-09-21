@@ -71,3 +71,48 @@ GUI 依赖 Pygame；首次使用前执行 `python3 -m pip install -r requirement
 ## Runtime parameter alignment
 
 Both execution paths use the same core `VehicleController`, `MotionPlanner` and `SimulationEngine`. Shared timing and safety defaults are maintained in `engine/runtime_config.py`: physics/control period 0.05 s, planning period 0.5 s, prediction horizon 0.2 s, and the common timeout values. Scenario-specific vehicle, road and target-speed values are carried by `sim/context` in ROS 2; ROS transport and stale-data braking remain adapter behavior.
+## Current WSL2 quick start
+
+The current environment uses ROS 2 `lyrical` inside WSL2. Every new terminal must source the ROS environment before `ros2`, `colcon`, or the Python ROS packages are available.
+
+```bash
+cd /mnt/d/AI_tools/vehicle_motion
+source /opt/ros/lyrical/setup.bash
+
+# The repository is on /mnt/d. Use a regular build here; --symlink-install
+# can fail while colcon cleans Python package links on the Windows-mounted drive.
+colcon build
+source install/setup.bash
+```
+
+Start the three-lane figure-eight scenario:
+
+```bash
+ros2 launch lightweight_sim lightweight_sim.launch.py \
+  scenario:=figure_eight \
+  gui:=true \
+  steering_profile:=ideal
+```
+
+Use `gui:=false` when WSLg or a Linux display is unavailable. The simulation can then be inspected from another WSL terminal:
+
+```bash
+source /opt/ros/lyrical/setup.bash
+cd /mnt/d/AI_tools/vehicle_motion
+source install/setup.bash
+
+ros2 topic list
+ros2 topic echo /vehicle/state
+ros2 topic echo /planned_path
+ros2 topic echo /control_command
+ros2 topic echo /sim/status --once
+ros2 topic hz /vehicle/state
+```
+
+If `ros2: command not found` appears, run `source /opt/ros/lyrical/setup.bash` in that same terminal. If a previous build failed, remove only the generated package artifacts and rebuild:
+
+```bash
+rm -rf build/lightweight_sim install/lightweight_sim log
+colcon build
+source install/setup.bash
+```
