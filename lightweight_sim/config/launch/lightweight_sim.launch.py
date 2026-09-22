@@ -11,6 +11,7 @@ def generate_launch_description():
     namespace = LaunchConfiguration("namespace")
     gui = LaunchConfiguration("gui")
     controller_enabled = LaunchConfiguration("controller_enabled")
+    routing_enabled = LaunchConfiguration("routing_enabled")
     scenario = LaunchConfiguration("scenario")
     steering = LaunchConfiguration("steering_profile")
     return LaunchDescription(
@@ -31,6 +32,11 @@ def generate_launch_description():
                 "controller_enabled",
                 default_value="true",
                 description="Start the built-in forward tracking controller",
+            ),
+            DeclareLaunchArgument(
+                "routing_enabled",
+                default_value="true",
+                description="Start the independent lane-level A* routing node",
             ),
             DeclareLaunchArgument(
                 "scenario",
@@ -54,6 +60,15 @@ def generate_launch_description():
                 name="planner_node",
                 namespace=namespace,
                 output="screen",
+                parameters=[config, {"use_sim_time": True}],
+            ),
+            Node(
+                package="lightweight_sim",
+                executable="routing_node",
+                name="routing_node",
+                namespace=namespace,
+                output="screen",
+                condition=IfCondition(routing_enabled),
                 parameters=[config, {"use_sim_time": True}],
             ),
             Node(

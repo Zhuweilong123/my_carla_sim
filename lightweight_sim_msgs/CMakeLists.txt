@@ -14,6 +14,10 @@ rosidl_generate_interfaces(${PROJECT_NAME}
   "msg/ControlCommand.msg"
   "msg/ControlMode.msg"
   "msg/SimulationStatus.msg"
+  "msg/RouteRequest.msg"
+  "msg/RouteSegment.msg"
+  "msg/RoutePlan.msg"
+  "srv/ComputeRoute.srv"
   DEPENDENCIES std_msgs
 )
 

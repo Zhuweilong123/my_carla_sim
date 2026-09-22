@@ -1,0 +1,86 @@
+{
+  "map_id": "demo_grid",
+  "nodes": [
+    {"id": "n0", "x": 0.0, "y": 0.0},
+    {"id": "n1", "x": 100.0, "y": 0.0},
+    {"id": "n2", "x": 200.0, "y": 0.0},
+    {"id": "n3", "x": 100.0, "y": 80.0},
+    {"id": "n4", "x": 200.0, "y": 80.0},
+    {"id": "n5", "x": 100.0, "y": -80.0},
+    {"id": "n6", "x": 200.0, "y": -80.0}
+  ],
+  "edges": [
+    {
+      "id": "r0_main",
+      "road_id": "r0",
+      "lane_id": "r0_l0",
+      "from": "n0",
+      "to": "n1",
+      "lane_index": 0,
+      "speed_limit_kmh": 40.0,
+      "maneuver": "straight",
+      "centerline": [[0.0, 0.0], [100.0, 0.0]],
+      "successors": ["r1_main", "r1_left", "r1_right"]
+    },
+    {
+      "id": "r1_main",
+      "road_id": "r1",
+      "lane_id": "r1_l0",
+      "from": "n1",
+      "to": "n2",
+      "lane_index": 0,
+      "speed_limit_kmh": 40.0,
+      "maneuver": "straight",
+      "centerline": [[100.0, 0.0], [200.0, 0.0]],
+      "successors": []
+    },
+    {
+      "id": "r1_left",
+      "road_id": "r1",
+      "lane_id": "r1_l1",
+      "from": "n1",
+      "to": "n3",
+      "lane_index": 1,
+      "speed_limit_kmh": 30.0,
+      "maneuver": "left",
+      "centerline": [[100.0, 0.0], [100.0, 80.0]],
+      "successors": ["r2_left"]
+    },
+    {
+      "id": "r2_left",
+      "road_id": "r2",
+      "lane_id": "r2_l1",
+      "from": "n3",
+      "to": "n4",
+      "lane_index": 1,
+      "speed_limit_kmh": 40.0,
+      "maneuver": "straight",
+      "centerline": [[100.0, 80.0], [200.0, 80.0]],
+      "successors": []
+    },
+    {
+      "id": "r1_right",
+      "road_id": "r1",
+      "lane_id": "r1_l-1",
+      "from": "n1",
+      "to": "n5",
+      "lane_index": -1,
+      "speed_limit_kmh": 30.0,
+      "maneuver": "right",
+      "centerline": [[100.0, 0.0], [100.0, -80.0]],
+      "successors": ["r2_right"]
+    },
+    {
+      "id": "r2_right",
+      "road_id": "r2",
+      "lane_id": "r2_l-1",
+      "from": "n5",
+      "to": "n6",
+      "lane_index": -1,
+      "speed_limit_kmh": 40.0,
+      "maneuver": "straight",
+      "centerline": [[100.0, -80.0], [200.0, -80.0]],
+      "successors": []
+    }
+  ]
+}

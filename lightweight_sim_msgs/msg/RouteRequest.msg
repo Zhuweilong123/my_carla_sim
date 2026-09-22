@@ -1,0 +1,13 @@
+std_msgs/Header header
+uint64 request_id
+string map_id
+float64 start_x
+float64 start_y
+float64 start_yaw
+float64 goal_x
+float64 goal_y
+float64 goal_yaw
+int32 start_lane
+int32 goal_lane
+string route_policy
+bool allow_u_turn
