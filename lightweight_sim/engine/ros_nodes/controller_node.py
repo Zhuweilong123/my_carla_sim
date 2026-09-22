@@ -27,6 +27,7 @@ class ControllerNode(Node):
         self.declare_parameter("control_period", DEFAULT_RUNTIME_CONFIG.control_period)
         self.declare_parameter("state_timeout", DEFAULT_RUNTIME_CONFIG.state_timeout)
         self.declare_parameter("plan_timeout", DEFAULT_RUNTIME_CONFIG.plan_timeout)
+        self.declare_parameter("output_topic", "control_command")
         self.controller = VehicleController(
             vehicle_params=VehicleParams(),
             steering_params=SteeringParams(),
@@ -61,7 +62,9 @@ class ControllerNode(Node):
             RosPath, "planned_path", self._on_planned, latched_path_qos()
         )
         self.command_pub = self.create_publisher(
-            ControlCommand, "control_command", command_qos()
+            ControlCommand,
+            str(self.get_parameter("output_topic").value),
+            command_qos(),
         )
         period = float(self.get_parameter("control_period").value)
         self.timer = self.create_timer(period, self._on_timer)

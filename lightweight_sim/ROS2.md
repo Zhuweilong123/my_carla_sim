@@ -116,6 +116,44 @@ rm -rf build/lightweight_sim install/lightweight_sim log
 colcon build
 source install/setup.bash
 ```
+
+## Unified mode framework
+
+The recommended integrated launch is provided by `parking_module` so that
+`lightweight_sim` remains independent from the parking implementation:
+
+```bash
+ros2 launch parking_module unified_vehicle.launch.py gui:=true
+```
+
+The graph has one final actuator writer:
+
+```text
+cruise_controller_node  --/control_command/cruise--+
+parking_controller_node --/control_command/parking-+--> controller_manager
+GUI                     --/control_mode------------+    --/control_command--> simulator_node
+```
+
+The GUI shows task buttons `CRUISE`, `PARKING` and `E-STOP`, plus a control
+source button `AUTO`/`MANUAL`. Clicking `PARKING` also switches the scene to
+`reverse_parking`; clicking `CRUISE` returns from that scene to `default`.
+The same task actions are available with `C`, `K` and `E`, while `Q` toggles
+the control source. In manual mode, `W/S` drive forward/reverse, `A/D` steer,
+and `SPACE` brakes; releasing the movement keys produces a zero-throttle
+command. The manager brakes during a mode transition and whenever the
+selected candidate command is missing or stale.
+
+To start directly in the parking mode without the GUI:
+
+```bash
+ros2 launch parking_module unified_vehicle.launch.py \
+  scenario:=reverse_parking mode:=PARKING gui:=false
+```
+
+The legacy `lightweight_sim.launch.py` remains available for compatibility.
+In that launch, `controller_node` still writes directly to
+`/control_command`; use the unified launch when switching between multiple
+control modes.
 ## Reverse parking scene
 
 The `reverse_parking` scene provides a perpendicular parking slot bounded by
@@ -133,3 +171,39 @@ The external controller should publish `lightweight_sim_msgs/msg/ControlCommand`
 with `gear: -1` for reverse motion. The simulator publishes the resulting
 signed longitudinal velocity in `VehicleState.vx`. Use `controller_enabled:=true`
 only when testing the standard forward tracking controller.
+
+### 独立泊车规划控制模块
+
+仓库根目录下的 `parking_module/` 是独立的泊车规划控制 ROS 2 包。其核心
+规划器和控制器不导入 `lightweight_sim`；只有 `parking_controller_node` 负责
+将核心接口适配到 ROS 消息。因此后续可以独立替换规划器（例如 Hybrid A*）
+或控制器，而不修改仿真器。
+
+先构建并加载工作空间：
+
+```bash
+source /opt/ros/lyrical/setup.bash
+colcon build
+source install/setup.bash
+```
+
+在 `/mnt/d` Windows 挂载目录上建议使用普通 `colcon build`，不要使用
+`--symlink-install`，避免 colcon 清理符号链接时触发文件系统兼容性错误。
+
+启动倒车入库仿真时关闭内置控制器：
+
+```bash
+ros2 launch lightweight_sim lightweight_sim.launch.py \
+  scenario:=reverse_parking controller_enabled:=false gui:=true
+```
+
+另一个终端启动独立泊车控制器：
+
+```bash
+source /opt/ros/lyrical/setup.bash
+source install/setup.bash
+ros2 run parking_module parking_controller_node
+```
+
+该节点读取 `vehicle/state`、`obstacles` 和锁存的 `sim/context`，只在上下文
+中的 `maneuver` 为 `reverse_parking` 时规划并发布 `control_command`。

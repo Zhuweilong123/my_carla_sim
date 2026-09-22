@@ -43,12 +43,14 @@ class GuiSnapshot:
     planned_path: List[Tuple[float, float, float, float]] = field(default_factory=list)
     status: GuiStatus = field(default_factory=GuiStatus)
     control: GuiControl = field(default_factory=GuiControl)
+    mode: str = "CRUISE"
+    control_source: str = "AUTO"
 
 
 @dataclass(frozen=True)
 class GuiAction:
     kind: str
-    value: Optional[bool] = None
+    value: Optional[object] = None
 
 
 class RosGuiView:
@@ -125,6 +127,7 @@ class RosGuiView:
             if event.type == pygame.QUIT:
                 actions.append(GuiAction("quit"))
             elif event.type == pygame.KEYDOWN:
+                actions.append(GuiAction("key_down", event.key))
                 if event.key == pygame.K_ESCAPE:
                     actions.append(GuiAction("quit"))
                 elif event.key == pygame.K_r:
@@ -137,8 +140,12 @@ class RosGuiView:
                     self.camera.zoom(0.1)
                 elif event.key == pygame.K_MINUS:
                     self.camera.zoom(-0.1)
+            elif event.type == pygame.KEYUP:
+                actions.append(GuiAction("key_up", event.key))
             elif event.type == pygame.MOUSEWHEEL:
                 self.camera.zoom(0.1 if event.y > 0 else -0.1)
+            elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                actions.append(GuiAction("mouse_click", event.pos))
         return actions
 
     def render(self, snapshot: GuiSnapshot) -> None:
@@ -180,7 +187,7 @@ class RosGuiView:
                     "throttle": snapshot.control.throttle,
                     "brake": snapshot.control.brake,
                 },
-                auto_mode=True,
+                auto_mode=snapshot.control_source.upper() == "AUTO",
                 fps=self.clock.get_fps(),
                 sim_time=snapshot.status.sim_time,
                 real_time=time.monotonic() - self.started_at,
@@ -190,6 +197,7 @@ class RosGuiView:
                 ephi=ephi,
             )
         self._draw_status(snapshot.status)
+        self._draw_mode_controls(snapshot)
         pygame.display.flip()
         self.clock.tick(60)
 
@@ -210,6 +218,11 @@ class RosGuiView:
             text = "ROS 2: waiting for /sim/status"
             color = HUD_WARNING
         self._draw_text(text, color)
+
+    def _draw_mode_controls(self, snapshot: GuiSnapshot) -> None:
+        """Hook for concrete views to draw mode controls."""
+
+        return None
 
     def close(self) -> None:
         pygame.quit()

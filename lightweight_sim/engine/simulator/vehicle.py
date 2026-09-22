@@ -28,6 +28,11 @@ class EgoVehicle:
             (v0 > 0.0 > v1) or (v0 < 0.0 < v1)
         ):
             v1 = 0.0
+            # A braking command at rest is not an acceleration event.  Keep
+            # the telemetry physically meaningful instead of exposing the
+            # attempted stopping acceleration as -max_decel.
+            if v0 == 0.0 and accel < 0.0:
+                accel = 0.0
         yaw_rate = v1 / self.params.wheelbase * math.tan(steer)
         phi = prev.phi + yaw_rate * dt
         x = prev.x + v1 * math.cos(phi) * dt

@@ -118,7 +118,8 @@ def reverse_parking() -> ScenarioConfig:
 
     slot_x = 46.0
     slot_y = 7.5
-    slot_heading = math.pi / 2.0
+    # The car faces back toward the aisle after reversing into the slot.
+    slot_heading = -math.pi / 2.0
     road = RoadDef(
         segments=[RoadSegment("straight", {"length": 100, "heading": 0, "start": (0, 0)})],
         lane_width=3.5,

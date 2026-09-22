@@ -91,7 +91,11 @@ class SimulatorNode(Node):
         return age > self.command_timeout
 
     def _advance_once(self) -> None:
-        command = ControlCommand(brake=1.0) if self._command_is_stale() else self.command
+        command = (
+            ControlCommand(brake=1.0, gear=0)
+            if self._command_is_stale()
+            else self.command
+        )
         self.engine.step(command, dt=self.physics_dt)
         self._publish_state()
         if self.engine.is_done:

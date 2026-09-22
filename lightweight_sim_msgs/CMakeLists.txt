@@ -12,6 +12,7 @@ rosidl_generate_interfaces(${PROJECT_NAME}
   "msg/Obstacle.msg"
   "msg/ObstacleArray.msg"
   "msg/ControlCommand.msg"
+  "msg/ControlMode.msg"
   "msg/SimulationStatus.msg"
   DEPENDENCIES std_msgs
 )

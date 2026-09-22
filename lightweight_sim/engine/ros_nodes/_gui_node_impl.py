@@ -23,6 +23,8 @@ class GuiNode(Node):
         self.declare_parameter("lane_width", DEFAULT_RUNTIME_CONFIG.lane_width)
         self.declare_parameter("num_lanes", DEFAULT_RUNTIME_CONFIG.num_lanes)
         self.declare_parameter("target_speed_kmh", DEFAULT_RUNTIME_CONFIG.target_speed_kmh)
+        self.declare_parameter("initial_mode", "CRUISE")
+        self.declare_parameter("initial_control_source", "AUTO")
 
         self.snapshot = GuiSnapshot()
         self.view = RosGuiView(

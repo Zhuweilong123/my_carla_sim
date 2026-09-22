@@ -47,6 +47,7 @@ setup(
             "simulator_node = lightweight_sim.engine.ros_nodes.simulator_node:main",
             "planner_node = lightweight_sim.engine.ros_nodes.planner_node:main",
             "controller_node = lightweight_sim.engine.ros_nodes.controller_node:main",
+            "controller_manager_node = lightweight_sim.engine.ros_nodes.controller_manager:main",
             "gui_node = lightweight_sim.engine.ros_nodes.gui_node:main",
         ],
     },
