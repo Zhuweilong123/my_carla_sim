@@ -24,9 +24,23 @@ class RuntimeConfig:
     plan_timeout: float = 1.5
     controller: str = "LQR_controller"
     target_speed_kmh: float = 40.0
+    default_speed_limit_kmh: float = 40.0
+    straight_speed_limit_kmh: float = 40.0
+    curve_speed_limit_kmh: float = 30.0
+    intersection_speed_limit_kmh: float = 25.0
+    lane_change_speed_limit_kmh: float = 20.0
+    parking_speed_limit_kmh: float = 8.0
+    target_speed_ratio: float = 0.85
+    speed_profile_lookahead_m: float = 20.0
+    max_lateral_accel_mps2: float = 2.0
     lane_width: float = 3.5
     num_lanes: int = 2
     steering_profile: str = "ideal"
+
+    def target_speed_for_limit(self, speed_limit_kmh: float) -> float:
+        """Return the commanded speed as a ratio of the active limit."""
+
+        return max(0.0, float(speed_limit_kmh)) * self.target_speed_ratio
 
     def plan_interval_steps(self, physics_dt: Optional[float] = None) -> int:
         """Return the fixed-step count matching ``plan_period``."""

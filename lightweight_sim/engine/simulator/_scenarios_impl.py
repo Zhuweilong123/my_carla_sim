@@ -3,6 +3,7 @@
 import math
 
 from .data_types import RoadDef, RoadSegment, ScenarioConfig
+from ..runtime_config import DEFAULT_RUNTIME_CONFIG
 
 
 def default_config() -> ScenarioConfig:
@@ -20,10 +21,58 @@ def default_config() -> ScenarioConfig:
         ego_start_y=lane_y,
         ego_start_phi=0.0,
         ego_start_speed=10.0,
-        target_speed=20.0,
+        speed_limit_type="straight",
         controller="LQR_controller",
         destination=(190.0, lane_y),
         routing_map_id="straight_cruise",
+        routing_start_lane=0,
+        routing_goal_lane=0,
+    )
+
+
+def demo_grid_scenario() -> ScenarioConfig:
+    """Follow the left branch of the built-in demo-grid routing map."""
+
+    road = RoadDef(
+        segments=[
+            RoadSegment(
+                "straight",
+                {"length": 100.0, "heading": 0.0, "start": (0.0, 0.0)},
+            ),
+            RoadSegment(
+                "arc",
+                {
+                    "radius": 20.0,
+                    "angle": math.pi / 2.0,
+                    "center": (100.0, 20.0),
+                    "start_angle": -math.pi / 2.0,
+                    "resolution": 2.0,
+                },
+            ),
+            RoadSegment(
+                "straight",
+                {"length": 56.5, "heading": math.pi / 2.0, "start": (120.0, 20.0)},
+            ),
+            RoadSegment(
+                "straight",
+                {"length": 80.0, "heading": 0.0, "start": (120.0, 76.5)},
+            ),
+        ],
+        lane_width=3.5,
+        num_lanes=2,
+    )
+    return ScenarioConfig(
+        name="demo_grid",
+        description="Demo grid junction with a left-turn route",
+        road=road,
+        ego_start_x=10.0,
+        ego_start_y=0.0,
+        ego_start_phi=0.0,
+        ego_start_speed=3.0,
+        speed_limit_type="straight",
+        controller="LQR_controller",
+        destination=(200.0, 76.5),
+        routing_map_id="demo_grid",
         routing_start_lane=0,
         routing_goal_lane=0,
     )
@@ -44,7 +93,7 @@ def straight_with_obstacle() -> ScenarioConfig:
         ego_start_y=lane_y,
         ego_start_phi=0.0,
         ego_start_speed=10.0,
-        target_speed=40.0,
+        speed_limit_type="straight",
         obstacles=[
             {"id": 1, "x": 60.0, "y": lane_y, "length": 4.5, "width": 2.0}
         ],
@@ -71,7 +120,7 @@ def three_lane_double_obstacle() -> ScenarioConfig:
         ego_start_y=lane0,
         ego_start_phi=0.0,
         ego_start_speed=5.56,
-        target_speed=40.0,
+        speed_limit_type="straight",
         obstacles=[
             {"id": 1, "x": 200.0, "y": lane0, "length": 4.5, "width": 2.0},
             {"id": 2, "x": 400.0, "y": lane1, "length": 4.5, "width": 2.0},
@@ -113,7 +162,7 @@ def curve_scenario() -> ScenarioConfig:
         ego_start_y=1.75,
         ego_start_phi=0.0,
         ego_start_speed=8.0,
-        target_speed=30.0,
+        speed_limit_type="curve",
         controller="LQR_controller",
         destination=(98.25, 150.0),
         routing_map_id="curve_90deg",
@@ -154,7 +203,7 @@ def reverse_parking() -> ScenarioConfig:
         ego_start_y=0.0,
         ego_start_phi=0.0,
         ego_start_speed=0.0,
-        target_speed=8.0,
+        speed_limit_type="parking",
         obstacles=obstacles,
         controller="LQR_controller",
         destination=(slot_x, slot_y),
@@ -166,6 +215,7 @@ def reverse_parking() -> ScenarioConfig:
 
 SCENARIOS = {
     "default": default_config,
+    "demo_grid": demo_grid_scenario,
     "obstacle": straight_with_obstacle,
     "three_lane": three_lane_double_obstacle,
     "curve": curve_scenario,
@@ -175,6 +225,21 @@ SCENARIOS = {
 
 def make_scenario(name: str) -> ScenarioConfig:
     try:
-        return SCENARIOS[name]()
+        config = SCENARIOS[name]()
     except KeyError as exc:
         raise ValueError(f"unknown scenario: {name}; choose from {sorted(SCENARIOS)}") from exc
+    speed_limits = {
+        "default": DEFAULT_RUNTIME_CONFIG.default_speed_limit_kmh,
+        "straight": DEFAULT_RUNTIME_CONFIG.straight_speed_limit_kmh,
+        "curve": DEFAULT_RUNTIME_CONFIG.curve_speed_limit_kmh,
+        "intersection": DEFAULT_RUNTIME_CONFIG.intersection_speed_limit_kmh,
+        "lane_change": DEFAULT_RUNTIME_CONFIG.lane_change_speed_limit_kmh,
+        "parking": DEFAULT_RUNTIME_CONFIG.parking_speed_limit_kmh,
+    }
+    speed_type = getattr(config, "speed_limit_type", "default")
+    speed_limit = float(speed_limits.get(speed_type, speed_limits["default"]))
+    config.speed_limits = speed_limits
+    config.speed_limit_kmh = speed_limit
+    config.target_speed_ratio = DEFAULT_RUNTIME_CONFIG.target_speed_ratio
+    config.target_speed = speed_limit * config.target_speed_ratio
+    return config

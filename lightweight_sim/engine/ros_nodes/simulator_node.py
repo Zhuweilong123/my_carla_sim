@@ -14,7 +14,6 @@ from ._simulator_node_impl import *  # noqa: F401,F403
 from ..simulator.data_types import ControlCommand
 from ..simulator.engine import SimulationEngine
 from ..simulator.scenarios import make_scenario
-from ..simulator.steering import steering_profile
 from .route_session import encode_sequence
 
 
@@ -38,6 +37,11 @@ class SimulatorNode(_LegacySimulatorNode):
         context = dict(schema_version=1, run_id=self.run_id,
                        route_id=config.name, scenario=config.name,
                        target_speed_kmh=config.target_speed,
+                       speed_limit_kmh=config.speed_limit_kmh,
+                       target_speed_ratio=config.target_speed_ratio,
+                       speed_limits=config.speed_limits,
+                       max_lateral_accel_mps2=config.max_lateral_accel_mps2,
+                       speed_limit_type=getattr(config, "speed_limit_type", "default"),
                        vehicle_model=config.vehicle_model,
                        vehicle_parameters=asdict(config.vehicle_params),
                        steering_parameters=asdict(config.steering),
@@ -101,8 +105,7 @@ class SimulatorNode(_LegacySimulatorNode):
         try:
             config = make_scenario(requested)
             config.physics_dt = self.physics_dt
-            config.steering = steering_profile(str(self.get_parameter("steering_profile").value))
-            config.steering.delay_steps(self.physics_dt)
+            self._apply_runtime_parameters(config)
         except ValueError as exc:
             return SetParametersResult(successful=False, reason=str(exc))
 

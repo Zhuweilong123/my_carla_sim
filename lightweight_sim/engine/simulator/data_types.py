@@ -57,8 +57,20 @@ class VehicleParams:
     max_steer: float = 0.5
     max_accel: float = 3.0
     max_decel: float = 6.0
+    width: float = 2.0
+    body_overhang: float = 1.0
     def __post_init__(self):
-        positive = (self.a, self.b, self.m, self.Iz, self.max_steer, self.max_accel, self.max_decel)
+        positive = (
+            self.a,
+            self.b,
+            self.m,
+            self.Iz,
+            self.max_steer,
+            self.max_accel,
+            self.max_decel,
+            self.width,
+            self.body_overhang,
+        )
         if not all(math.isfinite(v) and v > 0 for v in positive):
             raise ValueError("vehicle geometry, mass, inertia and limits must be positive and finite")
         if not all(math.isfinite(v) and v < 0 for v in (self.Cf, self.Cr)):
@@ -114,6 +126,11 @@ class ScenarioConfig:
     ego_start_phi: float = 0.0
     ego_start_speed: float = 10.0
     target_speed: float = 50.0
+    speed_limit_type: str = "straight"
+    speed_limit_kmh: float = 40.0
+    target_speed_ratio: float = 0.85
+    speed_limits: dict = field(default_factory=dict)
+    max_lateral_accel_mps2: float = 2.0
     obstacles: List[dict] = field(default_factory=list)
     controller: str = DEFAULT_RUNTIME_CONFIG.controller
     planner: dict = field(default_factory=dict)

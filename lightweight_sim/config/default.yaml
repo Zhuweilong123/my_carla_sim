@@ -8,25 +8,123 @@ simulator_node:
     steering_profile: ideal
     physics_dt: 0.05
     command_timeout: 0.25
+    default_speed_limit_kmh: 40.0
+    straight_speed_limit_kmh: 40.0
+    curve_speed_limit_kmh: 30.0
+    intersection_speed_limit_kmh: 25.0
+    lane_change_speed_limit_kmh: 20.0
+    parking_speed_limit_kmh: 8.0
+    target_speed_ratio: 0.85
+    speed_profile_lookahead_m: 20.0
+    max_lateral_accel_mps2: 2.0
     publish_clock: true
     frame_id: map
-    child_frame_id: base_link
+    vehicle_a_m: 1.015
+    vehicle_b_m: 1.895
+    vehicle_mass_kg: 1412.0
+    vehicle_cf_n_per_rad: -148970.0
+    vehicle_cr_n_per_rad: -82204.0
+    vehicle_iz_kgm2: 1537.0
+    vehicle_max_steer_rad: 0.5
+    vehicle_max_accel_mps2: 3.0
+    vehicle_max_decel_mps2: 6.0
+    vehicle_width_m: 2.0
+    vehicle_body_overhang_m: 1.0
+    steering_time_constant_s: 0.15
+    steering_delay_s: 0.05
+    steering_rate_limit_rad_s: 0.6
 
 planner_node:
   ros__parameters:
     # Planner timers and output timestamps follow the simulator clock.
     use_sim_time: true
     plan_period: 0.5
+    result_poll_period: 0.02
     prediction_time: 0.2
     lane_width: 3.5
     num_lanes: 2
+    use_routing_reference: true
+    routing_reference_topic: routing/reference_line
+    routing_corridor_margin_m: 1.1
+    local_plan_points: 80
+    local_transition_distance_m: 12.0
+    local_collision_margin_m: 0.25
+    local_obstacle_longitudinal_min_m: -5.0
+    local_obstacle_longitudinal_max_m: 65.0
+    local_obstacle_lateral_clearance_m: 2.2
+    local_vehicle_length_m: 4.0
+    local_vehicle_width_m: 2.0
 
 controller_node:
   ros__parameters:
     # Controller timers, freshness checks and command timestamps follow /clock.
     use_sim_time: true
     controller: LQR_controller
-    target_speed_kmh: 40.0
+    physics_dt: 0.05
+    target_speed_kmh: 34.0
+    routing_reference_topic: routing/reference_line
+    speed_profile_lookahead_m: 20.0
     control_period: 0.05
     state_timeout: 0.25
     plan_timeout: 1.5
+    output_topic: control_command
+    actuator_compensation: true
+    lateral_q_weights: [200.0, 1.0, 50.0, 1.0]
+    lateral_r: 100.0
+    dynamic_lateral_r: 300.0
+    lateral_feedback_horizon_s: 0.0
+    lateral_smooth_reference_heading: true
+    lateral_discretization: plant
+    longitudinal_kp: 1.15
+    longitudinal_ki: 0.0
+    longitudinal_kd: 0.55
+    longitudinal_error_threshold_kmh: 1.0
+    longitudinal_max_jerk_mps3: 40.0
+    longitudinal_coupling_gain: 0.5
+
+routing_node:
+  ros__parameters:
+    use_sim_time: true
+    map_file: ""
+    map_dir: config/maps
+    request_topic: routing/request
+    route_topic: routing/route
+    service_name: routing/compute_route
+    turn_penalty_s: 2.0
+    lane_change_penalty_s: 1.0
+    u_turn_penalty_s: 30.0
+    sample_spacing_m: 1.0
+
+reference_line_node:
+  ros__parameters:
+    use_sim_time: true
+    map_file: ""
+    map_dir: config/maps
+    route_topic: routing/route
+    reference_topic: routing/reference_line
+    sample_spacing_m: 1.0
+    max_lateral_deviation_m: 0.15
+    join_tolerance_m: 0.25
+    boundary_margin_m: 0.1
+
+simulator_gui:
+  ros__parameters:
+    use_sim_time: true
+    screen_width: 1200
+    screen_height: 800
+    lane_width: 3.5
+    num_lanes: 2
+    target_speed_kmh: 34.0
+    render_fps: 60
+    initial_mode: CRUISE
+    initial_control_source: AUTO
+    mode_publish_period: 1.0
+
+controller_manager:
+  ros__parameters:
+    use_sim_time: true
+    default_mode: CRUISE
+    default_control_source: AUTO
+    switch_hold_s: 0.5
+    command_timeout: 0.35
+    update_period: 0.02
