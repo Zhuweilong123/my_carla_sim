@@ -118,6 +118,9 @@ class ScenarioConfig:
     controller: str = DEFAULT_RUNTIME_CONFIG.controller
     planner: dict = field(default_factory=dict)
     destination: Optional[Tuple[float, float]] = None
+    routing_map_id: Optional[str] = None
+    routing_start_lane: int = -1
+    routing_goal_lane: int = -1
     vehicle_model: str = "kinematic"
     maneuver: str = "cruise"
     parking_goal: Optional[Tuple[float, float, float]] = None

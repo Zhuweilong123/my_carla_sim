@@ -8,6 +8,7 @@ from pathlib import Path
 import rclpy
 from ament_index_python.packages import get_package_share_directory
 from lightweight_sim_msgs.msg import PathPoint, RoutePlan as RosRoutePlan
+from lightweight_sim_msgs.msg import RouteRequest as RosRouteRequest
 from lightweight_sim_msgs.msg import RouteSegment as RosRouteSegment
 from lightweight_sim_msgs.srv import ComputeRoute
 from rclpy.node import Node
@@ -29,11 +30,18 @@ class RoutingNode(Node):
         )
         self.declare_parameter("map_file", "")
         self.declare_parameter("map_dir", default_map_dir)
+        self.declare_parameter("request_topic", "routing/request")
         self.declare_parameter("route_topic", "routing/route")
         self.declare_parameter("service_name", "routing/compute_route")
         self.route_pub = self.create_publisher(
             RosRoutePlan,
             str(self.get_parameter("route_topic").value),
+            latched_path_qos(),
+        )
+        self.request_sub = self.create_subscription(
+            RosRouteRequest,
+            str(self.get_parameter("request_topic").value),
+            self._on_route_request,
             latched_path_qos(),
         )
         self.service = self.create_service(
@@ -67,29 +75,43 @@ class RoutingNode(Node):
         return str(package_root / path)
 
     def _on_compute_route(self, request, response):
-        route_request = RouteRequest(
-            map_id=str(request.request.map_id),
-            start=Pose2D(
-                float(request.request.start_x),
-                float(request.request.start_y),
-                float(request.request.start_yaw),
-            ),
-            goal=Pose2D(
-                float(request.request.goal_x),
-                float(request.request.goal_y),
-                float(request.request.goal_yaw),
-            ),
-            start_lane=int(request.request.start_lane),
-            goal_lane=int(request.request.goal_lane),
-            route_policy=str(request.request.route_policy or "fastest"),
-            allow_u_turn=bool(request.request.allow_u_turn),
-        )
         plan = self.core.route(
-            route_request,
+            self._to_core_request(request.request),
             request_id=int(request.request.request_id) or None,
         )
-        response.plan = self._to_ros_plan(plan)
-        self.route_pub.publish(response.plan)
+        response.plan = self._publish_plan(plan)
+        return response
+
+    def _on_route_request(self, request: RosRouteRequest) -> None:
+        plan = self.core.route(
+            self._to_core_request(request),
+            request_id=int(request.request_id) or None,
+        )
+        self._publish_plan(plan)
+
+    @staticmethod
+    def _to_core_request(request) -> RouteRequest:
+        return RouteRequest(
+            map_id=str(request.map_id),
+            start=Pose2D(
+                float(request.start_x),
+                float(request.start_y),
+                float(request.start_yaw),
+            ),
+            goal=Pose2D(
+                float(request.goal_x),
+                float(request.goal_y),
+                float(request.goal_yaw),
+            ),
+            start_lane=int(request.start_lane),
+            goal_lane=int(request.goal_lane),
+            route_policy=str(request.route_policy or "fastest"),
+            allow_u_turn=bool(request.allow_u_turn),
+        )
+
+    def _publish_plan(self, plan):
+        message = self._to_ros_plan(plan)
+        self.route_pub.publish(message)
         self.get_logger().info(
             "route request=%d route=%d success=%s segments=%d length=%.2f reason=%s"
             % (
@@ -101,7 +123,7 @@ class RoutingNode(Node):
                 plan.failure_reason,
             )
         )
-        return response
+        return message
 
     def _to_ros_plan(self, plan) -> RosRoutePlan:
         message = RosRoutePlan()

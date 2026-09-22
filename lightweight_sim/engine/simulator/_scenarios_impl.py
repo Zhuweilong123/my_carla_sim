@@ -46,6 +46,9 @@ def straight_with_obstacle() -> ScenarioConfig:
         ],
         controller="LQR_controller",
         destination=(180.0, lane_y),
+        routing_map_id="straight_obstacle",
+        routing_start_lane=0,
+        routing_goal_lane=0,
     )
 
 
@@ -71,6 +74,9 @@ def three_lane_double_obstacle() -> ScenarioConfig:
         ],
         controller="LQR_controller",
         destination=(600.0, lane0),
+        routing_map_id="three_lane_double_obs",
+        routing_start_lane=0,
+        routing_goal_lane=0,
     )
 
 

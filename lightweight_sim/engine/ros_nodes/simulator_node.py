@@ -7,6 +7,7 @@ from dataclasses import asdict
 
 import rclpy
 from std_msgs.msg import String
+from lightweight_sim_msgs.msg import RouteRequest
 from rcl_interfaces.msg import SetParametersResult
 
 from ._simulator_node_impl import *  # noqa: F401,F403
@@ -42,10 +43,43 @@ class SimulatorNode(_LegacySimulatorNode):
                        steering_parameters=asdict(config.steering),
                        maneuver=getattr(config, "maneuver", "cruise"),
                        parking_goal=getattr(config, "parking_goal", None),
+                       routing_map_id=getattr(config, "routing_map_id", None),
+                       routing_start_lane=getattr(config, "routing_start_lane", -1),
+                       routing_goal_lane=getattr(config, "routing_goal_lane", -1),
                        lane_width=config.road.lane_width,
                        num_lanes=config.road.num_lanes, physics_dt=self.physics_dt)
         self.context_pub.publish(String(data=json.dumps(context)))
+        self._publish_route_request(config)
         super()._publish_reference(encode_sequence(self.run_id))
+
+    def _publish_route_request(self, config) -> None:
+        """Publish the scenario mission once per run/reset for the routing node."""
+
+        if not hasattr(self, "route_request_pub"):
+            self.route_request_pub = self.create_publisher(
+                RouteRequest, "routing/request", latched_path_qos()
+            )
+        destination = getattr(config, "destination", None)
+        map_id = getattr(config, "routing_map_id", None)
+        if not map_id or destination is None:
+            return
+
+        message = RouteRequest()
+        message.header.stamp = seconds_to_time(self.engine.sim_time)
+        message.header.frame_id = self.frame_id
+        message.request_id = self.run_id
+        message.map_id = str(map_id)
+        message.start_x = float(config.ego_start_x)
+        message.start_y = float(config.ego_start_y)
+        message.start_yaw = float(config.ego_start_phi)
+        message.goal_x = float(destination[0])
+        message.goal_y = float(destination[1])
+        message.goal_yaw = float(config.ego_start_phi)
+        message.start_lane = int(getattr(config, "routing_start_lane", -1))
+        message.goal_lane = int(getattr(config, "routing_goal_lane", -1))
+        message.route_policy = "fastest"
+        message.allow_u_turn = False
+        self.route_request_pub.publish(message)
 
     def _on_parameters(self, parameters):
         requested = None

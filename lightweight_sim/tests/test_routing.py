@@ -10,6 +10,7 @@ from lightweight_sim.engine.routing import (
     load_map,
     map_from_dict,
 )
+from lightweight_sim.engine.simulator.scenarios import make_scenario
 
 
 MAP_PATH = Path(__file__).parents[1] / "config" / "maps" / "demo_grid.json"
@@ -120,3 +121,16 @@ def test_scenario_maps_are_routable(
     assert plan.success
     assert [segment.edge_id for segment in plan.segments] == expected_edges
     assert plan.points
+
+
+@pytest.mark.parametrize(
+    ("scenario_name", "map_id"),
+    [("obstacle", "straight_obstacle"), ("three_lane", "three_lane_double_obs")],
+)
+def test_obstacle_scenarios_declare_routing_mission(scenario_name, map_id):
+    config = make_scenario(scenario_name)
+
+    assert config.routing_map_id == map_id
+    assert config.routing_start_lane == 0
+    assert config.routing_goal_lane == 0
+    assert config.destination is not None

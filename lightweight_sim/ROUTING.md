@@ -22,7 +22,14 @@ node loads every JSON map in that directory by default and selects one by
 The node exposes:
 
 - service `routing/compute_route` (`lightweight_sim_msgs/srv/ComputeRoute`);
+- topic `routing/request` (`lightweight_sim_msgs/msg/RouteRequest`);
 - topic `routing/route` (`lightweight_sim_msgs/msg/RoutePlan`).
+
+The simulator publishes a latched `routing/request` for scenarios that declare
+`routing_map_id`, a destination, and start/goal lane indices.  This makes a
+scenario reset or switch create a new routing request with its `run_id`; local
+planning can consume the corresponding `RoutePlan` without reconstructing the
+mission from ad-hoc context fields.
 
 `RoutePlan` contains the ordered lane edges, maneuver labels, target lane,
 total length, and a continuous `(x, y, theta, kappa)` reference path.  Dynamic
