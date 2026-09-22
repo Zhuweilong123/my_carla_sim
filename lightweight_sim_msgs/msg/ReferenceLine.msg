@@ -1,0 +1,13 @@
+std_msgs/Header header
+uint64 reference_id
+uint64 route_id
+uint64 request_id
+bool success
+string failure_reason
+string map_id
+float64 total_length_m
+float64 sample_spacing_m
+int32 reference_lane_index
+int32 target_lane
+RouteSegment[] segments
+PathPoint[] points

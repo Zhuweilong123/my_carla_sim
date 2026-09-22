@@ -1,0 +1,89 @@
+import math
+from pathlib import Path
+
+import pytest
+
+from lightweight_sim.engine.reference_line import ReferenceLineCore, RouteAwareMotionPlanner
+from lightweight_sim.engine.routing import (
+    Pose2D,
+    RoutePlan,
+    RouteRequest,
+    RouteSegment,
+    RoutingCore,
+    load_map,
+)
+
+
+MAP_DIR = Path(__file__).parents[1] / "config" / "maps"
+
+
+def test_reference_line_stitches_and_smooths_curve_route():
+    road_map = load_map(MAP_DIR / "curve_90deg.json")
+    route = RoutingCore([road_map]).route(
+        RouteRequest(
+            map_id=road_map.map_id,
+            start=Pose2D(10.0, 1.75),
+            goal=Pose2D(100.0, 140.0),
+            goal_lane=1,
+        )
+    )
+
+    reference = ReferenceLineCore([road_map]).build(route, reference_id=11)
+
+    assert reference.success
+    assert reference.reference_id == 11
+    assert reference.reference_lane_index == 1
+    assert [segment.edge_id for segment in reference.segments] == [
+        "curve_l1_straight",
+        "curve_l1_arc",
+        "curve_l1_exit",
+    ]
+    assert len(reference.points) > 200
+    assert reference.points[0][:2] == pytest.approx((0.0, 1.75))
+    assert reference.points[-1][:2] == pytest.approx((98.25, 150.0))
+    assert all(math.isfinite(value) for point in reference.points for value in point)
+    assert any(abs(point[3]) > 1e-4 for point in reference.points)
+
+
+def test_reference_line_rejects_non_topological_edge_sequence():
+    road_map = load_map(MAP_DIR / "demo_grid.json")
+    bad_route = RoutePlan(
+        route_id=1,
+        request_id=2,
+        map_id=road_map.map_id,
+        success=True,
+        segments=(
+            RouteSegment("r0_main", "r0", "r0_l0", 0, "straight", 100.0, 40.0),
+            RouteSegment("r2_left", "r2", "r2_l1", 1, "straight", 100.0, 40.0),
+        ),
+    )
+
+    reference = ReferenceLineCore([road_map]).build(bad_route, reference_id=3)
+
+    assert not reference.success
+    assert "not topologically connected" in reference.failure_reason
+
+
+def test_route_aware_local_planner_returns_to_routing_lane_after_detour():
+    route_path = [(float(x), -3.5, 0.0, 0.0) for x in range(0, 201)]
+    planner = RouteAwareMotionPlanner(
+        route_path,
+        lane_width=3.5,
+        num_lanes=3,
+        reference_lane_index=0,
+        target_lane=0,
+    )
+
+    detour = planner._plan(
+        pred_loc=(20.0, -3.5),
+        vehicle_loc=(20.0, -3.5),
+        obstacles=[(55.0, -3.5, 4.5, 2.0, 0.0, 0.0)],
+    )
+    return_path = planner._plan(
+        pred_loc=(80.0, 0.0),
+        vehicle_loc=(80.0, 0.0),
+        obstacles=[],
+    )
+
+    assert detour[-1][1] > -1.0
+    assert return_path[-1][1] < -2.5

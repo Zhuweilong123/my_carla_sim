@@ -50,3 +50,8 @@ ros2 run lightweight_sim routing_node \
 The existing `Path` message remains the local controller trajectory format.
 Routing metadata uses the new `RouteRequest`, `RouteSegment`, and `RoutePlan`
 messages so road and lane identity are not lost.
+
+`reference_line_node` subscribes to `routing/route` and publishes the
+map-validated, smoothed `routing/reference_line` result used by the local
+planner. Its message and integration contract are described in
+[`REFERENCE_LINE.md`](REFERENCE_LINE.md).

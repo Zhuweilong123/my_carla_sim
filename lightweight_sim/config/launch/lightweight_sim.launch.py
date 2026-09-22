@@ -12,6 +12,7 @@ def generate_launch_description():
     gui = LaunchConfiguration("gui")
     controller_enabled = LaunchConfiguration("controller_enabled")
     routing_enabled = LaunchConfiguration("routing_enabled")
+    reference_line_enabled = LaunchConfiguration("reference_line_enabled")
     scenario = LaunchConfiguration("scenario")
     steering = LaunchConfiguration("steering_profile")
     return LaunchDescription(
@@ -37,6 +38,11 @@ def generate_launch_description():
                 "routing_enabled",
                 default_value="true",
                 description="Start the independent lane-level A* routing node",
+            ),
+            DeclareLaunchArgument(
+                "reference_line_enabled",
+                default_value="true",
+                description="Generate map-derived reference lines from Routing output",
             ),
             DeclareLaunchArgument(
                 "scenario",
@@ -69,6 +75,15 @@ def generate_launch_description():
                 namespace=namespace,
                 output="screen",
                 condition=IfCondition(routing_enabled),
+                parameters=[config, {"use_sim_time": True}],
+            ),
+            Node(
+                package="lightweight_sim",
+                executable="reference_line_node",
+                name="reference_line_node",
+                namespace=namespace,
+                output="screen",
+                condition=IfCondition(reference_line_enabled),
                 parameters=[config, {"use_sim_time": True}],
             ),
             Node(
