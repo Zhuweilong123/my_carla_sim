@@ -106,6 +106,8 @@ reference_line_node:
     max_lateral_deviation_m: 0.15
     join_tolerance_m: 0.25
     boundary_margin_m: 0.1
+    max_reference_curvature_1pm: 0.15
+    junction_angle_threshold_rad: 0.7
 
 simulator_gui:
   ros__parameters:

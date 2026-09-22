@@ -33,6 +33,8 @@ class RuntimeConfig:
     target_speed_ratio: float = 0.85
     speed_profile_lookahead_m: float = 20.0
     max_lateral_accel_mps2: float = 2.0
+    max_reference_curvature_1pm: float = 0.15
+    junction_angle_threshold_rad: float = 0.7
     lane_width: float = 3.5
     num_lanes: int = 2
     steering_profile: str = "ideal"

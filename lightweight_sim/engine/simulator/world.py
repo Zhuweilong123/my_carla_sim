@@ -2,6 +2,7 @@
 
 import math
 
+from ..reference_line.core import _round_polyline_corners
 from ._world_impl import *  # noqa: F401,F403
 
 
@@ -10,6 +11,15 @@ _LegacyWorld = World
 
 class World(_LegacyWorld):
     """Keep coincident segment endpoints without flagging them as gaps."""
+
+    def _build_ref_path(self, points):
+        rounded = _round_polyline_corners(
+            points,
+            max_curvature_1pm=self.road_def.max_reference_curvature_1pm,
+            angle_threshold_rad=self.road_def.junction_angle_threshold_rad,
+            spacing_m=1.0,
+        )
+        return super()._build_ref_path(rounded)
 
     def _generate_road(self):
         points = []

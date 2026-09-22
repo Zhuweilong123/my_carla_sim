@@ -115,6 +115,8 @@ class RoadDef:
     segments: List[RoadSegment] = field(default_factory=list)
     lane_width: float = DEFAULT_RUNTIME_CONFIG.lane_width
     num_lanes: int = DEFAULT_RUNTIME_CONFIG.num_lanes
+    max_reference_curvature_1pm: float = DEFAULT_RUNTIME_CONFIG.max_reference_curvature_1pm
+    junction_angle_threshold_rad: float = DEFAULT_RUNTIME_CONFIG.junction_angle_threshold_rad
 
 @dataclass
 class ScenarioConfig:

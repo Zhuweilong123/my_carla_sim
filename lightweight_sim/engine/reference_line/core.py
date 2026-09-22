@@ -24,6 +24,8 @@ class ReferenceLineCore:
         max_lateral_deviation_m: float = 0.15,
         join_tolerance_m: float = 0.25,
         boundary_margin_m: float = 0.1,
+        max_curvature_1pm: float = 0.15,
+        corner_angle_threshold_rad: float = 0.7,
     ) -> None:
         if sample_spacing_m <= 0.0:
             raise ValueError("sample spacing must be positive")
@@ -31,10 +33,16 @@ class ReferenceLineCore:
             raise ValueError("max lateral deviation must be non-negative")
         if boundary_margin_m < 0.0:
             raise ValueError("boundary margin must be non-negative")
+        if max_curvature_1pm <= 0.0:
+            raise ValueError("maximum curvature must be positive")
+        if corner_angle_threshold_rad <= 0.0:
+            raise ValueError("corner angle threshold must be positive")
         self.sample_spacing_m = float(sample_spacing_m)
         self.max_lateral_deviation_m = float(max_lateral_deviation_m)
         self.join_tolerance_m = float(join_tolerance_m)
         self.boundary_margin_m = float(boundary_margin_m)
+        self.max_curvature_1pm = float(max_curvature_1pm)
+        self.corner_angle_threshold_rad = float(corner_angle_threshold_rad)
         self._maps: Dict[str, RoadMap] = {}
         for road_map in maps:
             self.register_map(road_map)
@@ -74,12 +82,41 @@ class ReferenceLineCore:
             ) = _stitch_lane_geometry(
                 edges, road_map, self.sample_spacing_m, self.join_tolerance_m
             )
+            raw_route = _raw_route_geometry(edges)
+            rounded = _round_polyline_corners(
+                raw_route,
+                max_curvature_1pm=self.max_curvature_1pm,
+                angle_threshold_rad=self.corner_angle_threshold_rad,
+                spacing_m=self.sample_spacing_m,
+            )
+            rounded = _resample_polyline(rounded, self.sample_spacing_m)
+            lane_index = max(0, int(edges[0].lane_index))
+            left_boundary = _offset_polyline(rounded, road_map.lane_width / 2.0)
+            right_boundary = _offset_polyline(rounded, -road_map.lane_width / 2.0)
+            drivable_left_boundary = _offset_polyline(
+                rounded,
+                (road_map.num_lanes - lane_index - 0.5) * road_map.lane_width,
+            )
+            drivable_right_boundary = _offset_polyline(
+                rounded,
+                -(lane_index + 0.5) * road_map.lane_width,
+            )
             smoothed = _constrained_smooth(
-                samples,
+                rounded,
                 left_boundary,
                 right_boundary,
                 max_deviation_m=self.max_lateral_deviation_m,
                 boundary_margin_m=self.boundary_margin_m,
+            )
+            left_boundary = _offset_polyline(smoothed, road_map.lane_width / 2.0)
+            right_boundary = _offset_polyline(smoothed, -road_map.lane_width / 2.0)
+            drivable_left_boundary = _offset_polyline(
+                smoothed,
+                (road_map.num_lanes - lane_index - 0.5) * road_map.lane_width,
+            )
+            drivable_right_boundary = _offset_polyline(
+                smoothed,
+                -(lane_index + 0.5) * road_map.lane_width,
             )
         except ValueError as exc:
             return ReferenceLinePlan.failure(
@@ -130,6 +167,15 @@ class ReferenceLineCore:
                     f"{previous.edge_id}->{current.edge_id}"
                 )
         return edges
+
+
+def _raw_route_geometry(edges: Sequence[LaneEdge]) -> List[Point2D]:
+    points: List[Point2D] = []
+    for edge in edges:
+        for point in edge.centerline:
+            if not points or math.dist(points[-1], point) > 1e-9:
+                points.append(point)
+    return points
 
 
 def _stitch_lane_geometry(
@@ -348,3 +394,126 @@ def _with_geometry(points: Sequence[Point2D]) -> Tuple[Tuple[float, float, float
 
 def _polyline_length(points: Sequence[Point2D]) -> float:
     return sum(math.dist(first, second) for first, second in zip(points[:-1], points[1:]))
+
+
+def _round_polyline_corners(
+    points: Sequence[Point2D],
+    *,
+    max_curvature_1pm: float = 0.15,
+    angle_threshold_rad: float = 0.25,
+    spacing_m: float = 1.0,
+) -> List[Point2D]:
+    """Replace sharp topological corners with tangent circular transitions."""
+
+    source = []
+    for point in points:
+        current = (float(point[0]), float(point[1]))
+        if len(source) >= 2:
+            first, second = source[-2], source[-1]
+            incoming = (second[0] - first[0], second[1] - first[1])
+            outgoing = (current[0] - second[0], current[1] - second[1])
+            cross = incoming[0] * outgoing[1] - incoming[1] * outgoing[0]
+            dot = incoming[0] * outgoing[0] + incoming[1] * outgoing[1]
+            if abs(cross) <= 1e-6 and dot > 0.0:
+                source[-1] = current
+                continue
+        source.append(current)
+    if len(source) < 3:
+        return source
+    radius = 1.0 / max(float(max_curvature_1pm), 1e-6)
+    rounded = [source[0]]
+    previous_corner_index = 0
+    previous_exit = source[0]
+    for index in range(1, len(source) - 1):
+        previous, corner, following = source[index - 1:index + 2]
+        incoming_length = math.dist(previous, corner)
+        outgoing_length = math.dist(corner, following)
+        if incoming_length <= 1e-9 or outgoing_length <= 1e-9:
+            continue
+        incoming = ((corner[0] - previous[0]) / incoming_length,
+                    (corner[1] - previous[1]) / incoming_length)
+        outgoing = ((following[0] - corner[0]) / outgoing_length,
+                    (following[1] - corner[1]) / outgoing_length)
+        dot = max(-1.0, min(1.0, incoming[0] * outgoing[0] +
+                             incoming[1] * outgoing[1]))
+        angle = math.acos(dot)
+        cross = incoming[0] * outgoing[1] - incoming[1] * outgoing[0]
+        if angle < angle_threshold_rad or abs(cross) <= 1e-9:
+            continue
+        tangent = min(radius * math.tan(angle / 2.0),
+                      0.45 * incoming_length, 0.45 * outgoing_length)
+        if tangent <= 1e-6:
+            continue
+        actual_radius = tangent / max(math.tan(angle / 2.0), 1e-9)
+        start = (corner[0] - incoming[0] * tangent,
+                 corner[1] - incoming[1] * tangent)
+        end = (corner[0] + outgoing[0] * tangent,
+               corner[1] + outgoing[1] * tangent)
+        sign = 1.0 if cross > 0.0 else -1.0
+        normal = (-incoming[1], incoming[0])
+        center = (start[0] + sign * actual_radius * normal[0],
+                  start[1] + sign * actual_radius * normal[1])
+        start_angle = math.atan2(start[1] - center[1], start[0] - center[0])
+        end_angle = math.atan2(end[1] - center[1], end[0] - center[0])
+        delta = end_angle - start_angle
+        if sign > 0.0:
+            while delta < 0.0:
+                delta += 2.0 * math.pi
+        else:
+            while delta > 0.0:
+                delta -= 2.0 * math.pi
+        steps = max(2, int(math.ceil(abs(delta) * actual_radius / spacing_m)))
+        if previous_corner_index == 0:
+            rounded.extend(source[1:index])
+        else:
+            _append_polyline_line(
+                rounded, previous_exit, source[previous_corner_index + 1], spacing_m
+            )
+            rounded.extend(source[previous_corner_index + 2:index])
+        _append_polyline_line(rounded, rounded[-1], start, spacing_m)
+        for step in range(1, steps + 1):
+            current = start_angle + delta * step / steps
+            rounded.append((center[0] + actual_radius * math.cos(current),
+                            center[1] + actual_radius * math.sin(current)))
+        previous_exit = end
+        previous_corner_index = index
+    if previous_corner_index == 0:
+        rounded.extend(source[1:])
+    else:
+        _append_polyline_line(
+            rounded, previous_exit, source[previous_corner_index + 1], spacing_m
+        )
+        rounded.extend(source[previous_corner_index + 2:])
+    return rounded
+
+
+def _append_polyline_line(output, start, end, spacing_m):
+    length = math.dist(start, end)
+    steps = max(1, int(math.ceil(length / max(spacing_m, 1e-6))))
+    for step in range(1, steps + 1):
+        ratio = step / steps
+        point = (start[0] + (end[0] - start[0]) * ratio,
+                 start[1] + (end[1] - start[1]) * ratio)
+        if math.dist(output[-1], point) > 1e-9:
+            output.append(point)
+
+
+def _offset_polyline(points: Sequence[Point2D], offset_m: float) -> List[Point2D]:
+    """Offset a centerline with its local tangent normal."""
+
+    if len(points) < 2:
+        raise ValueError("offset requires at least two points")
+    offset = []
+    for index, point in enumerate(points):
+        previous = points[max(0, index - 1)]
+        following = points[min(len(points) - 1, index + 1)]
+        tangent_x = following[0] - previous[0]
+        tangent_y = following[1] - previous[1]
+        length = math.hypot(tangent_x, tangent_y)
+        if length <= 1e-9:
+            raise ValueError("cannot offset a zero-length reference segment")
+        normal_x = -tangent_y / length
+        normal_y = tangent_x / length
+        offset.append((point[0] + offset_m * normal_x,
+                       point[1] + offset_m * normal_y))
+    return offset

@@ -33,7 +33,10 @@ class ReferenceLineNode(Node):
         self.declare_parameter("reference_topic", "routing/reference_line")
         self.declare_parameter("sample_spacing_m", 1.0)
         self.declare_parameter("max_lateral_deviation_m", 0.15)
+        self.declare_parameter("join_tolerance_m", 0.25)
         self.declare_parameter("boundary_margin_m", 0.1)
+        self.declare_parameter("max_reference_curvature_1pm", 0.15)
+        self.declare_parameter("junction_angle_threshold_rad", 0.7)
         self._next_reference_id = 1
         self.core = ReferenceLineCore(
             self._load_maps(),
@@ -41,7 +44,14 @@ class ReferenceLineNode(Node):
             max_lateral_deviation_m=float(
                 self.get_parameter("max_lateral_deviation_m").value
             ),
+            join_tolerance_m=float(self.get_parameter("join_tolerance_m").value),
             boundary_margin_m=float(self.get_parameter("boundary_margin_m").value),
+            max_curvature_1pm=float(
+                self.get_parameter("max_reference_curvature_1pm").value
+            ),
+            corner_angle_threshold_rad=float(
+                self.get_parameter("junction_angle_threshold_rad").value
+            ),
         )
         self.reference_pub = self.create_publisher(
             RosReferenceLine,
