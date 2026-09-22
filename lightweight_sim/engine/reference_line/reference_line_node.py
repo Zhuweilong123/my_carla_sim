@@ -33,6 +33,7 @@ class ReferenceLineNode(Node):
         self.declare_parameter("reference_topic", "routing/reference_line")
         self.declare_parameter("sample_spacing_m", 1.0)
         self.declare_parameter("max_lateral_deviation_m", 0.15)
+        self.declare_parameter("boundary_margin_m", 0.1)
         self._next_reference_id = 1
         self.core = ReferenceLineCore(
             self._load_maps(),
@@ -40,6 +41,7 @@ class ReferenceLineNode(Node):
             max_lateral_deviation_m=float(
                 self.get_parameter("max_lateral_deviation_m").value
             ),
+            boundary_margin_m=float(self.get_parameter("boundary_margin_m").value),
         )
         self.reference_pub = self.create_publisher(
             RosReferenceLine,
@@ -128,6 +130,8 @@ class ReferenceLineNode(Node):
         message.map_id = reference.map_id
         message.total_length_m = reference.total_length_m
         message.sample_spacing_m = reference.sample_spacing_m
+        message.lane_width = reference.lane_width
+        message.num_lanes = reference.num_lanes
         message.reference_lane_index = reference.reference_lane_index
         message.target_lane = reference.target_lane
         message.segments = [
@@ -145,6 +149,14 @@ class ReferenceLineNode(Node):
         message.points = [
             PathPoint(x=x, y=y, theta=theta, kappa=kappa)
             for x, y, theta, kappa in reference.points
+        ]
+        message.left_boundary = [
+            PathPoint(x=x, y=y, theta=theta, kappa=kappa)
+            for x, y, theta, kappa in reference.left_boundary
+        ]
+        message.right_boundary = [
+            PathPoint(x=x, y=y, theta=theta, kappa=kappa)
+            for x, y, theta, kappa in reference.right_boundary
         ]
         return message
 

@@ -22,8 +22,16 @@ planner_node -> planned_path -> controller_node
 For every successful `RoutePlan`, the node reloads the ordered edge geometry
 from the selected map, validates the edge sequence, removes repeated joins,
 resamples at one metre by default, and applies a bounded local smoothing pass.
-The smoothing pass keeps both endpoints fixed and never moves an intermediate
-map sample by more than `max_lateral_deviation_m` (0.15 m by default).
+The smoothing pass keeps both endpoints fixed, caps displacement with
+`max_lateral_deviation_m` (0.15 m by default), and clamps every intermediate
+sample to the map's left/right lane boundary with `boundary_margin_m` (0.10 m
+by default).
+
+Maps may provide per-edge `left_boundary` and `right_boundary` polylines. If
+they are omitted, the loader derives them from the edge centerline and the
+top-level `lane_width` (3.5 m by default). `num_lanes` is also map metadata.
+The resulting `ReferenceLine` publishes both sampled boundaries and these lane
+dimensions, so downstream planning can use the same drivable corridor.
 
 `ReferenceLine` retains `request_id`, map ID, route ID, source segments,
 reference-lane index, target lane, spacing, and the generated path geometry.
@@ -45,7 +53,8 @@ ros2 run lightweight_sim reference_line_node \
   --ros-args \
   -p map_dir:=/path/to/maps \
   -p sample_spacing_m:=0.5 \
-  -p max_lateral_deviation_m:=0.10
+  -p max_lateral_deviation_m:=0.10 \
+  -p boundary_margin_m:=0.15
 ```
 
 The standard launch file starts the node by default. Set

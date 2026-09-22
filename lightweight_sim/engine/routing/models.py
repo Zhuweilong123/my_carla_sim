@@ -48,6 +48,8 @@ class LaneEdge:
     to_node: str
     lane_index: int
     centerline: Tuple[Point2D, ...]
+    left_boundary: Tuple[Point2D, ...] = ()
+    right_boundary: Tuple[Point2D, ...] = ()
     speed_limit_kmh: float = 40.0
     successors: Tuple[str, ...] = ()
     maneuver: str = "straight"
@@ -76,6 +78,8 @@ class RoadMap:
     map_id: str
     nodes: Dict[str, MapNode]
     edges: Dict[str, LaneEdge]
+    lane_width: float = 3.5
+    num_lanes: int = 1
 
     def outgoing(self, edge_id: str) -> Tuple[LaneEdge, ...]:
         edge = self.edges[edge_id]

@@ -7,7 +7,11 @@ string failure_reason
 string map_id
 float64 total_length_m
 float64 sample_spacing_m
+float64 lane_width
+int32 num_lanes
 int32 reference_lane_index
 int32 target_lane
 RouteSegment[] segments
 PathPoint[] points
+PathPoint[] left_boundary
+PathPoint[] right_boundary

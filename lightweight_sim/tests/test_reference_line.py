@@ -33,6 +33,8 @@ def test_reference_line_stitches_and_smooths_curve_route():
     assert reference.success
     assert reference.reference_id == 11
     assert reference.reference_lane_index == 1
+    assert reference.lane_width == pytest.approx(3.5)
+    assert reference.num_lanes == 2
     assert [segment.edge_id for segment in reference.segments] == [
         "curve_l1_straight",
         "curve_l1_arc",
@@ -43,6 +45,19 @@ def test_reference_line_stitches_and_smooths_curve_route():
     assert reference.points[-1][:2] == pytest.approx((98.25, 150.0))
     assert all(math.isfinite(value) for point in reference.points for value in point)
     assert any(abs(point[3]) > 1e-4 for point in reference.points)
+    assert len(reference.left_boundary) == len(reference.points)
+    assert len(reference.right_boundary) == len(reference.points)
+    for point, left, right in zip(
+        reference.points, reference.left_boundary, reference.right_boundary
+    ):
+        normal_x = left[0] - right[0]
+        normal_y = left[1] - right[1]
+        normal_length = math.hypot(normal_x, normal_y)
+        assert normal_length == pytest.approx(3.5, abs=0.08)
+        normal_x /= normal_length
+        normal_y /= normal_length
+        lateral = (point[0] - right[0]) * normal_x + (point[1] - right[1]) * normal_y
+        assert 0.1 - 1e-6 <= lateral <= normal_length - 0.1 + 1e-6
 
 
 def test_reference_line_rejects_non_topological_edge_sequence():

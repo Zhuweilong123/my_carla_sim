@@ -79,6 +79,16 @@ def test_map_validation_rejects_disconnected_successor():
         map_from_dict(data)
 
 
+def test_map_validation_rejects_collapsed_lane_boundaries():
+    data = json.loads(MAP_PATH.read_text(encoding="utf-8"))
+    centerline = data["edges"][0]["centerline"]
+    data["edges"][0]["left_boundary"] = centerline
+    data["edges"][0]["right_boundary"] = centerline
+
+    with pytest.raises(ValueError, match="collapsed lane boundaries"):
+        map_from_dict(data)
+
+
 @pytest.mark.parametrize(
     ("map_name", "start", "goal", "goal_lane", "expected_edges"),
     [

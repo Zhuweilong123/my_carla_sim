@@ -1,5 +1,7 @@
 {
   "map_id": "curve_90deg",
+  "lane_width": 3.5,
+  "num_lanes": 2,
   "nodes": [
     {"id": "n0", "x": 0.0, "y": 0.0},
     {"id": "n1", "x": 50.0, "y": 0.0},

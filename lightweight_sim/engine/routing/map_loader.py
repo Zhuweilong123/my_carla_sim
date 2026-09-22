@@ -28,6 +28,35 @@ def _centerline(value: Iterable[Sequence[float]]) -> tuple[Point2D, ...]:
     return points
 
 
+def _offset_polyline(
+    centerline: tuple[Point2D, ...], offset_m: float
+) -> tuple[Point2D, ...]:
+    """Generate a same-direction lane boundary from a centerline."""
+
+    boundary = []
+    for index, point in enumerate(centerline):
+        previous = centerline[max(0, index - 1)]
+        following = centerline[min(len(centerline) - 1, index + 1)]
+        tangent_x = following[0] - previous[0]
+        tangent_y = following[1] - previous[1]
+        length = math.hypot(tangent_x, tangent_y)
+        if length <= 1e-9:
+            raise ValueError("lane edge centerline has repeated tangent points")
+        normal_x = -tangent_y / length
+        normal_y = tangent_x / length
+        boundary.append((point[0] + offset_m * normal_x, point[1] + offset_m * normal_y))
+    return tuple(boundary)
+
+
+def _lane_boundary(
+    raw: Mapping[str, Any], key: str, centerline: tuple[Point2D, ...], offset_m: float
+) -> tuple[Point2D, ...]:
+    value = raw.get(key)
+    if value is None:
+        return _offset_polyline(centerline, offset_m)
+    return _centerline(value)
+
+
 def map_from_dict(data: Mapping[str, Any]) -> RoadMap:
     """Build and validate a :class:`RoadMap` from a JSON-compatible object.
 
@@ -37,6 +66,9 @@ def map_from_dict(data: Mapping[str, Any]) -> RoadMap:
     """
 
     map_id = str(data.get("map_id", "unnamed_map"))
+    lane_width = float(data.get("lane_width", 3.5))
+    if not math.isfinite(lane_width) or lane_width <= 0.0:
+        raise ValueError("map lane_width must be finite and positive")
     raw_nodes = data.get("nodes", [])
     raw_edges = data.get("edges", data.get("lanes", []))
     nodes: Dict[str, MapNode] = {}
@@ -52,6 +84,12 @@ def map_from_dict(data: Mapping[str, Any]) -> RoadMap:
         if edge_id in edges:
             raise ValueError(f"duplicate lane edge: {edge_id}")
         centerline = _centerline(raw["centerline"])
+        left_boundary = _lane_boundary(
+            raw, "left_boundary", centerline, lane_width / 2.0
+        )
+        right_boundary = _lane_boundary(
+            raw, "right_boundary", centerline, -lane_width / 2.0
+        )
         speed = float(raw.get("speed_limit_kmh", 40.0))
         if not math.isfinite(speed) or speed <= 0.0:
             raise ValueError(f"invalid speed limit for edge {edge_id}")
@@ -63,6 +101,8 @@ def map_from_dict(data: Mapping[str, Any]) -> RoadMap:
             to_node=str(raw["to"]),
             lane_index=int(raw.get("lane_index", 0)),
             centerline=centerline,
+            left_boundary=left_boundary,
+            right_boundary=right_boundary,
             speed_limit_kmh=speed,
             successors=tuple(str(item) for item in raw.get("successors", [])),
             maneuver=str(raw.get("maneuver", "straight")),
@@ -100,13 +140,29 @@ def map_from_dict(data: Mapping[str, Any]) -> RoadMap:
             to_node=edge.to_node,
             lane_index=edge.lane_index,
             centerline=edge.centerline,
+            left_boundary=edge.left_boundary,
+            right_boundary=edge.right_boundary,
             speed_limit_kmh=edge.speed_limit_kmh,
             successors=successors,
             maneuver=edge.maneuver,
             bidirectional=edge.bidirectional,
         )
 
-    road_map = RoadMap(map_id=map_id, nodes=nodes, edges=normalized)
+    inferred_num_lanes = max(
+        1, max(max(edge.lane_index, 0) for edge in normalized.values()) + 1
+    )
+    num_lanes = int(data.get("num_lanes", inferred_num_lanes))
+    if num_lanes <= 0:
+        raise ValueError("map num_lanes must be positive")
+    if num_lanes < inferred_num_lanes:
+        raise ValueError("map num_lanes cannot exclude a declared lane_index")
+    road_map = RoadMap(
+        map_id=map_id,
+        nodes=nodes,
+        edges=normalized,
+        lane_width=lane_width,
+        num_lanes=num_lanes,
+    )
     validate_map(road_map)
     return road_map
 
@@ -128,6 +184,13 @@ def validate_map(road_map: RoadMap) -> None:
                     f"edge {edge.edge_id} successor {successor} does not start at "
                     f"{edge.to_node}"
                 )
+        if len(edge.left_boundary) < 2 or len(edge.right_boundary) < 2:
+            raise ValueError(f"edge {edge.edge_id} requires two-point lane boundaries")
+        if (
+            math.dist(edge.left_boundary[0], edge.right_boundary[0]) <= 1e-6
+            or math.dist(edge.left_boundary[-1], edge.right_boundary[-1]) <= 1e-6
+        ):
+            raise ValueError(f"edge {edge.edge_id} has collapsed lane boundaries")
 
 
 def load_map(path: str | Path) -> RoadMap:

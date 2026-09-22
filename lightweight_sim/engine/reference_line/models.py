@@ -20,10 +20,14 @@ class ReferenceLinePlan:
     failure_reason: str = ""
     total_length_m: float = 0.0
     sample_spacing_m: float = 1.0
+    lane_width: float = 3.5
+    num_lanes: int = 1
     reference_lane_index: int = -1
     target_lane: int = -1
     segments: Tuple[RouteSegment, ...] = ()
     points: Tuple[PathTuple, ...] = ()
+    left_boundary: Tuple[PathTuple, ...] = ()
+    right_boundary: Tuple[PathTuple, ...] = ()
 
     @classmethod
     def failure(

@@ -1,5 +1,7 @@
 {
   "map_id": "three_lane_double_obs",
+  "lane_width": 3.5,
+  "num_lanes": 3,
   "nodes": [
     {"id": "n0", "x": 0.0, "y": 0.0},
     {"id": "n1", "x": 1000.0, "y": 0.0}
