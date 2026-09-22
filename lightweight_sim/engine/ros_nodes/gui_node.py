@@ -60,15 +60,20 @@ class GuiNode(_LegacyGuiNode):
         self.view.target_speed_kmh = context["target_speed_kmh"]
         self.view.lane_width = context["lane_width"]
         self.view.num_lanes = context["num_lanes"]
+        self.snapshot.reference_line_path = []
+        self.snapshot.routing_left_boundary = []
+        self.snapshot.routing_right_boundary = []
+        self.snapshot.drivable_left_boundary = []
+        self.snapshot.drivable_right_boundary = []
         if self.snapshot.routing_request_id != context["run_id"]:
             self.snapshot.routing_path = []
             self.snapshot.routing_request_id = 0
         self.snapshot.state = None
         self.snapshot.obstacles = []
         # ``sim/context`` and ``reference_path`` are independent latched
-        # topics; their callbacks are not ordered.  Keep the last path until
-        # the matching new reference arrives, otherwise a late context
-        # callback can erase the only latched path and leave the road invisible.
+        # topics; their callbacks are not ordered. Keep the simulator path
+        # until the matching new reference arrives. Routing overlays are
+        # cleared above because they are tied to the previous run ID.
         self.snapshot.planned_path = []
         self.snapshot.tracking_metrics = None
         self.snapshot._tracking_monitor = None

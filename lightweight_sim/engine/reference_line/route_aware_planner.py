@@ -6,6 +6,7 @@ import math
 
 from ..algorithms.planner.motion_planner import MotionPlanner
 from ..algorithms.utils.frenet import find_match_points
+from ..algorithms.utils.geometry import cal_heading_kappa
 
 
 class RouteAwareMotionPlanner(MotionPlanner):
@@ -22,6 +23,8 @@ class RouteAwareMotionPlanner(MotionPlanner):
         drivable_left_boundary=(),
         drivable_right_boundary=(),
         corridor_margin_m: float = 1.1,
+        transition_distance_m: float = 12.0,
+        collision_margin_m: float = 0.25,
     ) -> None:
         super().__init__(global_frenet_path, lane_width=lane_width, num_lanes=num_lanes)
         if len(drivable_left_boundary) != len(drivable_right_boundary):
@@ -30,11 +33,17 @@ class RouteAwareMotionPlanner(MotionPlanner):
             raise ValueError("drivable boundaries must match the routing reference")
         if corridor_margin_m < 0.0:
             raise ValueError("corridor margin must be non-negative")
+        if transition_distance_m <= 0.0:
+            raise ValueError("transition distance must be positive")
+        if collision_margin_m < 0.0:
+            raise ValueError("collision margin must be non-negative")
         self.reference_lane_index = int(reference_lane_index)
         self.target_lane = int(target_lane)
         self.drivable_left_boundary = tuple(drivable_left_boundary)
         self.drivable_right_boundary = tuple(drivable_right_boundary)
         self.corridor_margin_m = float(corridor_margin_m)
+        self.transition_distance_m = float(transition_distance_m)
+        self.collision_margin_m = float(collision_margin_m)
 
     def _plan(self, pred_loc, vehicle_loc, obstacles):
         path = self.global_path
@@ -84,11 +93,6 @@ class RouteAwareMotionPlanner(MotionPlanner):
                 for lower, upper in [self._corridor_bounds(start + index, point)]
             )
 
-        valid = [
-            candidate
-            for candidate in candidates
-            if is_safe(candidate) and is_in_corridor(candidate)
-        ]
         preferred = (
             self.lane_width * (self.target_lane - self.reference_lane_index)
             if 0 <= self.target_lane < self.num_lanes
@@ -96,37 +100,87 @@ class RouteAwareMotionPlanner(MotionPlanner):
         )
         if not is_safe(preferred):
             preferred = l0
-        fallback_lower, fallback_upper = self._corridor_bounds(start, ref[0])
-        fallback = max(fallback_lower, min(fallback_upper, l0))
-        target = min(
-            valid or [fallback],
-            key=lambda candidate: (abs(candidate - preferred), abs(candidate - l0)),
-        )
 
-        result = []
+        candidates_with_paths = []
+        for candidate in candidates:
+            if not is_safe(candidate) or not is_in_corridor(candidate):
+                continue
+            candidate_path = self._build_candidate(ref, start, l0, candidate)
+            if self._trajectory_is_safe(candidate_path, obstacles):
+                candidates_with_paths.append((candidate, candidate_path))
+
+        if not candidates_with_paths:
+            self.logger.warning(
+                "no collision-free local trajectory; start=%d obstacles=%d",
+                start,
+                len(obstacles),
+            )
+            return []
+
+        _, result = min(
+            candidates_with_paths,
+            key=lambda item: (
+                abs(item[0] - preferred),
+                abs(item[0] - l0),
+            ),
+        )
+        return result
+
+    def _build_candidate(self, ref, start, l0, target):
+        xy_points = []
         travelled = 0.0
-        transition_distance = 35.0
         for index, point in enumerate(ref):
             if index > 0:
                 previous = ref[index - 1]
                 travelled += math.hypot(
                     point[0] - previous[0], point[1] - previous[1]
                 )
-            ratio = max(0.0, min(1.0, travelled / transition_distance))
+            ratio = max(0.0, min(1.0, travelled / self.transition_distance_m))
             smooth = ratio * ratio * (3.0 - 2.0 * ratio)
             lateral = l0 + (target - l0) * smooth
             lower, upper = self._corridor_bounds(start + index, point)
             lateral = max(lower, min(upper, lateral))
             normal = (-math.sin(point[2]), math.cos(point[2]))
-            result.append(
-                (
-                    point[0] + lateral * normal[0],
-                    point[1] + lateral * normal[1],
-                    point[2],
-                    point[3],
-                )
+            xy_points.append(
+                (point[0] + lateral * normal[0], point[1] + lateral * normal[1])
             )
-        return result
+        headings, curvatures = cal_heading_kappa(xy_points)
+        return [
+            (x, y, heading, curvature)
+            for (x, y), heading, curvature in zip(
+                xy_points, headings, curvatures
+            )
+        ]
+
+    def _trajectory_is_safe(self, candidate_path, obstacles):
+        ego_half_length = 2.0
+        ego_half_width = 1.0
+        for px, py, heading, _ in candidate_path:
+            tangent = (math.cos(heading), math.sin(heading))
+            normal = (-math.sin(heading), math.cos(heading))
+            for ox, oy, length, width, speed, obstacle_heading in obstacles:
+                del speed
+                dx = ox - px
+                dy = oy - py
+                longitudinal = abs(dx * tangent[0] + dy * tangent[1])
+                lateral = abs(dx * normal[0] + dy * normal[1])
+                heading_delta = obstacle_heading - heading
+                obstacle_half_length = (
+                    abs(math.cos(heading_delta)) * length / 2.0
+                    + abs(math.sin(heading_delta)) * width / 2.0
+                )
+                obstacle_half_width = (
+                    abs(math.sin(heading_delta)) * length / 2.0
+                    + abs(math.cos(heading_delta)) * width / 2.0
+                )
+                if (
+                    longitudinal
+                    <= ego_half_length + obstacle_half_length + self.collision_margin_m
+                    and lateral
+                    <= ego_half_width + obstacle_half_width + self.collision_margin_m
+                ):
+                    return False
+        return True
 
     def _corridor_bounds(self, index, reference):
         if not self.drivable_left_boundary:

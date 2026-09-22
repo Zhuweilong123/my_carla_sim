@@ -113,3 +113,12 @@ def test_route_aware_local_planner_returns_to_routing_lane_after_detour():
     assert detour[-1][1] > -1.0
     assert return_path[-1][1] < -2.5
     assert all(-4.15 <= point[1] <= 4.15 for point in detour)
+    assert any(abs(point[2]) > 1e-3 for point in detour)
+    assert planner._trajectory_is_safe(
+        detour,
+        [(55.0, -3.5, 4.5, 2.0, 0.0, 0.0)],
+    )
+    assert not planner._trajectory_is_safe(
+        [(55.0, -3.5, 0.0, 0.0)],
+        [(55.0, -3.5, 4.5, 2.0, 0.0, 0.0)],
+    )

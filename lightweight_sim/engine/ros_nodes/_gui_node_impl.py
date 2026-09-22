@@ -104,6 +104,12 @@ class GuiNode(Node):
         self.snapshot.planned_path = path_to_tuples(message)
 
     def _on_routing(self, message: RosRoutePlan) -> None:
+        if (
+            hasattr(self, "route_context")
+            and self.route_context
+            and int(message.request_id) != int(self.route_context["run_id"])
+        ):
+            return
         self.snapshot.routing_request_id = int(message.request_id)
         if not message.success:
             self.snapshot.routing_path = []
@@ -126,6 +132,12 @@ class GuiNode(Node):
         self.snapshot.drivable_right_boundary = []
 
     def _on_routing_reference(self, message: RosReferenceLine) -> None:
+        if (
+            hasattr(self, "route_context")
+            and self.route_context
+            and int(message.request_id) != int(self.route_context["run_id"])
+        ):
+            return
         if not message.success:
             self.snapshot.reference_line_path = []
             self.snapshot.routing_left_boundary = []
