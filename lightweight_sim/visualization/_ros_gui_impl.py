@@ -14,6 +14,11 @@ from .pygame_compat import configure_display_driver, patch_sysfont_for_python314
 from .renderer import Camera, Renderer
 
 
+REFERENCE_PATH = (120, 155, 175)
+ROUTING_PATH = (255, 165, 0)
+LOCAL_PLANNED_PATH = (0, 220, 100)
+
+
 @dataclass
 class GuiStatus:
     running: bool = False
@@ -40,6 +45,8 @@ class GuiSnapshot:
     state: Optional[VehicleState] = None
     obstacles: List[Obstacle] = field(default_factory=list)
     reference_path: List[PathPoint] = field(default_factory=list)
+    routing_path: List[PathPoint] = field(default_factory=list)
+    routing_request_id: int = 0
     planned_path: List[Tuple[float, float, float, float]] = field(default_factory=list)
     status: GuiStatus = field(default_factory=GuiStatus)
     control: GuiControl = field(default_factory=GuiControl)
@@ -163,10 +170,22 @@ class RosGuiView:
             self.renderer.draw_road(world)
             self.renderer.draw_path(
                 [(p.x, p.y, p.theta, p.kappa) for p in snapshot.reference_path],
+                color=REFERENCE_PATH,
+                width=1,
                 dashed=True,
             )
+        if snapshot.routing_path:
+            self.renderer.draw_path(
+                [(p.x, p.y, p.theta, p.kappa) for p in snapshot.routing_path],
+                color=ROUTING_PATH,
+                width=3,
+            )
         if snapshot.planned_path:
-            self.renderer.draw_path(snapshot.planned_path)
+            self.renderer.draw_path(
+                snapshot.planned_path,
+                color=LOCAL_PLANNED_PATH,
+                width=2,
+            )
         self.renderer.draw_obstacles(snapshot.obstacles)
 
         if snapshot.state is None:

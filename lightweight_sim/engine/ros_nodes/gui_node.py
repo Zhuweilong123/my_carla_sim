@@ -60,6 +60,9 @@ class GuiNode(_LegacyGuiNode):
         self.view.target_speed_kmh = context["target_speed_kmh"]
         self.view.lane_width = context["lane_width"]
         self.view.num_lanes = context["num_lanes"]
+        if self.snapshot.routing_request_id != context["run_id"]:
+            self.snapshot.routing_path = []
+            self.snapshot.routing_request_id = 0
         self.snapshot.state = None
         self.snapshot.obstacles = []
         # ``sim/context`` and ``reference_path`` are independent latched

@@ -2,6 +2,7 @@
 
 import rclpy
 from lightweight_sim_msgs.msg import ControlCommand, ObstacleArray, Path as RosPath
+from lightweight_sim_msgs.msg import RoutePlan as RosRoutePlan
 from lightweight_sim_msgs.msg import SimulationStatus, VehicleState as RosVehicleState
 from rclpy.node import Node
 from std_srvs.srv import Empty, SetBool, Trigger
@@ -49,6 +50,9 @@ class GuiNode(Node):
             RosPath, "planned_path", self._on_planned, latched_path_qos()
         )
         self.create_subscription(
+            RosRoutePlan, "routing/route", self._on_routing, latched_path_qos()
+        )
+        self.create_subscription(
             SimulationStatus, "sim/status", self._on_status, status_qos()
         )
         self.create_subscription(
@@ -86,6 +90,16 @@ class GuiNode(Node):
 
     def _on_planned(self, message: RosPath) -> None:
         self.snapshot.planned_path = path_to_tuples(message)
+
+    def _on_routing(self, message: RosRoutePlan) -> None:
+        self.snapshot.routing_request_id = int(message.request_id)
+        if not message.success:
+            self.snapshot.routing_path = []
+            return
+        self.snapshot.routing_path = [
+            PathPoint(x=point.x, y=point.y, theta=point.theta, kappa=point.kappa)
+            for point in message.points
+        ]
 
     def _on_status(self, message: SimulationStatus) -> None:
         self.snapshot.status = GuiStatus(
