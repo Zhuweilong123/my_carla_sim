@@ -62,7 +62,10 @@ class GuiNode(_LegacyGuiNode):
         self.view.num_lanes = context["num_lanes"]
         self.snapshot.state = None
         self.snapshot.obstacles = []
-        self.snapshot.reference_path = []
+        # ``sim/context`` and ``reference_path`` are independent latched
+        # topics; their callbacks are not ordered.  Keep the last path until
+        # the matching new reference arrives, otherwise a late context
+        # callback can erase the only latched path and leave the road invisible.
         self.snapshot.planned_path = []
         self.snapshot.tracking_metrics = None
         self.snapshot._tracking_monitor = None
