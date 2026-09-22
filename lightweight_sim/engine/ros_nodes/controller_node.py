@@ -44,6 +44,7 @@ class ControllerNode(Node):
         self.reference_run = None
         self.active_run = None
         self.plan_time = None
+        self.plan_ready = False
         self.last_control_stamp = None
         self.actuator_timing_fault = False
         self.tracking_monitor = None
@@ -85,6 +86,7 @@ class ControllerNode(Node):
         self.active_run = None
         self.planned_path = []
         self.plan_time = None
+        self.plan_ready = False
         self.state = None
         self.last_control_stamp = None
         self.last_sequence = -1
@@ -123,6 +125,7 @@ class ControllerNode(Node):
                 self.active_run = None
                 self.planned_path = []
                 self.plan_time = None
+                self.plan_ready = False
             self._activate_reference()
 
     def _on_planned(self, message: RosPath) -> None:
@@ -136,6 +139,7 @@ class ControllerNode(Node):
         self.last_sequence = int(message.sequence)
         self.planned_path = path_to_tuples(message)
         self.plan_time = stamp
+        self.plan_ready = bool(self.planned_path)
         self.controller.update_ref_path(self.planned_path or self.reference_path, reset=False)
 
     def _publish_command(self, steer: float, throttle: float, brake: float) -> None:
@@ -152,9 +156,19 @@ class ControllerNode(Node):
         if self.active_run is None or self.state is None or self.state_time is None:
             self._publish_command(0.0, 0.0, 1.0)
             return
+        if self.route_context and self.route_context.get("maneuver") == "reverse_parking":
+            # Reverse parking has a separate controller candidate.  The cruise
+            # controller must stay neutral even if it was launched directly.
+            self._publish_command(0.0, 0.0, 1.0)
+            return
         age = (self.get_clock().now() - self.state_time).nanoseconds / 1e9
         timeout = float(self.get_parameter("state_timeout").value)
         if age < 0 or age > timeout or not self.reference_path:
+            self._publish_command(0.0, 0.0, 1.0)
+            return
+        if not self.plan_ready:
+            # Do not steer from the road-centre reference while the current
+            # route session is still waiting for its first local plan.
             self._publish_command(0.0, 0.0, 1.0)
             return
         if self.planned_path and self.plan_time is not None:

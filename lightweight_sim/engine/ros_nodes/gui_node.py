@@ -60,6 +60,9 @@ class GuiNode(_LegacyGuiNode):
         self.view.target_speed_kmh = context["target_speed_kmh"]
         self.view.lane_width = context["lane_width"]
         self.view.num_lanes = context["num_lanes"]
+        self.snapshot.state = None
+        self.snapshot.obstacles = []
+        self.snapshot.reference_path = []
         self.snapshot.planned_path = []
         self.snapshot.tracking_metrics = None
         self.snapshot._tracking_monitor = None
@@ -88,7 +91,7 @@ class GuiNode(_LegacyGuiNode):
             self._publish_manual_command(action.value)
             return
         if action.kind == "switch_scenario":
-            self._call_scenario(str(action.value))
+            self._switch_scenario(str(action.value))
             return
         super()._handle_action(action)
 
@@ -112,6 +115,18 @@ class GuiNode(_LegacyGuiNode):
         self.snapshot.control_source = source
         self._publish_requested_mode()
         self.get_logger().info(f"requested control source: {source}")
+
+    def _switch_scenario(self, name: str) -> None:
+        """Keep scene shortcuts and controller mode consistent."""
+        if name == "reverse_parking":
+            self._requested_mode = "PARKING"
+            self.snapshot.mode = "PARKING"
+            self._publish_requested_mode()
+        elif self._requested_mode == "PARKING":
+            self._requested_mode = "CRUISE"
+            self.snapshot.mode = "CRUISE"
+            self._publish_requested_mode()
+        self._call_scenario(name)
 
     def _publish_requested_mode(self) -> None:
         message = ControlMode()

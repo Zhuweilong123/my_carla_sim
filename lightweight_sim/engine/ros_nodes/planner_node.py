@@ -118,6 +118,16 @@ class PlannerNode(Node):
 
     def _on_state(self, message: RosVehicleState) -> None:
         self.state = message_to_state(message)
+        # Request the first plan as soon as the current route session has both
+        # a reference and a state.  Waiting for the periodic timer leaves the
+        # controller tracking the road centre line for one planning period.
+        if (
+            self.active_run == self.reference_run
+            and self.planner is not None
+            and self.sequence == 0
+            and not self.plan_pending
+        ):
+            self._request_plan()
 
     def _on_obstacles(self, message: ObstacleArray) -> None:
         self.obstacles = [
@@ -136,9 +146,6 @@ class PlannerNode(Node):
 
     def _request_plan(self) -> None:
         if self.active_run != self.reference_run or self.planner is None or self.state is None or self.plan_pending:
-            return
-        if not self.obstacles:
-            self._publish_plan([])
             return
         prediction_time = float(self.get_parameter("prediction_time").value)
         state = self.state

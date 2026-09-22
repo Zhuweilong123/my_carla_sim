@@ -1,12 +1,14 @@
 """Select exactly one controller candidate for the simulator actuator topic."""
 
+import json
 from typing import Dict, Optional
 
 import rclpy
 from lightweight_sim_msgs.msg import ControlCommand, ControlMode, VehicleState
 from rclpy.node import Node
+from std_msgs.msg import String
 
-from .qos import command_qos, sensor_data_qos, status_qos
+from .qos import command_qos, latched_path_qos, sensor_data_qos, status_qos
 
 
 class ControllerManager(Node):
@@ -38,6 +40,7 @@ class ControllerManager(Node):
         self._received_at: Dict[str, object] = {}
         self._vehicle_speed = 0.0
         self._hold_until = self.get_clock().now()
+        self._run_id = 0
 
         self._output_pub = self.create_publisher(ControlCommand, "control_command", command_qos())
         self._status_pub = self.create_publisher(ControlMode, "control_mode/status", status_qos())
@@ -45,6 +48,7 @@ class ControllerManager(Node):
         # mode sources with the default ROS QoS can switch modes as well.
         self.create_subscription(ControlMode, "control_mode", self._on_mode, command_qos())
         self.create_subscription(VehicleState, "vehicle/state", self._on_state, sensor_data_qos())
+        self.create_subscription(String, "sim/context", self._on_context, latched_path_qos())
         for mode, topic in self.MODES.items():
             self.create_subscription(
                 ControlCommand,
@@ -92,6 +96,23 @@ class ControllerManager(Node):
 
     def _on_state(self, message: VehicleState) -> None:
         self._vehicle_speed = float(message.vx)
+
+    def _on_context(self, message: String) -> None:
+        """Invalidate controller candidates when the simulator starts a run."""
+        try:
+            context = json.loads(message.data)
+            run_id = int(context["run_id"])
+        except (TypeError, ValueError, KeyError, json.JSONDecodeError):
+            return
+        if run_id <= self._run_id:
+            return
+        self._run_id = run_id
+        self._commands.clear()
+        self._received_at.clear()
+        self._hold_until = self.get_clock().now() + rclpy.duration.Duration(
+            seconds=float(self.get_parameter("switch_hold_s").value)
+        )
+        self._publish_status("route_reset")
 
     def _on_candidate(self, mode: str, message: ControlCommand) -> None:
         self._commands[mode] = message
