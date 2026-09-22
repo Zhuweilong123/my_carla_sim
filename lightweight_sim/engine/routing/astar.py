@@ -141,7 +141,7 @@ class AStarRouter:
             )
             for edge in edges
         )
-        points = _build_reference_path(edges)
+        points = _build_reference_path(edges, sample_spacing_m=1.0)
         return RoutePlan(
             route_id=route_id,
             request_id=request_id,
@@ -159,7 +159,9 @@ class AStarRouter:
         )
 
 
-def _build_reference_path(edges: Iterable[LaneEdge]) -> Tuple[PathTuple, ...]:
+def _build_reference_path(
+    edges: Iterable[LaneEdge], *, sample_spacing_m: float = 1.0
+) -> Tuple[PathTuple, ...]:
     raw: List[Tuple[float, float]] = []
     for edge in edges:
         for point in edge.centerline:
@@ -168,6 +170,21 @@ def _build_reference_path(edges: Iterable[LaneEdge]) -> Tuple[PathTuple, ...]:
             raw.append(point)
     if len(raw) < 2:
         return ()
+
+    dense: List[Tuple[float, float]] = [raw[0]]
+    spacing = max(0.1, float(sample_spacing_m))
+    for first, second in zip(raw[:-1], raw[1:]):
+        distance = math.hypot(second[0] - first[0], second[1] - first[1])
+        steps = max(1, int(math.ceil(distance / spacing)))
+        for step in range(1, steps + 1):
+            ratio = step / steps
+            point = (
+                first[0] + (second[0] - first[0]) * ratio,
+                first[1] + (second[1] - first[1]) * ratio,
+            )
+            if math.hypot(point[0] - dense[-1][0], point[1] - dense[-1][1]) > 1e-9:
+                dense.append(point)
+    raw = dense
 
     result: List[PathTuple] = []
     for index, (x, y) in enumerate(raw):
