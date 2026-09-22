@@ -1,8 +1,10 @@
 """ROS 2 adapter that connects simulator topics and services to the GUI view."""
 
 import rclpy
+from std_msgs.msg import String
 from lightweight_sim_msgs.msg import ControlCommand, ObstacleArray, Path as RosPath
 from lightweight_sim_msgs.msg import RoutePlan as RosRoutePlan
+from lightweight_sim_msgs.msg import ReferenceLine as RosReferenceLine
 from lightweight_sim_msgs.msg import SimulationStatus, VehicleState as RosVehicleState
 from rclpy.node import Node
 from std_srvs.srv import Empty, SetBool, Trigger
@@ -12,6 +14,7 @@ from ..runtime_config import DEFAULT_RUNTIME_CONFIG
 from ..visualization.ros_gui import GuiAction, GuiControl, GuiSnapshot, GuiStatus, RosGuiView
 from .planner_node import message_to_state, path_to_tuples
 from .qos import command_qos, latched_path_qos, sensor_data_qos, status_qos
+from .route_session import parse_context
 
 
 class GuiNode(Node):
@@ -51,6 +54,15 @@ class GuiNode(Node):
         )
         self.create_subscription(
             RosRoutePlan, "routing/route", self._on_routing, latched_path_qos()
+        )
+        self.create_subscription(
+            RosReferenceLine,
+            "routing/reference_line",
+            self._on_routing_reference,
+            latched_path_qos(),
+        )
+        self.create_subscription(
+            String, "sim/context", self._on_context, latched_path_qos()
         )
         self.create_subscription(
             SimulationStatus, "sim/status", self._on_status, status_qos()
@@ -99,6 +111,47 @@ class GuiNode(Node):
         self.snapshot.routing_path = [
             PathPoint(x=point.x, y=point.y, theta=point.theta, kappa=point.kappa)
             for point in message.points
+        ]
+
+    def _on_context(self, message: String) -> None:
+        context = parse_context(message)
+        if int(context["run_id"]) == self.snapshot.routing_request_id:
+            return
+        self.snapshot.routing_request_id = 0
+        self.snapshot.routing_path = []
+        self.snapshot.reference_line_path = []
+        self.snapshot.routing_left_boundary = []
+        self.snapshot.routing_right_boundary = []
+        self.snapshot.drivable_left_boundary = []
+        self.snapshot.drivable_right_boundary = []
+
+    def _on_routing_reference(self, message: RosReferenceLine) -> None:
+        if not message.success:
+            self.snapshot.reference_line_path = []
+            self.snapshot.routing_left_boundary = []
+            self.snapshot.routing_right_boundary = []
+            self.snapshot.drivable_left_boundary = []
+            self.snapshot.drivable_right_boundary = []
+            return
+        self.snapshot.reference_line_path = [
+            PathPoint(x=point.x, y=point.y, theta=point.theta, kappa=point.kappa)
+            for point in message.points
+        ]
+        self.snapshot.routing_left_boundary = [
+            PathPoint(x=point.x, y=point.y, theta=point.theta, kappa=point.kappa)
+            for point in message.left_boundary
+        ]
+        self.snapshot.routing_right_boundary = [
+            PathPoint(x=point.x, y=point.y, theta=point.theta, kappa=point.kappa)
+            for point in message.right_boundary
+        ]
+        self.snapshot.drivable_left_boundary = [
+            PathPoint(x=point.x, y=point.y, theta=point.theta, kappa=point.kappa)
+            for point in message.drivable_left_boundary
+        ]
+        self.snapshot.drivable_right_boundary = [
+            PathPoint(x=point.x, y=point.y, theta=point.theta, kappa=point.kappa)
+            for point in message.drivable_right_boundary
         ]
 
     def _on_status(self, message: SimulationStatus) -> None:

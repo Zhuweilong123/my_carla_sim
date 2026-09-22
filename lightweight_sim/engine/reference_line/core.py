@@ -65,8 +65,14 @@ class ReferenceLineCore:
             )
         try:
             edges = self._resolve_edges(route, road_map)
-            samples, left_boundary, right_boundary = _stitch_lane_geometry(
-                edges, self.sample_spacing_m, self.join_tolerance_m
+            (
+                samples,
+                left_boundary,
+                right_boundary,
+                drivable_left_boundary,
+                drivable_right_boundary,
+            ) = _stitch_lane_geometry(
+                edges, road_map, self.sample_spacing_m, self.join_tolerance_m
             )
             smoothed = _constrained_smooth(
                 samples,
@@ -101,6 +107,8 @@ class ReferenceLineCore:
             points=points,
             left_boundary=_with_geometry(left_boundary),
             right_boundary=_with_geometry(right_boundary),
+            drivable_left_boundary=_with_geometry(drivable_left_boundary),
+            drivable_right_boundary=_with_geometry(drivable_right_boundary),
         )
 
     @staticmethod
@@ -125,18 +133,26 @@ class ReferenceLineCore:
 
 
 def _stitch_lane_geometry(
-    edges: Sequence[LaneEdge], spacing_m: float, join_tolerance_m: float
-) -> Tuple[List[Point2D], List[Point2D], List[Point2D]]:
-    """Sample and stitch center and lane boundaries with common indices."""
+    edges: Sequence[LaneEdge],
+    road_map: RoadMap,
+    spacing_m: float,
+    join_tolerance_m: float,
+) -> Tuple[List[Point2D], List[Point2D], List[Point2D], List[Point2D], List[Point2D]]:
+    """Sample and stitch lane and full-road geometry with common indices."""
 
     stitched: List[Point2D] = []
     left_stitched: List[Point2D] = []
     right_stitched: List[Point2D] = []
+    drivable_left_stitched: List[Point2D] = []
+    drivable_right_stitched: List[Point2D] = []
     for edge in edges:
         steps = max(1, int(math.ceil(edge.length / spacing_m)))
         centerline = _resample_polyline_to_count(edge.centerline, steps + 1)
         left_boundary = _resample_polyline_to_count(edge.left_boundary, steps + 1)
         right_boundary = _resample_polyline_to_count(edge.right_boundary, steps + 1)
+        road_left, road_right = _drivable_boundaries_for_edge(edge, road_map)
+        drivable_left = _resample_polyline_to_count(road_left, steps + 1)
+        drivable_right = _resample_polyline_to_count(road_right, steps + 1)
         if stitched:
             gap = math.dist(stitched[-1], centerline[0])
             if gap > join_tolerance_m:
@@ -145,15 +161,56 @@ def _stitch_lane_geometry(
                 )
             left_stitched[-1] = _midpoint(left_stitched[-1], left_boundary[0])
             right_stitched[-1] = _midpoint(right_stitched[-1], right_boundary[0])
-        for point, left, right in zip(centerline, left_boundary, right_boundary):
+            drivable_left_stitched[-1] = _midpoint(
+                drivable_left_stitched[-1], drivable_left[0]
+            )
+            drivable_right_stitched[-1] = _midpoint(
+                drivable_right_stitched[-1], drivable_right[0]
+            )
+        for point, left, right, road_left, road_right in zip(
+            centerline,
+            left_boundary,
+            right_boundary,
+            drivable_left,
+            drivable_right,
+        ):
             if stitched and math.dist(stitched[-1], point) <= 1e-9:
                 continue
             stitched.append(point)
             left_stitched.append(left)
             right_stitched.append(right)
+            drivable_left_stitched.append(road_left)
+            drivable_right_stitched.append(road_right)
     if len(stitched) < 2:
         raise ValueError("reference line requires at least two distinct points")
-    return stitched, left_stitched, right_stitched
+    return (
+        stitched,
+        left_stitched,
+        right_stitched,
+        drivable_left_stitched,
+        drivable_right_stitched,
+    )
+
+
+def _drivable_boundaries_for_edge(
+    edge: LaneEdge, road_map: RoadMap
+) -> Tuple[Sequence[Point2D], Sequence[Point2D]]:
+    """Return the outer road edges for parallel lanes on this map segment."""
+
+    parallel_lanes = sorted(
+        (
+            candidate
+            for candidate in road_map.edges.values()
+            if candidate.road_id == edge.road_id
+            and candidate.from_node == edge.from_node
+            and candidate.to_node == edge.to_node
+            and candidate.lane_index >= 0
+        ),
+        key=lambda candidate: candidate.lane_index,
+    )
+    if not parallel_lanes:
+        return edge.left_boundary, edge.right_boundary
+    return parallel_lanes[-1].left_boundary, parallel_lanes[0].right_boundary
 
 
 def _resample_polyline(points: Sequence[Point2D], spacing_m: float) -> List[Point2D]:

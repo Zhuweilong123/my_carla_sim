@@ -93,6 +93,13 @@ def test_map_validation_rejects_collapsed_lane_boundaries():
     ("map_name", "start", "goal", "goal_lane", "expected_edges"),
     [
         (
+            "straight_cruise.json",
+            Pose2D(20.0, -1.75),
+            Pose2D(180.0, -1.75),
+            0,
+            ["cruise_l0"],
+        ),
+        (
             "straight_obstacle.json",
             Pose2D(20.0, -1.75),
             Pose2D(180.0, -1.75),
@@ -143,4 +150,22 @@ def test_obstacle_scenarios_declare_routing_mission(scenario_name, map_id):
     assert config.routing_map_id == map_id
     assert config.routing_start_lane == 0
     assert config.routing_goal_lane == 0
+    assert config.destination is not None
+
+
+@pytest.mark.parametrize(
+    ("scenario_name", "map_id", "start_lane", "goal_lane"),
+    [
+        ("default", "straight_cruise", 0, 0),
+        ("curve", "curve_90deg", 1, 1),
+    ],
+)
+def test_cruise_scenarios_declare_routing_mission(
+    scenario_name, map_id, start_lane, goal_lane
+):
+    config = make_scenario(scenario_name)
+
+    assert config.routing_map_id == map_id
+    assert config.routing_start_lane == start_lane
+    assert config.routing_goal_lane == goal_lane
     assert config.destination is not None

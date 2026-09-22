@@ -158,6 +158,14 @@ class ReferenceLineNode(Node):
             PathPoint(x=x, y=y, theta=theta, kappa=kappa)
             for x, y, theta, kappa in reference.right_boundary
         ]
+        message.drivable_left_boundary = [
+            PathPoint(x=x, y=y, theta=theta, kappa=kappa)
+            for x, y, theta, kappa in reference.drivable_left_boundary
+        ]
+        message.drivable_right_boundary = [
+            PathPoint(x=x, y=y, theta=theta, kappa=kappa)
+            for x, y, theta, kappa in reference.drivable_right_boundary
+        ]
         return message
 
 

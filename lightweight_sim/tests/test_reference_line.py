@@ -47,6 +47,8 @@ def test_reference_line_stitches_and_smooths_curve_route():
     assert any(abs(point[3]) > 1e-4 for point in reference.points)
     assert len(reference.left_boundary) == len(reference.points)
     assert len(reference.right_boundary) == len(reference.points)
+    assert len(reference.drivable_left_boundary) == len(reference.points)
+    assert len(reference.drivable_right_boundary) == len(reference.points)
     for point, left, right in zip(
         reference.points, reference.left_boundary, reference.right_boundary
     ):
@@ -58,6 +60,12 @@ def test_reference_line_stitches_and_smooths_curve_route():
         normal_y /= normal_length
         lateral = (point[0] - right[0]) * normal_x + (point[1] - right[1]) * normal_y
         assert 0.1 - 1e-6 <= lateral <= normal_length - 0.1 + 1e-6
+    assert all(
+        math.dist(left[:2], right[:2]) > 6.5
+        for left, right in zip(
+            reference.drivable_left_boundary, reference.drivable_right_boundary
+        )
+    )
 
 
 def test_reference_line_rejects_non_topological_edge_sequence():
@@ -87,6 +95,8 @@ def test_route_aware_local_planner_returns_to_routing_lane_after_detour():
         num_lanes=3,
         reference_lane_index=0,
         target_lane=0,
+        drivable_left_boundary=[(float(x), 5.25) for x in range(0, 201)],
+        drivable_right_boundary=[(float(x), -5.25) for x in range(0, 201)],
     )
 
     detour = planner._plan(
@@ -102,3 +112,4 @@ def test_route_aware_local_planner_returns_to_routing_lane_after_detour():
 
     assert detour[-1][1] > -1.0
     assert return_path[-1][1] < -2.5
+    assert all(-4.15 <= point[1] <= 4.15 for point in detour)

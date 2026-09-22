@@ -47,6 +47,7 @@ setup(
             f"share/{package_name}/config/maps",
             [
                 "config/maps/demo_grid.json",
+                "config/maps/straight_cruise.json",
                 "config/maps/straight_obstacle.json",
                 "config/maps/three_lane_double_obs.json",
                 "config/maps/curve_90deg.json",

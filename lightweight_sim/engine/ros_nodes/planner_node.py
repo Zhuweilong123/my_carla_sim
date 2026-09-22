@@ -46,6 +46,7 @@ class PlannerNode(Node):
         self.declare_parameter("prediction_time", DEFAULT_RUNTIME_CONFIG.prediction_time)
         self.declare_parameter("use_routing_reference", True)
         self.declare_parameter("routing_reference_topic", "routing/reference_line")
+        self.declare_parameter("routing_corridor_margin_m", 1.1)
         self.path = []
         self.state: Optional[VehicleState] = None
         self.obstacles = []
@@ -60,6 +61,8 @@ class PlannerNode(Node):
         self.routing_reference_run = None
         self.routing_reference_lane = -1
         self.routing_target_lane = -1
+        self.routing_drivable_left_boundary = []
+        self.routing_drivable_right_boundary = []
         self.create_subscription(String, "sim/context", self._on_context, latched_path_qos())
 
         self.path_sub = self.create_subscription(
@@ -111,6 +114,8 @@ class PlannerNode(Node):
             self.routing_reference_run = None
             self.routing_reference_lane = -1
             self.routing_target_lane = -1
+            self.routing_drivable_left_boundary = []
+            self.routing_drivable_right_boundary = []
         if self.planner is not None:
             self.planner.stop()
             self.planner = None
@@ -129,6 +134,19 @@ class PlannerNode(Node):
         self.routing_reference_run = run_id
         self.routing_reference_lane = int(message.reference_lane_index)
         self.routing_target_lane = int(message.target_lane)
+        if (
+            len(message.drivable_left_boundary) == len(message.points)
+            and len(message.drivable_right_boundary) == len(message.points)
+        ):
+            self.routing_drivable_left_boundary = [
+                (point.x, point.y) for point in message.drivable_left_boundary
+            ]
+            self.routing_drivable_right_boundary = [
+                (point.x, point.y) for point in message.drivable_right_boundary
+            ]
+        else:
+            self.routing_drivable_left_boundary = []
+            self.routing_drivable_right_boundary = []
         self._activate_reference()
 
     def _activate_reference(self):
@@ -166,6 +184,11 @@ class PlannerNode(Node):
                 num_lanes=num_lanes,
                 reference_lane_index=self.routing_reference_lane,
                 target_lane=self.routing_target_lane,
+                drivable_left_boundary=self.routing_drivable_left_boundary,
+                drivable_right_boundary=self.routing_drivable_right_boundary,
+                corridor_margin_m=float(
+                    self.get_parameter("routing_corridor_margin_m").value
+                ),
             )
         else:
             self.planner = MotionPlanner(

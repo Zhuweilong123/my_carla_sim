@@ -6,6 +6,7 @@ from .data_types import RoadDef, RoadSegment, ScenarioConfig
 
 
 def default_config() -> ScenarioConfig:
+    lane_y = -1.75
     road = RoadDef(
         segments=[RoadSegment("straight", {"length": 200, "heading": 0, "start": (0, 0)})],
         lane_width=3.5,
@@ -16,12 +17,15 @@ def default_config() -> ScenarioConfig:
         description="200 m straight-road cruise",
         road=road,
         ego_start_x=20.0,
-        ego_start_y=0.0,
+        ego_start_y=lane_y,
         ego_start_phi=0.0,
         ego_start_speed=10.0,
         target_speed=20.0,
         controller="LQR_controller",
-        destination=(190.0, 0.0),
+        destination=(190.0, lane_y),
+        routing_map_id="straight_cruise",
+        routing_start_lane=0,
+        routing_goal_lane=0,
     )
 
 
@@ -111,6 +115,10 @@ def curve_scenario() -> ScenarioConfig:
         ego_start_speed=8.0,
         target_speed=30.0,
         controller="LQR_controller",
+        destination=(98.25, 150.0),
+        routing_map_id="curve_90deg",
+        routing_start_lane=1,
+        routing_goal_lane=1,
     )
 
 

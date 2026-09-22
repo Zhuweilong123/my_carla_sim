@@ -28,6 +28,8 @@ class ReferenceLinePlan:
     points: Tuple[PathTuple, ...] = ()
     left_boundary: Tuple[PathTuple, ...] = ()
     right_boundary: Tuple[PathTuple, ...] = ()
+    drivable_left_boundary: Tuple[PathTuple, ...] = ()
+    drivable_right_boundary: Tuple[PathTuple, ...] = ()
 
     @classmethod
     def failure(

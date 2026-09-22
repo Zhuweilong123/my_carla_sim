@@ -30,8 +30,10 @@ by default).
 Maps may provide per-edge `left_boundary` and `right_boundary` polylines. If
 they are omitted, the loader derives them from the edge centerline and the
 top-level `lane_width` (3.5 m by default). `num_lanes` is also map metadata.
-The resulting `ReferenceLine` publishes both sampled boundaries and these lane
-dimensions, so downstream planning can use the same drivable corridor.
+The resulting `ReferenceLine` publishes the selected lane's sampled boundaries
+plus the outer boundaries of all parallel lanes on the routed road segment.
+The latter are the `drivable_*_boundary` fields used by `planner_node` to
+reject and clamp local trajectories outside the map corridor.
 
 `ReferenceLine` retains `request_id`, map ID, route ID, source segments,
 reference-lane index, target lane, spacing, and the generated path geometry.
@@ -43,8 +45,11 @@ Consumers must pair it with the current `sim/context.run_id` through
 `planner_node` uses `routing/reference_line` when it matches the active run.
 Its local candidates are expressed relative to the routed lane, so an obstacle
 can cause a temporary lane change while the target lane remains the preferred
-post-obstacle destination. If no matching Routing reference is available, it
-keeps the existing simulator reference path as a fallback.
+post-obstacle destination. Candidates and the resulting transition are bounded
+by the ReferenceLine drivable corridor, with `routing_corridor_margin_m`
+(1.1 m by default) reserved from each outer edge. If no matching Routing
+reference is available, it keeps the existing simulator reference path as a
+fallback.
 
 ## Parameters
 

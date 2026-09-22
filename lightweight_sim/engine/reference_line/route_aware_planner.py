@@ -19,10 +19,22 @@ class RouteAwareMotionPlanner(MotionPlanner):
         num_lanes: int,
         reference_lane_index: int,
         target_lane: int,
+        drivable_left_boundary=(),
+        drivable_right_boundary=(),
+        corridor_margin_m: float = 1.1,
     ) -> None:
         super().__init__(global_frenet_path, lane_width=lane_width, num_lanes=num_lanes)
+        if len(drivable_left_boundary) != len(drivable_right_boundary):
+            raise ValueError("drivable boundaries must have matching point counts")
+        if drivable_left_boundary and len(drivable_left_boundary) != len(global_frenet_path):
+            raise ValueError("drivable boundaries must match the routing reference")
+        if corridor_margin_m < 0.0:
+            raise ValueError("corridor margin must be non-negative")
         self.reference_lane_index = int(reference_lane_index)
         self.target_lane = int(target_lane)
+        self.drivable_left_boundary = tuple(drivable_left_boundary)
+        self.drivable_right_boundary = tuple(drivable_right_boundary)
+        self.corridor_margin_m = float(corridor_margin_m)
 
     def _plan(self, pred_loc, vehicle_loc, obstacles):
         path = self.global_path
@@ -65,7 +77,18 @@ class RouteAwareMotionPlanner(MotionPlanner):
                 for index_delta, lateral in obstacle_sl
             )
 
-        valid = [candidate for candidate in candidates if is_safe(candidate)]
+        def is_in_corridor(target):
+            return all(
+                lower <= target <= upper
+                for index, point in enumerate(ref)
+                for lower, upper in [self._corridor_bounds(start + index, point)]
+            )
+
+        valid = [
+            candidate
+            for candidate in candidates
+            if is_safe(candidate) and is_in_corridor(candidate)
+        ]
         preferred = (
             self.lane_width * (self.target_lane - self.reference_lane_index)
             if 0 <= self.target_lane < self.num_lanes
@@ -73,8 +96,10 @@ class RouteAwareMotionPlanner(MotionPlanner):
         )
         if not is_safe(preferred):
             preferred = l0
+        fallback_lower, fallback_upper = self._corridor_bounds(start, ref[0])
+        fallback = max(fallback_lower, min(fallback_upper, l0))
         target = min(
-            valid or [max(-usable, min(usable, l0))],
+            valid or [fallback],
             key=lambda candidate: (abs(candidate - preferred), abs(candidate - l0)),
         )
 
@@ -90,6 +115,8 @@ class RouteAwareMotionPlanner(MotionPlanner):
             ratio = max(0.0, min(1.0, travelled / transition_distance))
             smooth = ratio * ratio * (3.0 - 2.0 * ratio)
             lateral = l0 + (target - l0) * smooth
+            lower, upper = self._corridor_bounds(start + index, point)
+            lateral = max(lower, min(upper, lateral))
             normal = (-math.sin(point[2]), math.cos(point[2]))
             result.append(
                 (
@@ -100,3 +127,22 @@ class RouteAwareMotionPlanner(MotionPlanner):
                 )
             )
         return result
+
+    def _corridor_bounds(self, index, reference):
+        if not self.drivable_left_boundary:
+            usable = self.num_lanes * self.lane_width / 2.0 - 1.1
+            return -usable, usable
+        left = self.drivable_left_boundary[index]
+        right = self.drivable_right_boundary[index]
+        normal = (-math.sin(reference[2]), math.cos(reference[2]))
+        left_lateral = (left[0] - reference[0]) * normal[0] + (
+            left[1] - reference[1]
+        ) * normal[1]
+        right_lateral = (right[0] - reference[0]) * normal[0] + (
+            right[1] - reference[1]
+        ) * normal[1]
+        lower = min(left_lateral, right_lateral) + self.corridor_margin_m
+        upper = max(left_lateral, right_lateral) - self.corridor_margin_m
+        if lower > upper:
+            raise ValueError("drivable corridor is narrower than twice the margin")
+        return lower, upper

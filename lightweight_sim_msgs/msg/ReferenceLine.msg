@@ -15,3 +15,5 @@ RouteSegment[] segments
 PathPoint[] points
 PathPoint[] left_boundary
 PathPoint[] right_boundary
+PathPoint[] drivable_left_boundary
+PathPoint[] drivable_right_boundary
