@@ -6,30 +6,45 @@ from .lon_pid import LongitudinalPIDController
 from ...simulator.data_types import VehicleParams
 from ...simulator.steering import SteeringParams
 import math
+import numpy as np
 
 
 class VehicleController:
     def __init__(self, vehicle_para=None, controller_type="LQR_controller", target_speed_kmh=50.0,
-                 *, vehicle_params=None, steering_params=None, dt=0.05, actuator_compensation=True):
+                 *, vehicle_params=None, steering_params=None, dt=0.05,
+                 actuator_compensation=True, lateral_q=None, lateral_r=100.0,
+                 dynamic_lateral_r=300.0, feedback_horizon_s=0.0,
+                 smooth_reference_heading=True, discretization="plant",
+                 longitudinal_params=None):
         self.params = vehicle_params or VehicleParams()
         vehicle_para = vehicle_para or self.params.lateral_tuple
         self.controller_type = controller_type
         self.vehicle_para = vehicle_para
+        if lateral_q is not None:
+            lateral_q = np.asarray(lateral_q, dtype=float)
+            if lateral_q.ndim == 1:
+                if lateral_q.size != 4:
+                    raise ValueError("lateral_q must contain four diagonal weights")
+                lateral_q = np.diag(lateral_q)
+        lateral_kwargs = dict(Q=lateral_q, R=float(lateral_r), ts=dt)
         self.lat = (
-            LateralMPCController(vehicle_para)
+            LateralMPCController(vehicle_para, **lateral_kwargs)
             if controller_type == "MPC_controller"
-            else LateralLQRController(vehicle_para)
+            else LateralLQRController(vehicle_para, **lateral_kwargs)
         )
-        self.lon = LongitudinalPIDController()
+        self.lon = LongitudinalPIDController(**(longitudinal_params or {}))
         self.lat.ts = self.lon.dt = dt
         self.lat.max_steer = self.params.max_steer
         self.lon.max_accel, self.lon.max_decel = self.params.max_accel, self.params.max_decel
         self.lat.configure_actuator(steering_params if steering_params and actuator_compensation
                                     else SteeringParams())
         if self.lat.actuator_params.mode == "dynamic":
-            # More conservative bandwidth for the uncalibrated delay model.
-            # Ideal P2 baseline retains R=100; experiments may override this.
-            self.lat.R[:] = 300.0
+            self.lat.R[:] = float(dynamic_lateral_r)
+        self.lat.discretization = str(discretization)
+        if hasattr(self.lat, "feedback_horizon_s"):
+            self.lat.feedback_horizon_s = float(feedback_horizon_s)
+        if hasattr(self.lat, "smooth_reference_heading"):
+            self.lat.smooth_reference_heading = bool(smooth_reference_heading)
         self.lon.set_target(target_speed_kmh)
         self.ref_path = []
 

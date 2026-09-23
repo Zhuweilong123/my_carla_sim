@@ -25,11 +25,15 @@ class AStarRouter:
         turn_penalty_s: float = 2.0,
         lane_change_penalty_s: float = 1.0,
         u_turn_penalty_s: float = 30.0,
+        sample_spacing_m: float = 1.0,
     ):
         self.road_map = road_map
         self.turn_penalty_s = float(turn_penalty_s)
         self.lane_change_penalty_s = float(lane_change_penalty_s)
         self.u_turn_penalty_s = float(u_turn_penalty_s)
+        self.sample_spacing_m = float(sample_spacing_m)
+        if self.sample_spacing_m <= 0.0:
+            raise ValueError("sample spacing must be positive")
 
     def search(
         self,
@@ -141,7 +145,10 @@ class AStarRouter:
             )
             for edge in edges
         )
-        points = _build_reference_path(edges, sample_spacing_m=1.0)
+        points = _build_reference_path(
+            edges,
+            sample_spacing_m=self.sample_spacing_m,
+        )
         return RoutePlan(
             route_id=route_id,
             request_id=request_id,

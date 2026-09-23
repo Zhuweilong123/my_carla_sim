@@ -15,9 +15,23 @@ from .models import RoadMap, RoutePlan, RouteRequest
 class RoutingCore:
     """Manage map versions and provide deterministic A* route requests."""
 
-    def __init__(self, maps: Optional[Iterable[RoadMap]] = None):
+    def __init__(
+        self,
+        maps: Optional[Iterable[RoadMap]] = None,
+        *,
+        turn_penalty_s: float = 2.0,
+        lane_change_penalty_s: float = 1.0,
+        u_turn_penalty_s: float = 30.0,
+        sample_spacing_m: float = 1.0,
+    ):
         self._maps: Dict[str, RoadMap] = {}
         self._routers: Dict[str, AStarRouter] = {}
+        self._router_options = dict(
+            turn_penalty_s=float(turn_penalty_s),
+            lane_change_penalty_s=float(lane_change_penalty_s),
+            u_turn_penalty_s=float(u_turn_penalty_s),
+            sample_spacing_m=float(sample_spacing_m),
+        )
         self._route_ids = itertools.count(1)
         self._request_ids = itertools.count(1)
         self._lock = threading.RLock()
@@ -25,13 +39,16 @@ class RoutingCore:
             self.register_map(road_map)
 
     @classmethod
-    def from_paths(cls, paths: Iterable[str | Path]) -> "RoutingCore":
-        return cls(load_map(path) for path in paths)
+    def from_paths(cls, paths: Iterable[str | Path], **router_options) -> "RoutingCore":
+        return cls((load_map(path) for path in paths), **router_options)
 
     def register_map(self, road_map: RoadMap) -> None:
         with self._lock:
             self._maps[road_map.map_id] = road_map
-            self._routers[road_map.map_id] = AStarRouter(road_map)
+            self._routers[road_map.map_id] = AStarRouter(
+                road_map,
+                **self._router_options,
+            )
 
     def map_ids(self):
         with self._lock:

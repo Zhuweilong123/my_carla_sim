@@ -31,6 +31,7 @@ class ControllerManager(Node):
         self.declare_parameter("default_control_source", "AUTO")
         self.declare_parameter("switch_hold_s", 0.5)
         self.declare_parameter("command_timeout", 0.35)
+        self.declare_parameter("update_period", 0.02)
         requested = self._normalize(str(self.get_parameter("default_mode").value))
         self._mode = requested or "CRUISE"
         self._control_source = self._normalize_source(
@@ -56,7 +57,10 @@ class ControllerManager(Node):
                 lambda message, selected=mode: self._on_candidate(selected, message),
                 command_qos(),
             )
-        self._timer = self.create_timer(0.02, self._tick)
+        self._timer = self.create_timer(
+            float(self.get_parameter("update_period").value),
+            self._tick,
+        )
         self._publish_status("startup")
         self.get_logger().info(f"controller manager ready; mode={self._mode}")
 

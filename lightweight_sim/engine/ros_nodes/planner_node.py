@@ -41,12 +41,21 @@ class PlannerNode(Node):
     def __init__(self) -> None:
         super().__init__("planner_node")
         self.declare_parameter("plan_period", DEFAULT_RUNTIME_CONFIG.plan_period)
+        self.declare_parameter("result_poll_period", 0.02)
         self.declare_parameter("lane_width", DEFAULT_RUNTIME_CONFIG.lane_width)
         self.declare_parameter("num_lanes", DEFAULT_RUNTIME_CONFIG.num_lanes)
         self.declare_parameter("prediction_time", DEFAULT_RUNTIME_CONFIG.prediction_time)
         self.declare_parameter("use_routing_reference", True)
         self.declare_parameter("routing_reference_topic", "routing/reference_line")
         self.declare_parameter("routing_corridor_margin_m", 1.1)
+        self.declare_parameter("local_plan_points", 80)
+        self.declare_parameter("local_transition_distance_m", 12.0)
+        self.declare_parameter("local_collision_margin_m", 0.25)
+        self.declare_parameter("local_obstacle_longitudinal_min_m", -5.0)
+        self.declare_parameter("local_obstacle_longitudinal_max_m", 65.0)
+        self.declare_parameter("local_obstacle_lateral_clearance_m", 2.2)
+        self.declare_parameter("local_vehicle_length_m", 4.0)
+        self.declare_parameter("local_vehicle_width_m", 2.0)
         self.path = []
         self.state: Optional[VehicleState] = None
         self.obstacles = []
@@ -86,7 +95,10 @@ class PlannerNode(Node):
         )
         period = float(self.get_parameter("plan_period").value)
         self.plan_timer = self.create_timer(period, self._request_plan)
-        self.poll_timer = self.create_timer(0.02, self._poll_result)
+        self.poll_timer = self.create_timer(
+            float(self.get_parameter("result_poll_period").value),
+            self._poll_result,
+        )
 
     def _on_path(self, message: RosPath) -> None:
         run, version = decode_sequence(message.sequence)
@@ -189,12 +201,50 @@ class PlannerNode(Node):
                 corridor_margin_m=float(
                     self.get_parameter("routing_corridor_margin_m").value
                 ),
+                horizon_points=int(self.get_parameter("local_plan_points").value),
+                transition_distance_m=float(
+                    self.get_parameter("local_transition_distance_m").value
+                ),
+                collision_margin_m=float(
+                    self.get_parameter("local_collision_margin_m").value
+                ),
+                obstacle_longitudinal_min_m=float(
+                    self.get_parameter("local_obstacle_longitudinal_min_m").value
+                ),
+                obstacle_longitudinal_max_m=float(
+                    self.get_parameter("local_obstacle_longitudinal_max_m").value
+                ),
+                obstacle_lateral_clearance_m=float(
+                    self.get_parameter("local_obstacle_lateral_clearance_m").value
+                ),
+                vehicle_length_m=float(
+                    self.get_parameter("local_vehicle_length_m").value
+                ),
+                vehicle_width_m=float(
+                    self.get_parameter("local_vehicle_width_m").value
+                ),
             )
         else:
             self.planner = MotionPlanner(
                 self.path,
                 lane_width=lane_width,
                 num_lanes=num_lanes,
+                horizon_points=int(self.get_parameter("local_plan_points").value),
+                corridor_margin_m=float(
+                    self.get_parameter("routing_corridor_margin_m").value
+                ),
+                transition_distance_m=float(
+                    self.get_parameter("local_transition_distance_m").value
+                ),
+                obstacle_longitudinal_min_m=float(
+                    self.get_parameter("local_obstacle_longitudinal_min_m").value
+                ),
+                obstacle_longitudinal_max_m=float(
+                    self.get_parameter("local_obstacle_longitudinal_max_m").value
+                ),
+                obstacle_lateral_clearance_m=float(
+                    self.get_parameter("local_obstacle_lateral_clearance_m").value
+                ),
             )
         self.planner.start()
         if self.state is not None:

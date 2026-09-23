@@ -34,6 +34,26 @@ class SimulatorNode(_LegacySimulatorNode):
             self.context_pub = self.create_publisher(String, "sim/context", latched_path_qos())
         self.run_id = max(int(time.time()*1000), getattr(self, "run_id", 0)+1)
         config = self.engine.config
+        reference_lane_index = int(getattr(config, "routing_start_lane", -1))
+        if not 0 <= reference_lane_index < config.road.num_lanes:
+            lane_centers = [
+                (-config.road.num_lanes / 2.0 + lane + 0.5)
+                * config.road.lane_width
+                for lane in range(config.road.num_lanes)
+            ]
+            distances = sorted(
+                (abs(float(config.ego_start_y) - center), lane)
+                for lane, center in enumerate(lane_centers)
+            )
+            if (
+                distances
+                and distances[0][0] < config.road.lane_width / 2.0
+                and (
+                    len(distances) == 1
+                    or distances[0][0] + 1e-6 < distances[1][0]
+                )
+            ):
+                reference_lane_index = distances[0][1]
         context = dict(schema_version=1, run_id=self.run_id,
                        route_id=config.name, scenario=config.name,
                        target_speed_kmh=config.target_speed,
@@ -50,6 +70,7 @@ class SimulatorNode(_LegacySimulatorNode):
                        routing_map_id=getattr(config, "routing_map_id", None),
                        routing_start_lane=getattr(config, "routing_start_lane", -1),
                        routing_goal_lane=getattr(config, "routing_goal_lane", -1),
+                       reference_lane_index=reference_lane_index,
                        lane_width=config.road.lane_width,
                        num_lanes=config.road.num_lanes, physics_dt=self.physics_dt)
         self.context_pub.publish(String(data=json.dumps(context)))

@@ -86,7 +86,7 @@ class RosGuiView(_LegacyRosGuiView):
         return measured["ed_m"], math.radians(measured["ephi_deg"])
 
     def __init__(self, width=1200, height=800, lane_width=3.5,
-                 num_lanes=2, target_speed_kmh=40.0):
+                 num_lanes=2, target_speed_kmh=40.0, render_fps=60):
         configure_display_driver()
         patch_sysfont_for_python314()
         pygame.init()
@@ -105,6 +105,7 @@ class RosGuiView(_LegacyRosGuiView):
         self.lane_width = lane_width
         self.num_lanes = num_lanes
         self.target_speed_kmh = target_speed_kmh
+        self.render_fps = max(1, int(render_fps))
         self.started_at = time.monotonic()
         self._history_scenario = ""
         self._scenario_key_state = {

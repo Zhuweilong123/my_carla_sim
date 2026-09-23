@@ -9,10 +9,10 @@ simulator_node:
     physics_dt: 0.05
     command_timeout: 0.25
     default_speed_limit_kmh: 40.0
-    straight_speed_limit_kmh: 40.0
-    curve_speed_limit_kmh: 30.0
+    straight_speed_limit_kmh: 50.0
+    curve_speed_limit_kmh: 40.0
     intersection_speed_limit_kmh: 25.0
-    lane_change_speed_limit_kmh: 20.0
+    lane_change_speed_limit_kmh: 40.0
     parking_speed_limit_kmh: 8.0
     target_speed_ratio: 0.85
     speed_profile_lookahead_m: 20.0

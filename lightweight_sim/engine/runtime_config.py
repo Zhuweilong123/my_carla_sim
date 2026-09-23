@@ -25,7 +25,7 @@ class RuntimeConfig:
     controller: str = "LQR_controller"
     target_speed_kmh: float = 40.0
     default_speed_limit_kmh: float = 40.0
-    straight_speed_limit_kmh: float = 40.0
+    straight_speed_limit_kmh: float = 50.0
     curve_speed_limit_kmh: float = 30.0
     intersection_speed_limit_kmh: float = 25.0
     lane_change_speed_limit_kmh: float = 20.0

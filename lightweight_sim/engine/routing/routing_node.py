@@ -33,6 +33,10 @@ class RoutingNode(Node):
         self.declare_parameter("request_topic", "routing/request")
         self.declare_parameter("route_topic", "routing/route")
         self.declare_parameter("service_name", "routing/compute_route")
+        self.declare_parameter("turn_penalty_s", 2.0)
+        self.declare_parameter("lane_change_penalty_s", 1.0)
+        self.declare_parameter("u_turn_penalty_s", 30.0)
+        self.declare_parameter("sample_spacing_m", 1.0)
         self.route_pub = self.create_publisher(
             RosRoutePlan,
             str(self.get_parameter("route_topic").value),
@@ -57,7 +61,19 @@ class RoutingNode(Node):
             map_paths = sorted(str(path) for path in map_dir.glob("*.json"))
         if not map_paths:
             raise RuntimeError("routing node found no JSON maps")
-        self.core = RoutingCore.from_paths(map_paths)
+        self.core = RoutingCore.from_paths(
+            map_paths,
+            turn_penalty_s=float(self.get_parameter("turn_penalty_s").value),
+            lane_change_penalty_s=float(
+                self.get_parameter("lane_change_penalty_s").value
+            ),
+            u_turn_penalty_s=float(
+                self.get_parameter("u_turn_penalty_s").value
+            ),
+            sample_spacing_m=float(
+                self.get_parameter("sample_spacing_m").value
+            ),
+        )
         self.get_logger().info(
             "routing node ready; maps=%s service=%s"
             % (

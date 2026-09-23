@@ -49,7 +49,11 @@ class GuiNode(_LegacyGuiNode):
         self.create_subscription(
             ControlMode, "control_mode/status", self._on_mode_status, latched_path_qos()
         )
-        self.mode_timer = self.create_timer(1.0, self._publish_requested_mode)
+        self.declare_parameter("mode_publish_period", 1.0)
+        self.mode_timer = self.create_timer(
+            float(self.get_parameter("mode_publish_period").value),
+            self._publish_requested_mode,
+        )
         self._publish_requested_mode()
 
     def _on_context(self, message):

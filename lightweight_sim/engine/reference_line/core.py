@@ -101,13 +101,11 @@ class ReferenceLineCore:
                 rounded,
                 -(lane_index + 0.5) * road_map.lane_width,
             )
-            smoothed = _constrained_smooth(
-                rounded,
-                left_boundary,
-                right_boundary,
-                max_deviation_m=self.max_lateral_deviation_m,
-                boundary_margin_m=self.boundary_margin_m,
-            )
+            # The corner-rounding stage already produces a curvature-controlled
+            # geometry.  Applying a second point-wise smoother here can create
+            # new heading discontinuities at arc/line joins, which defeats the
+            # curvature limit and corrupts the offset lane boundaries.
+            smoothed = list(rounded)
             left_boundary = _offset_polyline(smoothed, road_map.lane_width / 2.0)
             right_boundary = _offset_polyline(smoothed, -road_map.lane_width / 2.0)
             drivable_left_boundary = _offset_polyline(

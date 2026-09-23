@@ -27,6 +27,7 @@ class GuiNode(Node):
         self.declare_parameter("lane_width", DEFAULT_RUNTIME_CONFIG.lane_width)
         self.declare_parameter("num_lanes", DEFAULT_RUNTIME_CONFIG.num_lanes)
         self.declare_parameter("target_speed_kmh", DEFAULT_RUNTIME_CONFIG.target_speed_kmh)
+        self.declare_parameter("render_fps", 60)
         self.declare_parameter("initial_mode", "CRUISE")
         self.declare_parameter("initial_control_source", "AUTO")
 
@@ -37,6 +38,7 @@ class GuiNode(Node):
             lane_width=float(self.get_parameter("lane_width").value),
             num_lanes=int(self.get_parameter("num_lanes").value),
             target_speed_kmh=float(self.get_parameter("target_speed_kmh").value),
+            render_fps=int(self.get_parameter("render_fps").value),
         )
 
         sensor_qos = sensor_data_qos()
@@ -126,6 +128,9 @@ class GuiNode(Node):
         self.snapshot.routing_request_id = 0
         self.snapshot.routing_path = []
         self.snapshot.reference_line_path = []
+        self.snapshot.reference_lane_index = int(
+            context.get("reference_lane_index", -1)
+        )
         self.snapshot.routing_left_boundary = []
         self.snapshot.routing_right_boundary = []
         self.snapshot.drivable_left_boundary = []
@@ -140,6 +145,7 @@ class GuiNode(Node):
             return
         if not message.success:
             self.snapshot.reference_line_path = []
+            self.snapshot.reference_lane_index = -1
             self.snapshot.routing_left_boundary = []
             self.snapshot.routing_right_boundary = []
             self.snapshot.drivable_left_boundary = []
@@ -149,6 +155,7 @@ class GuiNode(Node):
             PathPoint(x=point.x, y=point.y, theta=point.theta, kappa=point.kappa)
             for point in message.points
         ]
+        self.snapshot.reference_lane_index = int(message.reference_lane_index)
         self.snapshot.routing_left_boundary = [
             PathPoint(x=point.x, y=point.y, theta=point.theta, kappa=point.kappa)
             for point in message.left_boundary

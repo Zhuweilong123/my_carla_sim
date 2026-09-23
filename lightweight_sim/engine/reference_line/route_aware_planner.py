@@ -23,10 +23,26 @@ class RouteAwareMotionPlanner(MotionPlanner):
         drivable_left_boundary=(),
         drivable_right_boundary=(),
         corridor_margin_m: float = 1.1,
+        horizon_points: int = 80,
         transition_distance_m: float = 12.0,
         collision_margin_m: float = 0.25,
+        obstacle_longitudinal_min_m: float = -5.0,
+        obstacle_longitudinal_max_m: float = 65.0,
+        obstacle_lateral_clearance_m: float = 2.2,
+        vehicle_length_m: float = 4.0,
+        vehicle_width_m: float = 2.0,
     ) -> None:
-        super().__init__(global_frenet_path, lane_width=lane_width, num_lanes=num_lanes)
+        super().__init__(
+            global_frenet_path,
+            lane_width=lane_width,
+            num_lanes=num_lanes,
+            horizon_points=horizon_points,
+            corridor_margin_m=corridor_margin_m,
+            transition_distance_m=transition_distance_m,
+            obstacle_longitudinal_min_m=obstacle_longitudinal_min_m,
+            obstacle_longitudinal_max_m=obstacle_longitudinal_max_m,
+            obstacle_lateral_clearance_m=obstacle_lateral_clearance_m,
+        )
         if len(drivable_left_boundary) != len(drivable_right_boundary):
             raise ValueError("drivable boundaries must have matching point counts")
         if drivable_left_boundary and len(drivable_left_boundary) != len(global_frenet_path):
@@ -37,6 +53,8 @@ class RouteAwareMotionPlanner(MotionPlanner):
             raise ValueError("transition distance must be positive")
         if collision_margin_m < 0.0:
             raise ValueError("collision margin must be non-negative")
+        if vehicle_length_m <= 0.0 or vehicle_width_m <= 0.0:
+            raise ValueError("vehicle dimensions must be positive")
         self.reference_lane_index = int(reference_lane_index)
         self.target_lane = int(target_lane)
         self.drivable_left_boundary = tuple(drivable_left_boundary)
@@ -44,6 +62,8 @@ class RouteAwareMotionPlanner(MotionPlanner):
         self.corridor_margin_m = float(corridor_margin_m)
         self.transition_distance_m = float(transition_distance_m)
         self.collision_margin_m = float(collision_margin_m)
+        self.vehicle_length_m = float(vehicle_length_m)
+        self.vehicle_width_m = float(vehicle_width_m)
 
     def _plan(self, pred_loc, vehicle_loc, obstacles):
         path = self.global_path
@@ -52,7 +72,7 @@ class RouteAwareMotionPlanner(MotionPlanner):
 
         idx, _ = find_match_points([pred_loc], path, True, 0)
         start = max(0, int(idx[0]))
-        horizon = min(len(path), start + 80)
+        horizon = min(len(path), start + self.horizon_points)
         ref = path[start:horizon]
         theta = ref[0][2]
         normal = (-math.sin(theta), math.cos(theta))
@@ -64,7 +84,7 @@ class RouteAwareMotionPlanner(MotionPlanner):
             self.lane_width * (lane_index - self.reference_lane_index)
             for lane_index in range(self.num_lanes)
         ]
-        usable = self.num_lanes * self.lane_width / 2.0 - 1.1
+        usable = self.num_lanes * self.lane_width / 2.0 - self.corridor_margin_m
         candidates.append(max(-usable, min(usable, l0)))
         candidates = sorted(set(round(value, 3) for value in candidates))
 
@@ -82,7 +102,12 @@ class RouteAwareMotionPlanner(MotionPlanner):
 
         def is_safe(target):
             return all(
-                not (-5 <= index_delta <= 65 and abs(target - lateral) < 2.2)
+                not (
+                    self.obstacle_longitudinal_min_m
+                    <= index_delta
+                    <= self.obstacle_longitudinal_max_m
+                    and abs(target - lateral) < self.obstacle_lateral_clearance_m
+                )
                 for index_delta, lateral in obstacle_sl
             )
 
@@ -153,8 +178,8 @@ class RouteAwareMotionPlanner(MotionPlanner):
         ]
 
     def _trajectory_is_safe(self, candidate_path, obstacles):
-        ego_half_length = 2.0
-        ego_half_width = 1.0
+        ego_half_length = self.vehicle_length_m / 2.0
+        ego_half_width = self.vehicle_width_m / 2.0
         for px, py, heading, _ in candidate_path:
             tangent = (math.cos(heading), math.sin(heading))
             normal = (-math.sin(heading), math.cos(heading))
@@ -184,7 +209,7 @@ class RouteAwareMotionPlanner(MotionPlanner):
 
     def _corridor_bounds(self, index, reference):
         if not self.drivable_left_boundary:
-            usable = self.num_lanes * self.lane_width / 2.0 - 1.1
+            usable = self.num_lanes * self.lane_width / 2.0 - self.corridor_margin_m
             return -usable, usable
         left = self.drivable_left_boundary[index]
         right = self.drivable_right_boundary[index]

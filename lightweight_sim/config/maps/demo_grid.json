@@ -9,80 +9,160 @@
     {"id": "n3", "x": 100.0, "y": 80.0},
     {"id": "n4", "x": 200.0, "y": 80.0},
     {"id": "n5", "x": 100.0, "y": -80.0},
-    {"id": "n6", "x": 200.0, "y": -80.0}
+    {"id": "n6", "x": 200.0, "y": -80.0},
+    {"id": "n7", "x": 300.0, "y": 0.0},
+    {"id": "n8", "x": 300.0, "y": 80.0},
+    {"id": "n9", "x": 300.0, "y": -80.0}
   ],
   "edges": [
     {
-      "id": "r0_main",
-      "road_id": "r0",
-      "lane_id": "r0_l0",
-      "from": "n0",
-      "to": "n1",
-      "lane_index": 0,
-      "speed_limit_kmh": 40.0,
-      "maneuver": "straight",
+      "id": "r0_main", "road_id": "r0", "lane_id": "r0_l0", "from": "n0", "to": "n1",
+      "lane_index": 0, "speed_limit_kmh": 50.0, "maneuver": "straight",
       "centerline": [[0.0, 0.0], [100.0, 0.0]],
-      "successors": ["r1_main", "r1_left", "r1_right"]
+      "successors": ["r1_main", "r1_left", "r1_left_lane0", "r1_right", "r1_right_lane0", "r0_change_0_1"]
     },
     {
-      "id": "r1_main",
-      "road_id": "r1",
-      "lane_id": "r1_l0",
-      "from": "n1",
-      "to": "n2",
-      "lane_index": 0,
-      "speed_limit_kmh": 40.0,
-      "maneuver": "straight",
+      "id": "r0_lane1", "road_id": "r0", "lane_id": "r0_l1", "from": "n0", "to": "n1",
+      "lane_index": 1, "speed_limit_kmh": 50.0, "maneuver": "straight",
+      "centerline": [[0.0, 3.5], [100.0, 3.5]],
+      "successors": ["r1_lane1", "r1_left", "r1_left_lane0", "r1_right_lane1", "r0_change_1_0"]
+    },
+    {
+      "id": "r0_change_0_1", "road_id": "r0", "lane_id": "r0_change_0_1", "from": "n1", "to": "n1",
+      "lane_index": 1, "speed_limit_kmh": 20.0, "maneuver": "lane_change",
+      "centerline": [[100.0, 0.0], [100.0, 3.5]], "successors": ["r1_lane1"]
+    },
+    {
+      "id": "r0_change_1_0", "road_id": "r0", "lane_id": "r0_change_1_0", "from": "n1", "to": "n1",
+      "lane_index": 0, "speed_limit_kmh": 20.0, "maneuver": "lane_change",
+      "centerline": [[100.0, 3.5], [100.0, 0.0]], "successors": ["r1_main"]
+    },
+    {
+      "id": "r1_main", "road_id": "r1", "lane_id": "r1_l0", "from": "n1", "to": "n2",
+      "lane_index": 0, "speed_limit_kmh": 50.0, "maneuver": "straight",
       "centerline": [[100.0, 0.0], [200.0, 0.0]],
-      "successors": []
+      "successors": ["r2_main", "r2_left_connector", "r2_right_connector", "r1_change_0_1"]
     },
     {
-      "id": "r1_left",
-      "road_id": "r1",
-      "lane_id": "r1_l1",
-      "from": "n1",
-      "to": "n3",
-      "lane_index": 1,
-      "speed_limit_kmh": 30.0,
-      "maneuver": "left",
-      "centerline": [[100.0, 0.0], [100.0, 80.0]],
-      "successors": ["r2_left"]
+      "id": "r1_lane1", "road_id": "r1", "lane_id": "r1_l1", "from": "n1", "to": "n2",
+      "lane_index": 1, "speed_limit_kmh": 50.0, "maneuver": "straight",
+      "centerline": [[100.0, 3.5], [200.0, 3.5]],
+      "successors": ["r2_lane1", "r2_left_connector_lane1", "r2_right_connector_lane1", "r1_change_1_0"]
     },
     {
-      "id": "r2_left",
-      "road_id": "r2",
-      "lane_id": "r2_l1",
-      "from": "n3",
-      "to": "n4",
-      "lane_index": 1,
-      "speed_limit_kmh": 40.0,
-      "maneuver": "straight",
-      "centerline": [[100.0, 80.0], [200.0, 80.0]],
-      "successors": []
+      "id": "r1_change_0_1", "road_id": "r1", "lane_id": "r1_change_0_1", "from": "n2", "to": "n2",
+      "lane_index": 1, "speed_limit_kmh": 20.0, "maneuver": "lane_change",
+      "centerline": [[200.0, 0.0], [200.0, 3.5]], "successors": ["r2_lane1"]
     },
     {
-      "id": "r1_right",
-      "road_id": "r1",
-      "lane_id": "r1_l-1",
-      "from": "n1",
-      "to": "n5",
-      "lane_index": -1,
-      "speed_limit_kmh": 30.0,
-      "maneuver": "right",
-      "centerline": [[100.0, 0.0], [100.0, -80.0]],
-      "successors": ["r2_right"]
+      "id": "r1_change_1_0", "road_id": "r1", "lane_id": "r1_change_1_0", "from": "n2", "to": "n2",
+      "lane_index": 0, "speed_limit_kmh": 20.0, "maneuver": "lane_change",
+      "centerline": [[200.0, 3.5], [200.0, 0.0]], "successors": ["r2_main"]
     },
     {
-      "id": "r2_right",
-      "road_id": "r2",
-      "lane_id": "r2_l-1",
-      "from": "n5",
-      "to": "n6",
-      "lane_index": -1,
-      "speed_limit_kmh": 40.0,
-      "maneuver": "straight",
-      "centerline": [[100.0, -80.0], [200.0, -80.0]],
-      "successors": []
+      "id": "r2_main", "road_id": "r2", "lane_id": "r2_l0", "from": "n2", "to": "n7",
+      "lane_index": 0, "speed_limit_kmh": 50.0, "maneuver": "straight",
+      "centerline": [[200.0, 0.0], [300.0, 0.0]], "successors": []
+    },
+    {
+      "id": "r2_lane1", "road_id": "r2", "lane_id": "r2_l1", "from": "n2", "to": "n7",
+      "lane_index": 1, "speed_limit_kmh": 50.0, "maneuver": "straight",
+      "centerline": [[200.0, 3.5], [300.0, 3.5]], "successors": []
+    },
+    {
+      "id": "r1_left", "road_id": "r1", "lane_id": "r1_l1", "from": "n1", "to": "n3",
+      "lane_index": 1, "speed_limit_kmh": 30.0, "maneuver": "left",
+      "centerline": [[100.0, 0.0], [100.0, 80.0]], "successors": ["r2_left"]
+    },
+    {
+      "id": "r1_left_lane0", "road_id": "r1", "lane_id": "r1_l0_left", "from": "n1", "to": "n3",
+      "lane_index": 0, "speed_limit_kmh": 30.0, "maneuver": "left",
+      "centerline": [[100.0000, 0.0000], [100.6108, 0.0053], [101.2215, 0.0213], [101.8318, 0.0480], [102.4415, 0.0853], [103.0505, 0.1332], [103.6585, 0.1917], [104.2654, 0.2609], [104.8711, 0.3406], [105.4752, 0.4309], [106.0777, 0.5317], [106.6783, 0.6430], [107.2769, 0.7648], [107.8733, 0.8970], [108.4673, 1.0396], [109.0587, 1.1926], [109.6473, 1.3558], [110.2330, 1.5293], [110.8156, 1.7130], [111.3949, 1.9068], [111.9707, 2.1108], [112.5429, 2.3247], [113.1112, 2.5486], [113.6756, 2.7823], [114.2358, 3.0259], [114.7916, 3.2792], [115.3430, 3.5422], [115.8897, 3.8148], [116.4315, 4.0968], [116.9683, 4.3883], [117.5000, 4.6891], [118.0263, 4.9991], [118.5472, 5.3183], [119.0624, 5.6465], [119.5718, 5.9837], [120.0752, 6.3297], [120.5725, 6.6844], [121.0635, 7.0478], [121.5482, 7.4196], [122.0262, 7.7999], [122.4976, 8.1884], [122.9621, 8.5852], [123.4196, 8.9899], [123.8699, 9.4026], [124.3130, 9.8231], [124.7487, 10.2513], [125.1769, 10.6870], [125.5974, 11.1301], [126.0101, 11.5804], [126.4148, 12.0379], [126.8116, 12.5024], [127.2001, 12.9738], [127.5804, 13.4518], [127.9522, 13.9365], [128.3156, 14.4275], [128.6703, 14.9248], [129.0163, 15.4282], [129.3535, 15.9376], [129.6817, 16.4528], [130.0009, 16.9737], [130.3109, 17.5000], [130.6117, 18.0317], [130.9032, 18.5685], [131.1852, 19.1103], [131.4578, 19.6570], [131.7208, 20.2084], [131.9741, 20.7642], [132.2177, 21.3244], [132.4514, 21.8888], [132.6753, 22.4571], [132.8892, 23.0293], [133.0932, 23.6051], [133.2870, 24.1844], [133.4707, 24.7670], [133.6442, 25.3527], [133.8074, 25.9413], [133.9604, 26.5327], [134.1030, 27.1267], [134.2352, 27.7231], [134.3570, 28.3217], [134.4683, 28.9223], [134.5691, 29.5248], [134.6594, 30.1289], [134.7391, 30.7346], [134.8083, 31.3415], [134.8668, 31.9495], [134.9147, 32.5585], [134.9520, 33.1682], [134.9787, 33.7785], [134.9947, 34.3892], [135.0000, 35.0000], [135.0000, 41.5000], [135.0053, 42.1108], [135.0213, 42.7215], [135.0480, 43.3318], [135.0853, 43.9415], [135.1332, 44.5505], [135.1917, 45.1585], [135.2609, 45.7654], [135.3406, 46.3711], [135.4309, 46.9752], [135.5317, 47.5777], [135.6430, 48.1783], [135.7648, 48.7769], [135.8970, 49.3733], [136.0396, 49.9673], [136.1926, 50.5587], [136.3558, 51.1473], [136.5293, 51.7330], [136.7130, 52.3156], [136.9068, 52.8949], [137.1108, 53.4707], [137.3247, 54.0429], [137.5486, 54.6112], [137.7823, 55.1756], [138.0259, 55.7358], [138.2792, 56.2916], [138.5422, 56.8430], [138.8148, 57.3897], [139.0968, 57.9315], [139.3883, 58.4683], [139.6891, 59.0000], [139.9991, 59.5263], [140.3183, 60.0472], [140.6465, 60.5624], [140.9837, 61.0718], [141.3297, 61.5752], [141.6844, 62.0725], [142.0478, 62.5635], [142.4196, 63.0482], [142.7999, 63.5262], [143.1884, 63.9976], [143.5852, 64.4621], [143.9899, 64.9196], [144.4026, 65.3699], [144.8231, 65.8130], [145.2513, 66.2487], [145.6870, 66.6769], [146.1301, 67.0974], [146.5804, 67.5101], [147.0379, 67.9148], [147.5024, 68.3116], [147.9738, 68.7001], [148.4518, 69.0804], [148.9365, 69.4522], [149.4275, 69.8156], [149.9248, 70.1703], [150.4282, 70.5163], [150.9376, 70.8535], [151.4528, 71.1817], [151.9737, 71.5009], [152.5000, 71.8109], [153.0317, 72.1117], [153.5685, 72.4032], [154.1103, 72.6852], [154.6570, 72.9578], [155.2084, 73.2208], [155.7642, 73.4741], [156.3244, 73.7177], [156.8888, 73.9514], [157.4571, 74.1753], [158.0293, 74.3892], [158.6051, 74.5932], [159.1844, 74.7870], [159.7670, 74.9707], [160.3527, 75.1442], [160.9413, 75.3074], [161.5327, 75.4604], [162.1267, 75.6030], [162.7231, 75.7352], [163.3217, 75.8570], [163.9223, 75.9683], [164.5248, 76.0691], [165.1289, 76.1594], [165.7346, 76.2391], [166.3415, 76.3083], [166.9495, 76.3668], [167.5585, 76.4147], [168.1682, 76.4520], [168.7785, 76.4787], [169.3892, 76.4947], [170.0000, 76.5000]], "successors": ["r2_left_lane0"]
+    },
+    {
+      "id": "r2_left", "road_id": "r2", "lane_id": "r2_l1", "from": "n3", "to": "n4",
+      "lane_index": 1, "speed_limit_kmh": 50.0, "maneuver": "straight",
+      "centerline": [[100.0, 80.0], [200.0, 80.0]], "successors": ["r3_left"]
+    },
+    {
+      "id": "r2_left_lane0", "road_id": "r2", "lane_id": "r2_l0_left", "from": "n3", "to": "n4",
+      "lane_index": 0, "speed_limit_kmh": 50.0, "maneuver": "straight",
+      "centerline": [[170.0, 76.5], [200.0, 76.5]], "successors": ["r3_left_lane0"]
+    },
+    {
+      "id": "r3_left", "road_id": "r3", "lane_id": "r3_l1_left", "from": "n4", "to": "n8",
+      "lane_index": 1, "speed_limit_kmh": 50.0, "maneuver": "straight",
+      "centerline": [[200.0, 80.0], [300.0, 80.0]], "successors": []
+    },
+    {
+      "id": "r3_left_lane0", "road_id": "r3", "lane_id": "r3_l0_left", "from": "n4", "to": "n8",
+      "lane_index": 0, "speed_limit_kmh": 50.0, "maneuver": "straight",
+      "centerline": [[200.0, 76.5], [300.0, 76.5]], "successors": []
+    },
+    {
+      "id": "r1_right", "road_id": "r1", "lane_id": "r1_l-1", "from": "n1", "to": "n5",
+      "lane_index": -1, "speed_limit_kmh": 30.0, "maneuver": "right",
+      "centerline": [[100.0, 0.0], [100.0, -80.0]], "successors": ["r2_right"]
+    },
+    {
+      "id": "r1_right_lane0", "road_id": "r1", "lane_id": "r1_l0_right", "from": "n1", "to": "n5",
+      "lane_index": 0, "speed_limit_kmh": 30.0, "maneuver": "right",
+      "centerline": [[100.0, -1.75], [98.25, -30.0], [98.25, -78.25]], "successors": ["r2_right_lane0"]
+    },
+    {
+      "id": "r1_right_lane1", "road_id": "r1", "lane_id": "r1_l1_right", "from": "n1", "to": "n5",
+      "lane_index": 1, "speed_limit_kmh": 30.0, "maneuver": "right",
+      "centerline": [[100.0, 3.5], [101.75, -30.0], [101.75, -81.75]], "successors": ["r2_right_lane1"]
+    },
+    {
+      "id": "r2_right", "road_id": "r2", "lane_id": "r2_l-1", "from": "n5", "to": "n6",
+      "lane_index": -1, "speed_limit_kmh": 50.0, "maneuver": "straight",
+      "centerline": [[100.0, -80.0], [200.0, -80.0]], "successors": ["r3_right"]
+    },
+    {
+      "id": "r2_right_lane0", "road_id": "r2", "lane_id": "r2_l0_right", "from": "n5", "to": "n6",
+      "lane_index": 0, "speed_limit_kmh": 50.0, "maneuver": "straight",
+      "centerline": [[98.25, -78.25], [198.25, -78.25]], "successors": ["r3_right_lane0"]
+    },
+    {
+      "id": "r2_right_lane1", "road_id": "r2", "lane_id": "r2_l1_right", "from": "n5", "to": "n6",
+      "lane_index": 1, "speed_limit_kmh": 50.0, "maneuver": "straight",
+      "centerline": [[101.75, -81.75], [201.75, -81.75]], "successors": ["r3_right_lane1"]
+    },
+    {
+      "id": "r3_right", "road_id": "r3", "lane_id": "r3_l-1_right", "from": "n6", "to": "n9",
+      "lane_index": -1, "speed_limit_kmh": 50.0, "maneuver": "straight",
+      "centerline": [[200.0, -80.0], [300.0, -80.0]], "successors": []
+    },
+    {
+      "id": "r3_right_lane0", "road_id": "r3", "lane_id": "r3_l0_right", "from": "n6", "to": "n9",
+      "lane_index": 0, "speed_limit_kmh": 50.0, "maneuver": "straight",
+      "centerline": [[198.25, -78.25], [298.25, -78.25]], "successors": []
+    },
+    {
+      "id": "r3_right_lane1", "road_id": "r3", "lane_id": "r3_l1_right", "from": "n6", "to": "n9",
+      "lane_index": 1, "speed_limit_kmh": 50.0, "maneuver": "straight",
+      "centerline": [[201.75, -81.75], [301.75, -81.75]], "successors": []
+    },
+    {
+      "id": "r2_left_connector", "road_id": "r2", "lane_id": "r2_l0_left_connector", "from": "n2", "to": "n4",
+      "lane_index": 0, "speed_limit_kmh": 30.0, "maneuver": "left",
+      "centerline": [[200.0, 0.0], [200.0, 80.0]], "successors": ["r3_left_lane0"]
+    },
+    {
+      "id": "r2_left_connector_lane1", "road_id": "r2", "lane_id": "r2_l1_left_connector", "from": "n2", "to": "n4",
+      "lane_index": 1, "speed_limit_kmh": 30.0, "maneuver": "left",
+      "centerline": [[200.0, 3.5], [200.0, 80.0]], "successors": ["r3_left"]
+    },
+    {
+      "id": "r2_right_connector", "road_id": "r2", "lane_id": "r2_l0_right_connector", "from": "n2", "to": "n6",
+      "lane_index": 0, "speed_limit_kmh": 30.0, "maneuver": "right",
+      "centerline": [[200.0, 0.0], [200.0, -80.0]], "successors": ["r3_right_lane0"]
+    },
+    {
+      "id": "r2_right_connector_lane1", "road_id": "r2", "lane_id": "r2_l1_right_connector", "from": "n2", "to": "n6",
+      "lane_index": 1, "speed_limit_kmh": 30.0, "maneuver": "right",
+      "centerline": [[200.0, 3.5], [200.0, -80.0]], "successors": ["r3_right_lane1"]
     }
   ]
 }

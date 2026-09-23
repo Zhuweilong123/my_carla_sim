@@ -74,6 +74,27 @@ def test_figure_eight_scenario_has_three_lanes_and_a_closed_path():
     assert engine.get_state().position == pytest.approx((78.0, 0.0))
 
 
+@pytest.mark.parametrize(
+    ("scenario", "lane_y", "lane_index"),
+    [
+        ("default", -1.75, 0),
+        ("obstacle", -1.75, 0),
+        ("three_lane", -3.5, 0),
+        ("curve", 1.75, 1),
+    ],
+)
+def test_first_four_scenarios_use_their_active_lane_as_road_reference(
+    scenario, lane_y, lane_index
+):
+    config = make_scenario(scenario)
+    engine = SimulationEngine(config)
+
+    assert config.road.reference_lane_index == lane_index
+    assert engine.world.ref_path[0].y == pytest.approx(lane_y, abs=0.05)
+    assert engine.get_state().y == pytest.approx(lane_y)
+    assert engine.world.is_on_road(engine.get_state().x, engine.get_state().y, -1.0)
+
+
 def test_gui_tracking_error_prefers_heading_at_figure_eight_crossing():
     snapshot = GuiSnapshot(
         state=VehicleState(x=0.0, y=0.0, phi=0.0),

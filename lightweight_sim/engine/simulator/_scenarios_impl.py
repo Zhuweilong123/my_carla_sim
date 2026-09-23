@@ -9,9 +9,10 @@ from ..runtime_config import DEFAULT_RUNTIME_CONFIG
 def default_config() -> ScenarioConfig:
     lane_y = -1.75
     road = RoadDef(
-        segments=[RoadSegment("straight", {"length": 200, "heading": 0, "start": (0, 0)})],
+        segments=[RoadSegment("straight", {"length": 200, "heading": 0, "start": (0, lane_y)})],
         lane_width=3.5,
         num_lanes=2,
+        reference_lane_index=0,
     )
     return ScenarioConfig(
         name="straight_200m",
@@ -42,24 +43,35 @@ def demo_grid_scenario() -> ScenarioConfig:
             RoadSegment(
                 "arc",
                 {
-                    "radius": 20.0,
+                    "radius": 35.0,
                     "angle": math.pi / 2.0,
-                    "center": (100.0, 20.0),
+                    "center": (100.0, 35.0),
                     "start_angle": -math.pi / 2.0,
                     "resolution": 2.0,
                 },
             ),
             RoadSegment(
                 "straight",
-                {"length": 56.5, "heading": math.pi / 2.0, "start": (120.0, 20.0)},
+                {"length": 6.5, "heading": math.pi / 2.0, "start": (135.0, 35.0)},
+            ),
+            RoadSegment(
+                "arc",
+                {
+                    "radius": 35.0,
+                    "angle": -math.pi / 2.0,
+                    "center": (170.0, 41.5),
+                    "start_angle": math.pi,
+                    "resolution": 2.0,
+                },
             ),
             RoadSegment(
                 "straight",
-                {"length": 80.0, "heading": 0.0, "start": (120.0, 76.5)},
+                {"length": 30.0, "heading": 0.0, "start": (170.0, 76.5)},
             ),
         ],
         lane_width=3.5,
         num_lanes=2,
+        reference_lane_index=0,
     )
     return ScenarioConfig(
         name="demo_grid",
@@ -81,9 +93,10 @@ def demo_grid_scenario() -> ScenarioConfig:
 def straight_with_obstacle() -> ScenarioConfig:
     lane_y = -1.75
     road = RoadDef(
-        segments=[RoadSegment("straight", {"length": 200, "heading": 0, "start": (0, 0)})],
+        segments=[RoadSegment("straight", {"length": 200, "heading": 0, "start": (0, lane_y)})],
         lane_width=3.5,
         num_lanes=2,
+        reference_lane_index=0,
     )
     return ScenarioConfig(
         name="straight_obstacle",
@@ -108,9 +121,10 @@ def straight_with_obstacle() -> ScenarioConfig:
 def three_lane_double_obstacle() -> ScenarioConfig:
     lane0, lane1 = -3.5, 0.0
     road = RoadDef(
-        segments=[RoadSegment("straight", {"length": 1000, "heading": 0, "start": (0, 0)})],
+        segments=[RoadSegment("straight", {"length": 1000, "heading": 0, "start": (0, lane0)})],
         lane_width=3.5,
         num_lanes=3,
+        reference_lane_index=0,
     )
     return ScenarioConfig(
         name="three_lane_double_obs",
@@ -136,11 +150,11 @@ def three_lane_double_obstacle() -> ScenarioConfig:
 def curve_scenario() -> ScenarioConfig:
     road = RoadDef(
         segments=[
-            RoadSegment("straight", {"length": 50, "heading": 0, "start": (0, 0)}),
+            RoadSegment("straight", {"length": 50, "heading": 0, "start": (0, 1.75)}),
             RoadSegment(
                 "arc",
                 {
-                    "radius": 50,
+                    "radius": 48.25,
                     "angle": math.pi / 2,
                     "center": (50, 50),
                     "start_angle": -math.pi / 2,
@@ -148,11 +162,12 @@ def curve_scenario() -> ScenarioConfig:
             ),
             RoadSegment(
                 "straight",
-                {"length": 100, "heading": math.pi / 2, "start": (100, 50)},
+                {"length": 100, "heading": math.pi / 2, "start": (98.25, 50)},
             ),
         ],
         lane_width=3.5,
         num_lanes=2,
+        reference_lane_index=1,
     )
     return ScenarioConfig(
         name="curve_90deg",

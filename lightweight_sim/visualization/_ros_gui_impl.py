@@ -22,29 +22,40 @@ LANE_BOUNDARY = (190, 190, 190)
 DRIVABLE_BOUNDARY = (245, 245, 245)
 
 
-def road_strip_polygons(path: List[PathPoint], lane_width: float, num_lanes: int):
-    """Build independent road strips so self-crossing paths stay drawable."""
+def road_strip_polygons(
+    path: List[PathPoint],
+    lane_width: float,
+    num_lanes: int,
+    reference_lane_index: int = -1,
+):
+    """Build road strips around the active reference lane."""
 
-    half_width = num_lanes * lane_width / 2.0
+    if 0 <= reference_lane_index < num_lanes:
+        right_offset = -(reference_lane_index + 0.5) * lane_width
+        left_offset = (num_lanes - reference_lane_index - 0.5) * lane_width
+    else:
+        half_width = num_lanes * lane_width / 2.0
+        right_offset = -half_width
+        left_offset = half_width
     for first, second in zip(path[:-1], path[1:]):
         first_normal = (-math.sin(first.theta), math.cos(first.theta))
         second_normal = (-math.sin(second.theta), math.cos(second.theta))
         yield (
             (
-                first.x - half_width * first_normal[0],
-                first.y - half_width * first_normal[1],
+                first.x + right_offset * first_normal[0],
+                first.y + right_offset * first_normal[1],
             ),
             (
-                second.x - half_width * second_normal[0],
-                second.y - half_width * second_normal[1],
+                second.x + right_offset * second_normal[0],
+                second.y + right_offset * second_normal[1],
             ),
             (
-                second.x + half_width * second_normal[0],
-                second.y + half_width * second_normal[1],
+                second.x + left_offset * second_normal[0],
+                second.y + left_offset * second_normal[1],
             ),
             (
-                first.x + half_width * first_normal[0],
-                first.y + half_width * first_normal[1],
+                first.x + left_offset * first_normal[0],
+                first.y + left_offset * first_normal[1],
             ),
         )
 
@@ -76,6 +87,7 @@ class GuiSnapshot:
     obstacles: List[Obstacle] = field(default_factory=list)
     reference_path: List[PathPoint] = field(default_factory=list)
     reference_line_path: List[PathPoint] = field(default_factory=list)
+    reference_lane_index: int = -1
     routing_path: List[PathPoint] = field(default_factory=list)
     routing_request_id: int = 0
     routing_left_boundary: List[PathPoint] = field(default_factory=list)
@@ -105,6 +117,7 @@ class RosGuiView:
         lane_width: float = 3.5,
         num_lanes: int = 2,
         target_speed_kmh: float = 40.0,
+        render_fps: int = 60,
     ) -> None:
         configure_display_driver()
         patch_sysfont_for_python314()
@@ -119,6 +132,7 @@ class RosGuiView:
         self.lane_width = lane_width
         self.num_lanes = num_lanes
         self.target_speed_kmh = target_speed_kmh
+        self.render_fps = int(render_fps)
         self.started_at = time.monotonic()
         self._history_scenario = ""
 
@@ -202,6 +216,7 @@ class RosGuiView:
                 active_reference,
                 self.lane_width,
                 self.num_lanes,
+                snapshot.reference_lane_index,
             )
             self._draw_road(world)
             self.renderer.draw_path(
@@ -278,7 +293,7 @@ class RosGuiView:
         self._draw_status(snapshot.status)
         self._draw_mode_controls(snapshot)
         pygame.display.flip()
-        self.clock.tick(60)
+        self.clock.tick(self.render_fps)
 
     def _draw_road(self, world: "_WorldView") -> None:
         """Draw a road as local strips; whole-path polygons fail at crossings."""
@@ -288,7 +303,12 @@ class RosGuiView:
             return
         screen = self.renderer.screen
         camera = self.renderer.camera
-        for strip in road_strip_polygons(path, world.lane_width, world.num_lanes):
+        for strip in road_strip_polygons(
+            path,
+            world.lane_width,
+            world.num_lanes,
+            world.reference_lane_index,
+        ):
             pygame.draw.polygon(
                 screen,
                 ROAD_SURFACE,
@@ -298,12 +318,13 @@ class RosGuiView:
         screen_path = [camera.world_to_screen(point.x, point.y) for point in path]
         half_width = world.num_lanes * world.lane_width / 2.0
         for lane_index in range(world.num_lanes + 1):
-            offset = -half_width + lane_index * world.lane_width
-            if abs(offset) < 0.05:
-                self.renderer._draw_offset_line(
-                    screen_path, path, offset, LANE_DASH, 1, dashed=True
-                )
-            elif lane_index in (0, world.num_lanes):
+            if 0 <= world.reference_lane_index < world.num_lanes:
+                offset = (
+                    lane_index - world.reference_lane_index - 0.5
+                ) * world.lane_width
+            else:
+                offset = -half_width + lane_index * world.lane_width
+            if lane_index in (0, world.num_lanes):
                 self.renderer._draw_offset_line(
                     screen_path, path, offset, ROAD_EDGE, 2
                 )
@@ -311,7 +332,6 @@ class RosGuiView:
                 self.renderer._draw_offset_line(
                     screen_path, path, offset, LANE_DASH, 1, dashed=True
                 )
-        self.renderer._draw_dashed_line(screen_path, GRID, 1)
 
     def _draw_text(self, text: str, color) -> None:
         self.screen.blit(self.renderer.font_small.render(text, True, color), (12, 12))
@@ -343,7 +363,14 @@ class RosGuiView:
 class _WorldView:
     """Renderer-compatible road view without depending on SimulationEngine."""
 
-    def __init__(self, ref_path, lane_width: float, num_lanes: int) -> None:
+    def __init__(
+        self,
+        ref_path,
+        lane_width: float,
+        num_lanes: int,
+        reference_lane_index: int = -1,
+    ) -> None:
         self.ref_path = ref_path
         self.lane_width = lane_width
         self.num_lanes = num_lanes
+        self.reference_lane_index = reference_lane_index
