@@ -12,7 +12,7 @@ from std_srvs.srv import Empty, SetBool, Trigger
 from ..simulator.data_types import Obstacle, PathPoint
 from ..runtime_config import DEFAULT_RUNTIME_CONFIG
 from ..visualization.ros_gui import GuiAction, GuiControl, GuiSnapshot, GuiStatus, RosGuiView
-from .planner_node import message_to_state, path_to_tuples
+from .message_conversions import message_to_state, path_to_tuples
 from .qos import command_qos, latched_path_qos, sensor_data_qos, status_qos
 from .route_session import parse_context
 

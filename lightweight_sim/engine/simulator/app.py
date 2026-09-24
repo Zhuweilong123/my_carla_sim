@@ -2,6 +2,8 @@
 
 import importlib
 import sys
+from contextlib import contextmanager
+
 import pygame
 
 _visualization = importlib.import_module("lightweight_sim.visualization")
@@ -17,9 +19,16 @@ from ..runtime_config import DEFAULT_RUNTIME_CONFIG
 from . import _app_impl as _app_impl_module
 from .reverse_engine import SimulationEngine as _RuntimeSimulationEngine
 
-# Keep the application implementation unchanged while routing both front ends
-# through the reverse-capable engine adapter.
-_app_impl_module.SimulationEngine = _RuntimeSimulationEngine
+@contextmanager
+def _using_reverse_engine():
+    """Scope the legacy implementation's engine adapter to construction/reset."""
+
+    previous_engine = _app_impl_module.SimulationEngine
+    _app_impl_module.SimulationEngine = _RuntimeSimulationEngine
+    try:
+        yield
+    finally:
+        _app_impl_module.SimulationEngine = previous_engine
 
 
 _LegacySimulatorApp = SimulatorApp
@@ -33,7 +42,8 @@ class SimulatorApp(_LegacySimulatorApp):
     """
 
     def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+        with _using_reverse_engine():
+            super().__init__(*args, **kwargs)
         self._apply_runtime_defaults()
 
     def _manual_control(self, keys) -> ControlCommand:
@@ -75,5 +85,6 @@ class SimulatorApp(_LegacySimulatorApp):
         )
 
     def _reset(self):
-        super()._reset()
+        with _using_reverse_engine():
+            super()._reset()
         self._apply_runtime_defaults()

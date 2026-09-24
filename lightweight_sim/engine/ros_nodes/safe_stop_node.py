@@ -1,6 +1,5 @@
 """Fail-closed planning readiness supervisor for actuator arbitration."""
 
-import json
 import time
 
 import rclpy
@@ -10,7 +9,8 @@ from rclpy.node import Node
 from std_msgs.msg import Bool, String
 
 from .qos import command_qos, latched_path_qos
-from .route_session import decode_sequence
+from .route_session import decode_sequence, parse_context
+from ..runtime_config import DEFAULT_RUNTIME_CONFIG
 
 
 class SafeStopNode(Node):
@@ -19,11 +19,18 @@ class SafeStopNode(Node):
     This node does not publish actuator commands.  The controller manager is
     the sole publisher to ``control_command`` and treats a missing heartbeat
     from this supervisor as a stop request.
+
+    The supervisor uses wall-clock receipt times so a paused or reset ``/clock``
+    cannot mask a dead planner. The controller separately validates path
+    message stamps in simulation time.
     """
 
     def __init__(self) -> None:
         super().__init__("safe_stop_node")
-        self.declare_parameter("planned_path_timeout_s", 0.25)
+        self.declare_parameter(
+            "planned_path_timeout_s",
+            DEFAULT_RUNTIME_CONFIG.safe_stop_plan_timeout_s,
+        )
         self.declare_parameter("update_period_s", 0.05)
         self.declare_parameter("reference_topic", "routing/reference_line")
         self.declare_parameter("stop_topic", "safety/stop_request")
@@ -51,9 +58,9 @@ class SafeStopNode(Node):
 
     def _on_context(self, message: String) -> None:
         try:
-            context = json.loads(message.data)
-            run_id = int(context["run_id"])
-        except (TypeError, ValueError, KeyError, json.JSONDecodeError):
+            context = parse_context(message)
+            run_id = context["run_id"]
+        except (TypeError, ValueError):
             return
         if self._context and run_id <= int(self._context["run_id"]):
             return

@@ -22,6 +22,17 @@ def decode_sequence(sequence):
 
 def parse_context(message):
     value = json.loads(message.data)
-    if value["schema_version"] != 1 or value["run_id"] <= 0:
+    if not isinstance(value, dict):
+        raise ValueError("route context must be a JSON object")
+    schema_version = value.get("schema_version")
+    run_id = value.get("run_id")
+    if (
+        isinstance(schema_version, bool)
+        or not isinstance(schema_version, int)
+        or isinstance(run_id, bool)
+        or not isinstance(run_id, int)
+    ):
+        raise ValueError("route context is missing a valid schema_version or run_id")
+    if schema_version != 1 or run_id <= 0:
         raise ValueError("unsupported route context")
     return value

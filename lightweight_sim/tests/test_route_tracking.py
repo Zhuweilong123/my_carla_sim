@@ -1,9 +1,16 @@
 import math
+import json
+from types import SimpleNamespace
+
 import pytest
 
 from lightweight_sim.engine.algorithms.controller.combined import VehicleController
 from lightweight_sim.engine.algorithms.utils.route import RouteTracker
-from lightweight_sim.engine.ros_nodes.route_session import encode_sequence, decode_sequence
+from lightweight_sim.engine.ros_nodes.route_session import (
+    decode_sequence,
+    encode_sequence,
+    parse_context,
+)
 
 PARAMS = (1.015, 1.895, 1412.0, -148970.0, -82204.0, 1537.0)
 
@@ -51,3 +58,21 @@ def test_run_and_plan_version_do_not_alias():
     assert encode_sequence(1235) > encode_sequence(1234, 9999)
     with pytest.raises(ValueError):
         encode_sequence(1234, 1 << 20)
+
+
+def test_route_context_parser_validates_schema_and_run_id():
+    message = SimpleNamespace(
+        data=json.dumps({"schema_version": 1, "run_id": 12, "scenario": "cruise"})
+    )
+    context = parse_context(message)
+    assert context["run_id"] == 12
+    assert isinstance(context["run_id"], int)
+
+    for invalid in (
+        "[]",
+        '{"schema_version": 2, "run_id": 12}',
+        '{"schema_version": 1}',
+        '{"schema_version": 1, "run_id": 12.5}',
+    ):
+        with pytest.raises(ValueError):
+            parse_context(SimpleNamespace(data=invalid))

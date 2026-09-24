@@ -1,6 +1,5 @@
 """Select exactly one controller candidate for the simulator actuator topic."""
 
-import json
 import time
 from typing import Dict, Optional
 
@@ -10,6 +9,8 @@ from rclpy.node import Node
 from std_msgs.msg import Bool, String
 
 from .qos import command_qos, latched_path_qos, sensor_data_qos, status_qos
+from ..runtime_config import DEFAULT_RUNTIME_CONFIG
+from .route_session import parse_context
 
 
 class ControllerManager(Node):
@@ -33,7 +34,10 @@ class ControllerManager(Node):
         self.declare_parameter("switch_hold_s", 0.5)
         self.declare_parameter("command_timeout", 0.35)
         self.declare_parameter("update_period", 0.02)
-        self.declare_parameter("safety_stop_timeout_s", 0.25)
+        self.declare_parameter(
+            "safety_stop_timeout_s",
+            DEFAULT_RUNTIME_CONFIG.controller_safety_heartbeat_timeout_s,
+        )
         requested = self._normalize(str(self.get_parameter("default_mode").value))
         self._mode = requested or "CRUISE"
         self._control_source = self._normalize_source(
@@ -112,9 +116,9 @@ class ControllerManager(Node):
     def _on_context(self, message: String) -> None:
         """Invalidate controller candidates when the simulator starts a run."""
         try:
-            context = json.loads(message.data)
-            run_id = int(context["run_id"])
-        except (TypeError, ValueError, KeyError, json.JSONDecodeError):
+            context = parse_context(message)
+            run_id = context["run_id"]
+        except (TypeError, ValueError):
             return
         if run_id <= self._run_id:
             return

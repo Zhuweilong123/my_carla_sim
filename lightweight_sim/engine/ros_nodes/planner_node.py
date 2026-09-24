@@ -17,24 +17,7 @@ from ..simulator.data_types import Obstacle, VehicleState
 from ..runtime_config import DEFAULT_RUNTIME_CONFIG
 from .qos import latched_path_qos, sensor_data_qos
 from .route_session import encode_sequence, parse_context
-
-
-def message_to_state(message: RosVehicleState) -> VehicleState:
-    return VehicleState(
-        x=message.x,
-        y=message.y,
-        phi=message.yaw,
-        vx=message.vx,
-        vy=message.vy,
-        r=message.yaw_rate,
-        steer=message.steering_angle,
-        accel=message.acceleration,
-        timestamp=message.header.stamp.sec + message.header.stamp.nanosec * 1e-9,
-    )
-
-
-def path_to_tuples(message: RosPath):
-    return [(p.x, p.y, p.theta, p.kappa) for p in message.points]
+from .message_conversions import message_to_state
 
 
 class PlannerNode(Node):

@@ -27,7 +27,7 @@ from lightweight_sim.engine.ros_nodes.planner_node import PlannerNode
 from lightweight_sim.engine.ros_nodes.controller_node import ControllerNode
 from lightweight_sim.engine.ros_nodes.route_session import encode_sequence
 from lightweight_sim.engine.ros_nodes.qos import status_qos, sensor_data_qos, latched_path_qos, command_qos
-from lightweight_sim.engine.ros_nodes.planner_node import message_to_state
+from lightweight_sim.engine.ros_nodes.message_conversions import message_to_state
 from lightweight_sim.engine.simulator.data_types import ControlCommand
 from lightweight_sim.engine.analysis.evaluation import provenance, archive_sources
 

@@ -11,7 +11,7 @@ from lightweight_sim_msgs.msg import ReferenceLine as RosReferenceLine
 from lightweight_sim_msgs.msg import VehicleState as RosVehicleState
 from rclpy.node import Node
 from ..algorithms.controller.combined import VehicleController
-from .planner_node import message_to_state, path_to_tuples
+from .message_conversions import message_to_state, path_to_tuples
 from .qos import command_qos, latched_path_qos, sensor_data_qos
 from .route_session import decode_sequence, parse_context
 from ..analysis.tracking import TrackingMonitor
