@@ -191,6 +191,8 @@ def main() -> None:
     parser.add_argument("--lqr-discretization", choices=("plant", "bilinear"))
     parser.add_argument("--lqr-r", type=float)
     parser.add_argument("--smooth-reference-heading", action=argparse.BooleanOptionalAction, default=None)
+    parser.add_argument("--steering-profile", choices=("ideal", "assumed"), default="ideal")
+    parser.add_argument("--actuator-compensation", action=argparse.BooleanOptionalAction, default=True)
     parser.add_argument("--suite", action="store_true", help="Nominal 10 laps and five 3-lap perturbation cases")
     parser.add_argument(
         "--vehicle-model",
@@ -204,10 +206,13 @@ def main() -> None:
     )
     args = parser.parse_args()
     if args.protocol == "legacy":
+        if args.steering_profile != "ideal":
+            parser.error("actuator experiments require --protocol v2")
         run_benchmark(args.duration or 30.0, args.output_dir, args.label,
                       vehicle_model=args.vehicle_model)
         return
     from lightweight_sim.engine.analysis.evaluation import run_evaluation
+    from lightweight_sim.engine.simulator.steering import steering_profile
     options = dict(laps=args.laps if args.laps is not None else (0 if args.duration else 10),
                    duration=args.duration, speed=args.speed, dt=args.dt, warmup=args.warmup,
                    seed=args.seed, lateral_offset=args.lateral_offset,
@@ -217,7 +222,9 @@ def main() -> None:
                    vehicle_model=args.vehicle_model,
                    feedback_horizon_s=args.feedback_horizon_s,
                    lqr_discretization=args.lqr_discretization, lqr_r=args.lqr_r,
-                   smooth_reference_heading=args.smooth_reference_heading)
+                   smooth_reference_heading=args.smooth_reference_heading,
+                   steering_params=steering_profile(args.steering_profile),
+                   actuator_compensation=args.actuator_compensation)
     cases = [(args.label, options)]
     if args.suite:
         cases = [(args.label+"_nominal", {**options, "laps": 10, "duration": None})]

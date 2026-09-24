@@ -27,9 +27,9 @@ class _ScenarioHUD(_LegacyHUD):
         pygame.draw.rect(panel, (12, 18, 27, 215), panel.get_rect(), border_radius=7)
         pygame.draw.rect(panel, self.BORDER, panel.get_rect(), 1, border_radius=7)
         if auto_mode:
-            hint = "1-5 scene   Q mode   P pause   R reset   ESC quit"
+            hint = "1-6 scene   C cruise   K parking   E stop   P pause   R reset"
         else:
-            hint = "1-5 scene   WASD drive   Q auto   P pause   R reset"
+            hint = "W/S drive   A/D steer   SPACE brake   Q auto   E stop"
         self._text(hint, x + 14, y + 10, self.font_small, self.MUTED)
 
 
@@ -45,6 +45,15 @@ class RosGuiView(_LegacyRosGuiView):
         (pygame.K_3, "three_lane"),
         (pygame.K_4, "curve"),
         (pygame.K_5, "figure_eight"),
+        (pygame.K_6, "reverse_parking"),
+    )
+
+    MODE_BUTTONS = (
+        # Keep labels ASCII-only: the default Pygame font on WSL often lacks
+        # CJK glyphs and renders Chinese labels as indistinguishable squares.
+        ("CRUISE", "CRUISE"),
+        ("PARKING", "PARKING"),
+        ("EMERGENCY_STOP", "E-STOP"),
     )
 
     @staticmethod
@@ -77,7 +86,7 @@ class RosGuiView(_LegacyRosGuiView):
         return measured["ed_m"], math.radians(measured["ephi_deg"])
 
     def __init__(self, width=1200, height=800, lane_width=3.5,
-                 num_lanes=2, target_speed_kmh=40.0):
+                 num_lanes=2, target_speed_kmh=40.0, render_fps=60):
         configure_display_driver()
         patch_sysfont_for_python314()
         pygame.init()
@@ -96,14 +105,67 @@ class RosGuiView(_LegacyRosGuiView):
         self.lane_width = lane_width
         self.num_lanes = num_lanes
         self.target_speed_kmh = target_speed_kmh
+        self.render_fps = max(1, int(render_fps))
         self.started_at = time.monotonic()
         self._history_scenario = ""
         self._scenario_key_state = {
             key: False for key, _name in self.SCENARIO_KEYS
         }
+        self._mode_button_rects = {}
+        self._control_source_button_rect = None
+        self._manual_keys = set()
 
     def poll_actions(self):
         actions = super().poll_actions()
+        mapped = []
+        for action in actions:
+            if action.kind == "key_down":
+                self._manual_keys.add(action.value)
+                continue
+            if action.kind == "key_up":
+                self._manual_keys.discard(action.value)
+                continue
+            if action.kind != "mouse_click":
+                mapped.append(action)
+                continue
+            position = action.value
+            mode = next(
+                (
+                    name
+                    for name, rect in self._mode_button_rects.items()
+                    if rect.collidepoint(position)
+                ),
+                None,
+            )
+            if mode is not None:
+                mapped.append(GuiAction("set_mode", mode))
+            elif (
+                self._control_source_button_rect is not None
+                and self._control_source_button_rect.collidepoint(position)
+            ):
+                mapped.append(GuiAction("toggle_control_source"))
+        actions = mapped
+        key_state = pygame.key.get_pressed()
+        for key, mode in (
+            (pygame.K_c, "CRUISE"),
+            (pygame.K_k, "PARKING"),
+            (pygame.K_e, "EMERGENCY_STOP"),
+        ):
+            if key_state[key] and not getattr(self, "_mode_key_state", {}).get(key, False):
+                actions.append(GuiAction("set_mode", mode))
+        if not hasattr(self, "_mode_key_state"):
+            self._mode_key_state = {}
+        for key, _mode in (
+            (pygame.K_c, "CRUISE"),
+            (pygame.K_k, "PARKING"),
+            (pygame.K_e, "EMERGENCY_STOP"),
+        ):
+            self._mode_key_state[key] = bool(key_state[key])
+        q_down = bool(key_state[pygame.K_q])
+        if q_down and not getattr(self, "_q_key_state", False):
+            actions.append(GuiAction("toggle_control_source"))
+        self._q_key_state = q_down
+        actions.append(GuiAction("manual_control", self._manual_control()))
         pressed = pygame.key.get_pressed()
         for key, name in self.SCENARIO_KEYS:
             is_down = bool(pressed[key])
@@ -124,6 +186,67 @@ class RosGuiView(_LegacyRosGuiView):
             else 2
         )
         return super().render(snapshot)
+
+    def _draw_mode_controls(self, snapshot):
+        x = 12
+        y = 38
+        button_width = 112
+        button_height = 32
+        gap = 8
+        self._mode_button_rects = {}
+        for index, (mode, label) in enumerate(self.MODE_BUTTONS):
+            rect = pygame.Rect(x + index * (button_width + gap), y, button_width, button_height)
+            self._mode_button_rects[mode] = rect
+            active = snapshot.mode.upper() == mode
+            if mode == "EMERGENCY_STOP":
+                color = (170, 45, 45) if active else (105, 38, 38)
+            else:
+                color = (38, 116, 95) if active else (36, 49, 62)
+            pygame.draw.rect(self.screen, color, rect, border_radius=5)
+            pygame.draw.rect(self.screen, (170, 190, 205), rect, 1, border_radius=5)
+            text = self.renderer.font_small.render(label, True, (235, 240, 245))
+            text_rect = text.get_rect(center=rect.center)
+            self.screen.blit(text, text_rect)
+        source_x = x + len(self.MODE_BUTTONS) * (button_width + gap)
+        self._control_source_button_rect = pygame.Rect(
+            source_x, y, button_width, button_height
+        )
+        source = snapshot.control_source.upper()
+        source_color = (39, 105, 145) if source == "MANUAL" else (31, 91, 74)
+        pygame.draw.rect(
+            self.screen, source_color, self._control_source_button_rect,
+            border_radius=5,
+        )
+        pygame.draw.rect(
+            self.screen, (205, 220, 230), self._control_source_button_rect,
+            2 if source == "MANUAL" else 1, border_radius=5,
+        )
+        text = self.renderer.font_small.render(source, True, (240, 245, 248))
+        self.screen.blit(text, text.get_rect(center=self._control_source_button_rect.center))
+
+    def _manual_control(self):
+        forward = pygame.K_w in self._manual_keys or pygame.K_UP in self._manual_keys
+        reverse = pygame.K_s in self._manual_keys or pygame.K_DOWN in self._manual_keys
+        left = pygame.K_a in self._manual_keys or pygame.K_LEFT in self._manual_keys
+        right = pygame.K_d in self._manual_keys or pygame.K_RIGHT in self._manual_keys
+        brake = pygame.K_SPACE in self._manual_keys
+        if forward and reverse:
+            forward = reverse = False
+            brake = True
+        steering = 0.0
+        if left and not right:
+            # The simulator uses positive yaw/steering for a left turn.  The
+            # renderer flips screen Y, so this is the driver's visual-left
+            # direction even though the screen-space rotation is inverted.
+            steering = 0.45
+        elif right and not left:
+            steering = -0.45
+        return {
+            "steering_angle": steering,
+            "throttle": 0.35 if forward or reverse else 0.0,
+            "brake": 1.0 if brake else 0.0,
+            "gear": -1 if reverse and not forward else 1,
+        }
 
     def _draw_status(self, status):
         return None

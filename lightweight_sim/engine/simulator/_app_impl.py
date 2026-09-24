@@ -220,7 +220,8 @@ class SimulatorApp:
     def _create_controller(self, ctrl_type: str):
         """创建控制器实例"""
         return VehicleController(
-            vehicle_para=self._vehicle_para,
+            vehicle_params=self.config.vehicle_params,
+            steering_params=self.config.steering,
             controller_type=ctrl_type,
             target_speed_kmh=self.config.target_speed,
         )
@@ -515,11 +516,11 @@ class SimulatorApp:
                             # 平滑融合: 旧路径→新路径, 避免跳变
                             blended = self._blend_paths(
                                 self.controller.ref_path, planned)
-                            self.controller.update_ref_path(blended)
+                            self.controller.update_ref_path(blended, reset=False)
                         else:
                             # 空结果=无障碍物, 回到车道中心线
                             self.planned_traj = []
-                            self.controller.update_ref_path(self.original_ref_path)
+                            self.controller.update_ref_path(self.original_ref_path, reset=False)
                         if not self._first_plan_done:
                             print("[App] First planning result received!")
                         self._first_plan_done = True
@@ -622,7 +623,7 @@ class SimulatorApp:
 
         # 仅在无规划轨迹时更新参考线
         if not self.planned_traj:
-            self.controller.update_ref_path(ref_path)
+            self.controller.update_ref_path(ref_path, reset=False)
 
         # 更新目标速度
         self.controller.set_target_speed(self.engine.target_speed)
@@ -631,6 +632,7 @@ class SimulatorApp:
         steer, throttle, brake = self.controller.step(
             x=state.x, y=state.y, phi=state.phi,
             vx=state.vx, vy=state.vy, r=state.r,
+            actual_steer=state.steer,
         )
 
         # 保存参考线用于渲染

@@ -21,6 +21,7 @@ from ..algorithms.utils.route import RouteGeometry, wrap_angle
 from ..simulator.data_types import ControlCommand
 from ..simulator.engine import SimulationEngine
 from ..simulator.scenarios import make_scenario
+from ..simulator.steering import SteeringParams
 
 ROOT = Path(__file__).resolve().parents[2]
 PARAMS = (1.015, 1.895, 1412.0, -148970.0, -82204.0, 1537.0)
@@ -95,7 +96,9 @@ def run_evaluation(output_dir, label, *, laps=10, duration=None, speed=50.0,
                    heading_offset_deg=0.0, delay_steps=0, noise_m=0.0,
                    mass_scale=1.0, stiffness_scale=1.0, spacing=None,
                    vehicle_model="dynamic", feedback_horizon_s=None,
-                   lqr_discretization=None, lqr_r=None, smooth_reference_heading=None):
+                   lqr_discretization=None, lqr_r=None, smooth_reference_heading=None,
+                   steering_params=None, controller_steering_params=None,
+                   actuator_compensation=True):
     if (laps < 0 or (duration is not None and duration <= 0) or speed <= 0
             or dt <= 0 or warmup < 0 or delay_steps < 0 or noise_m < 0
             or mass_scale <= 0 or stiffness_scale <= 0 or (spacing is not None and spacing <= 0)):
@@ -109,6 +112,7 @@ def run_evaluation(output_dir, label, *, laps=10, duration=None, speed=50.0,
         raise FileExistsError(f"archive already exists: {prefix}")
     config = make_scenario("figure_eight")
     config.target_speed, config.vehicle_model = speed, vehicle_model
+    config.steering = steering_params or SteeringParams()
     config.ego_start_x -= lateral_offset  # Left normal at the initial +y tangent.
     config.ego_start_phi += math.radians(heading_offset_deg)
     engine = SimulationEngine(config)
@@ -117,7 +121,9 @@ def run_evaluation(output_dir, label, *, laps=10, duration=None, speed=50.0,
     engine.ego.params.Cr *= stiffness_scale
     path = resample(engine.world.ref_path_as_tuples, spacing)
     geometry = RouteGeometry(path)
-    controller = VehicleController(PARAMS, target_speed_kmh=speed)
+    controller = VehicleController(vehicle_params=config.vehicle_params, target_speed_kmh=speed,
+        steering_params=controller_steering_params or config.steering, dt=dt,
+        actuator_compensation=actuator_compensation)
     controller.lat.ts = controller.lon.dt = dt
     if feedback_horizon_s is not None:
         controller.lat.feedback_horizon_s = feedback_horizon_s
@@ -138,6 +144,7 @@ def run_evaluation(output_dir, label, *, laps=10, duration=None, speed=50.0,
     rows = []
     previous_s = 0.0
     previous_steer = 0.0
+    previous_command_steer = 0.0
     metadata = provenance()
     archive_sources(metadata, output_dir)
     for step in range(math.ceil(max_duration/dt)):
@@ -148,7 +155,8 @@ def run_evaluation(output_dir, label, *, laps=10, duration=None, speed=50.0,
         sensed.y += rng.gauss(0, noise_m)
         started = time.perf_counter()
         steer, throttle, brake = controller.step(
-            sensed.x, sensed.y, sensed.phi, sensed.vx, sensed.vy, sensed.r)
+            sensed.x, sensed.y, sensed.phi, sensed.vx, sensed.vy, sensed.r,
+            actual_steer=sensed.steer)
         elapsed_ms = (time.perf_counter()-started)*1000
         engine.step(ControlCommand(steer, throttle, brake), dt=dt)
         state = engine.get_state()
@@ -166,6 +174,12 @@ def run_evaluation(output_dir, label, *, laps=10, duration=None, speed=50.0,
                    yaw_rad=state.phi, speed_kmh=state.speed_kmh,
                    speed_error_kmh=state.speed_kmh-speed,
                    steer_deg=math.degrees(state.steer),
+                   command_steer_rad=steer, delayed_steer_rad=engine.steering.delayed,
+                   actual_steer_rad=state.steer,
+                   command_steer_rate_deg_s=math.degrees(steer-previous_command_steer)/dt,
+                   actuator_tracking_error_rad=steer-state.steer,
+                   actuator_rate_limited=engine.steering.rate_limited,
+                   actuator_peak_rate_rad_s=engine.steering.peak_rate_rad_s,
                    steer_saturated=abs(steer) >= controller.lat.max_steer-1e-6,
                    steer_rate_deg_s=math.degrees(state.steer-previous_steer)/dt,
                    lateral_accel_m_s2=(state.vy-truth.vy)/dt+state.vx*state.r,
@@ -180,6 +194,7 @@ def run_evaluation(output_dir, label, *, laps=10, duration=None, speed=50.0,
                    **measured)
         rows.append(row)
         previous_s, previous_steer = measured["route_s_m"], state.steer
+        previous_command_steer = steer
         if engine.is_done or (laps and phase >= laps*2*math.pi):
             break
     steady = [r for r in rows if r["time_s"] >= warmup]
@@ -217,10 +232,25 @@ def run_evaluation(output_dir, label, *, laps=10, duration=None, speed=50.0,
                              and not summary["wrong_branch_samples"] and not summary["unexpected_jump_samples"]
                              and not summary["riccati_failures"])
     summary["controller_parameters"].update(
+        steering=asdict(controller.lat.actuator_params),
         feedback_horizon_s=controller.lat.feedback_horizon_s,
         discretization=controller.lat.discretization,
         smooth_reference_heading=controller.lat.smooth_reference_heading)
-    summary["pass_scope"] = "completion, route integrity, collision/offroad and solver convergence only; not ride quality"
+    summary["actuator"] = dict(parameters=asdict(config.steering),
+        rate_limited_fraction=sum(r["actuator_rate_limited"] for r in rows)/len(rows),
+        peak_rate_rad_s=(max(r["actuator_peak_rate_rad_s"] for r in rows)
+                        if config.steering.mode == "dynamic" else None),
+        command_rate_deg_s=stats(rows, "command_steer_rate_deg_s"),
+        command_angle_saturation_fraction=summary["steer_saturation_fraction"],
+        actual_angle_saturation_fraction=sum(abs(r["actual_steer_rad"]) >= engine.ego.params.max_steer-1e-6
+                                             for r in rows)/len(rows),
+        tracking_error_rad=stats(rows, "actuator_tracking_error_rad"),
+        limit_violations=sum(abs(r["actual_steer_rad"]) > engine.ego.params.max_steer+1e-9
+            or (config.steering.mode == "dynamic" and
+                r["actuator_peak_rate_rad_s"] > config.steering.rate_limit_rad_s+1e-9)
+            for r in rows))
+    summary["passed"] &= summary["actuator"]["limit_violations"] == 0
+    summary["pass_scope"] = "completion, route integrity, collision/offroad, solver convergence and configured actuator limits; not ride quality, friction feasibility or real-vehicle calibration"
     with gzip.open(str(prefix)+".csv.gz", "wt", newline="", encoding="utf-8") as stream:
         writer = csv.DictWriter(stream, fieldnames=rows[0].keys())
         writer.writeheader()

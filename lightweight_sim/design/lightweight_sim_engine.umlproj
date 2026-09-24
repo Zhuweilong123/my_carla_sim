@@ -1,0 +1,2961 @@
+{
+  "version": "1.0",
+  "revision": 37,
+  "name": "LightweightSimEngine",
+  "diagrams": [
+    {
+      "version": "1.0",
+      "name": "Engine Architecture",
+      "diagram_type": "component",
+      "component_id": "",
+      "classes": [],
+      "relations": [],
+      "lifelines": [],
+      "messages": [],
+      "fragments": [],
+      "components": [
+        {
+          "id": "comp_simcore",
+          "name": "Simulator Core",
+          "x": 780.0,
+          "y": 460.0,
+          "width": 522.0,
+          "height": 300.0,
+          "parent_id": "",
+          "provided_interfaces": [
+            "VehicleState",
+            "ReferencePath"
+          ],
+          "required_interfaces": [
+            "FrenetGeometry"
+          ]
+        },
+        {
+          "id": "comp_engine",
+          "name": "SimulationEngine",
+          "x": 802.0,
+          "y": 612.0,
+          "width": 150.0,
+          "height": 100.0,
+          "parent_id": "comp_simcore",
+          "provided_interfaces": [],
+          "required_interfaces": []
+        },
+        {
+          "id": "comp_world",
+          "name": "World",
+          "x": 1134.0,
+          "y": 494.0,
+          "width": 150.0,
+          "height": 100.0,
+          "parent_id": "comp_simcore",
+          "provided_interfaces": [],
+          "required_interfaces": []
+        },
+        {
+          "id": "comp_ego",
+          "name": "EgoVehicle",
+          "x": 802.0,
+          "y": 494.0,
+          "width": 150.0,
+          "height": 100.0,
+          "parent_id": "comp_simcore",
+          "provided_interfaces": [],
+          "required_interfaces": []
+        },
+        {
+          "id": "comp_obsmgr",
+          "name": "ObstacleManager",
+          "x": 968.0,
+          "y": 494.0,
+          "width": 150.0,
+          "height": 100.0,
+          "parent_id": "comp_simcore",
+          "provided_interfaces": [],
+          "required_interfaces": []
+        },
+        {
+          "id": "comp_planning",
+          "name": "Planning Module",
+          "x": 782.0,
+          "y": 80.0,
+          "width": 522.0,
+          "height": 300.0,
+          "parent_id": "",
+          "provided_interfaces": [
+            "PlannedPath"
+          ],
+          "required_interfaces": [
+            "VehicleState",
+            "ReferencePath",
+            "FrenetGeometry"
+          ]
+        },
+        {
+          "id": "comp_motionplanner",
+          "name": "MotionPlanner",
+          "x": 1134.0,
+          "y": 124.0,
+          "width": 150.0,
+          "height": 100.0,
+          "parent_id": "comp_planning",
+          "provided_interfaces": [],
+          "required_interfaces": []
+        },
+        {
+          "id": "comp_dpplanner",
+          "name": "DPPathPlanner",
+          "x": 802.0,
+          "y": 124.0,
+          "width": 150.0,
+          "height": 100.0,
+          "parent_id": "comp_planning",
+          "provided_interfaces": [],
+          "required_interfaces": []
+        },
+        {
+          "id": "comp_qpplanner",
+          "name": "QPPathPlanner",
+          "x": 968.0,
+          "y": 124.0,
+          "width": 150.0,
+          "height": 100.0,
+          "parent_id": "comp_planning",
+          "provided_interfaces": [],
+          "required_interfaces": []
+        },
+        {
+          "id": "comp_control",
+          "name": "Control Module",
+          "x": 782.0,
+          "y": 820.0,
+          "width": 522.0,
+          "height": 300.0,
+          "parent_id": "",
+          "provided_interfaces": [
+            "ControlCommand"
+          ],
+          "required_interfaces": [
+            "PlannedPath",
+            "VehicleState",
+            "FrenetGeometry"
+          ]
+        },
+        {
+          "id": "comp_vehctrl",
+          "name": "VehicleController",
+          "x": 802.0,
+          "y": 864.0,
+          "width": 150.0,
+          "height": 100.0,
+          "parent_id": "comp_control",
+          "provided_interfaces": [],
+          "required_interfaces": []
+        },
+        {
+          "id": "comp_latctrl",
+          "name": "LateralController",
+          "x": 968.0,
+          "y": 864.0,
+          "width": 150.0,
+          "height": 100.0,
+          "parent_id": "comp_control",
+          "provided_interfaces": [],
+          "required_interfaces": []
+        },
+        {
+          "id": "comp_lonctrl",
+          "name": "LongitudinalPID",
+          "x": 1134.0,
+          "y": 864.0,
+          "width": 150.0,
+          "height": 100.0,
+          "parent_id": "comp_control",
+          "provided_interfaces": [],
+          "required_interfaces": []
+        },
+        {
+          "id": "comp_ros",
+          "name": "ROS 2 Adapter",
+          "x": 100.0,
+          "y": 450.0,
+          "width": 522.0,
+          "height": 300.0,
+          "parent_id": "",
+          "provided_interfaces": [],
+          "required_interfaces": [
+            "VehicleState",
+            "ReferencePath",
+            "PlannedPath",
+            "ControlCommand"
+          ]
+        },
+        {
+          "id": "comp_simnode",
+          "name": "SimulatorNode",
+          "x": 452.0,
+          "y": 494.0,
+          "width": 150.0,
+          "height": 100.0,
+          "parent_id": "comp_ros",
+          "provided_interfaces": [],
+          "required_interfaces": []
+        },
+        {
+          "id": "comp_plannernode",
+          "name": "PlannerNode",
+          "x": 120.0,
+          "y": 494.0,
+          "width": 150.0,
+          "height": 100.0,
+          "parent_id": "comp_ros",
+          "provided_interfaces": [],
+          "required_interfaces": []
+        },
+        {
+          "id": "comp_controllernode",
+          "name": "ControllerNode",
+          "x": 286.0,
+          "y": 494.0,
+          "width": 150.0,
+          "height": 100.0,
+          "parent_id": "comp_ros",
+          "provided_interfaces": [],
+          "required_interfaces": []
+        },
+        {
+          "id": "comp_utils",
+          "name": "Algorithm Utilities",
+          "x": 1464.0,
+          "y": 450.0,
+          "width": 522.0,
+          "height": 300.0,
+          "parent_id": "",
+          "provided_interfaces": [
+            "FrenetGeometry"
+          ],
+          "required_interfaces": []
+        },
+        {
+          "id": "comp_frenet",
+          "name": "FrenetUtils",
+          "x": 1816.0,
+          "y": 494.0,
+          "width": 150.0,
+          "height": 100.0,
+          "parent_id": "comp_utils",
+          "provided_interfaces": [],
+          "required_interfaces": []
+        },
+        {
+          "id": "comp_geom",
+          "name": "GeometryUtils",
+          "x": 1484.0,
+          "y": 494.0,
+          "width": 150.0,
+          "height": 100.0,
+          "parent_id": "comp_utils",
+          "provided_interfaces": [],
+          "required_interfaces": []
+        },
+        {
+          "id": "comp_quintic",
+          "name": "QuinticUtils",
+          "x": 1650.0,
+          "y": 494.0,
+          "width": 150.0,
+          "height": 100.0,
+          "parent_id": "comp_utils",
+          "provided_interfaces": [],
+          "required_interfaces": []
+        },
+        {
+          "id": "comp_refline",
+          "name": "ReferenceLineUtils",
+          "x": 1484.0,
+          "y": 612.0,
+          "width": 150.0,
+          "height": 100.0,
+          "parent_id": "comp_utils",
+          "provided_interfaces": [],
+          "required_interfaces": []
+        }
+      ],
+      "comp_relations": [
+        {
+          "id": "crel_planning_simcore",
+          "source": "comp_planning",
+          "target": "comp_simcore",
+          "type": "dependency",
+          "vertices": [
+            {
+              "x": 960.0,
+              "y": 0.0
+            },
+            {
+              "x": 660.0,
+              "y": 0.0
+            }
+          ]
+        },
+        {
+          "id": "crel_control_planning",
+          "source": "comp_control",
+          "target": "comp_planning",
+          "type": "dependency",
+          "vertices": null
+        },
+        {
+          "id": "crel_control_simcore",
+          "source": "comp_control",
+          "target": "comp_simcore",
+          "type": "dependency",
+          "vertices": [
+            {
+              "x": 1360.0,
+              "y": 780.0
+            },
+            {
+              "x": 1360.0,
+              "y": 760.0
+            }
+          ]
+        },
+        {
+          "id": "crel_ros_simcore",
+          "source": "comp_ros",
+          "target": "comp_simcore",
+          "type": "dependency",
+          "vertices": [
+            {
+              "x": 421.0,
+              "y": 400.0
+            },
+            {
+              "x": 1440.0,
+              "y": 400.0
+            },
+            {
+              "x": 1440.0,
+              "y": 460.0
+            }
+          ]
+        },
+        {
+          "id": "crel_ros_planning",
+          "source": "comp_ros",
+          "target": "comp_planning",
+          "type": "dependency",
+          "vertices": [
+            {
+              "x": 700.0,
+              "y": 420.0
+            },
+            {
+              "x": 700.0,
+              "y": 230.0
+            }
+          ]
+        },
+        {
+          "id": "crel_ros_control",
+          "source": "comp_ros",
+          "target": "comp_control",
+          "type": "dependency",
+          "vertices": null
+        },
+        {
+          "id": "crel_simcore_utils",
+          "source": "comp_simcore",
+          "target": "comp_utils",
+          "type": "dependency",
+          "vertices": [
+            {
+              "x": 740.0,
+              "y": 460.0
+            },
+            {
+              "x": 1420.0,
+              "y": 460.0
+            },
+            {
+              "x": 1420.0,
+              "y": 520.0
+            }
+          ]
+        },
+        {
+          "id": "crel_planning_utils",
+          "source": "comp_planning",
+          "target": "comp_utils",
+          "type": "dependency",
+          "vertices": null
+        },
+        {
+          "id": "crel_control_utils",
+          "source": "comp_control",
+          "target": "comp_utils",
+          "type": "dependency",
+          "vertices": [
+            {
+              "x": 1043.0,
+              "y": 780.0
+            },
+            {
+              "x": 1725.0,
+              "y": 780.0
+            }
+          ]
+        },
+        {
+          "id": "crel_simcore_engine",
+          "source": "comp_simcore",
+          "target": "comp_engine",
+          "type": "delegation",
+          "vertices": [
+            {
+              "x": 1340.0,
+              "y": 670.0
+            }
+          ]
+        },
+        {
+          "id": "crel_planning_motion",
+          "source": "comp_planning",
+          "target": "comp_motionplanner",
+          "type": "delegation",
+          "vertices": [
+            {
+              "x": 740.0,
+              "y": 290.0
+            }
+          ]
+        },
+        {
+          "id": "crel_control_vehctrl",
+          "source": "comp_control",
+          "target": "comp_vehctrl",
+          "type": "delegation",
+          "vertices": [
+            {
+              "x": 700.0,
+              "y": 970.0
+            },
+            {
+              "x": 700.0,
+              "y": 1050.0
+            }
+          ]
+        },
+        {
+          "id": "crel_ros_simnode",
+          "source": "comp_ros",
+          "target": "comp_simnode",
+          "type": "delegation",
+          "vertices": [
+            {
+              "x": 60.0,
+              "y": 690.0
+            }
+          ]
+        },
+        {
+          "id": "crel_utils_frenet",
+          "source": "comp_utils",
+          "target": "comp_frenet",
+          "type": "delegation",
+          "vertices": [
+            {
+              "x": 1460.0,
+              "y": 700.0
+            },
+            {
+              "x": 1760.0,
+              "y": 640.0
+            }
+          ]
+        }
+      ],
+      "grid_visible": true,
+      "grid_size": 20,
+      "grid_color": "#e0e0e0",
+      "grid_thickness": 1,
+      "snap_to_grid": true,
+      "zoom": 0.8333333333333334,
+      "pan_x": -301.0,
+      "pan_y": -255.16666666666674
+    },
+    {
+      "version": "1.0",
+      "name": "Simulator Core Classes",
+      "diagram_type": "class",
+      "component_id": "comp_simcore",
+      "classes": [
+        {
+          "id": "class_simengine",
+          "name": "SimulationEngine",
+          "stereotype": "class",
+          "attributes": [
+            {
+              "name": "logger",
+              "type": "Logger",
+              "visibility": "-",
+              "default_value": "",
+              "is_static": false
+            },
+            {
+              "name": "config",
+              "type": "ScenarioConfig",
+              "visibility": "-",
+              "default_value": "",
+              "is_static": false
+            },
+            {
+              "name": "world",
+              "type": "World",
+              "visibility": "-",
+              "default_value": "",
+              "is_static": false
+            },
+            {
+              "name": "ego",
+              "type": "EgoVehicle",
+              "visibility": "-",
+              "default_value": "",
+              "is_static": false
+            },
+            {
+              "name": "obstacles",
+              "type": "ObstacleManager",
+              "visibility": "-",
+              "default_value": "",
+              "is_static": false
+            },
+            {
+              "name": "sim_time",
+              "type": "float",
+              "visibility": "+",
+              "default_value": "0.0",
+              "is_static": false
+            },
+            {
+              "name": "step_count",
+              "type": "int",
+              "visibility": "+",
+              "default_value": "0",
+              "is_static": false
+            },
+            {
+              "name": "physics_dt",
+              "type": "float",
+              "visibility": "+",
+              "default_value": "0.05",
+              "is_static": false
+            },
+            {
+              "name": "vehicle_model",
+              "type": "str",
+              "visibility": "+",
+              "default_value": "",
+              "is_static": false
+            },
+            {
+              "name": "target_speed",
+              "type": "float",
+              "visibility": "+",
+              "default_value": "",
+              "is_static": false
+            },
+            {
+              "name": "collision_occurred",
+              "type": "bool",
+              "visibility": "+",
+              "default_value": "False",
+              "is_static": false
+            },
+            {
+              "name": "reached_destination",
+              "type": "bool",
+              "visibility": "+",
+              "default_value": "False",
+              "is_static": false
+            },
+            {
+              "name": "offroad_occurred",
+              "type": "bool",
+              "visibility": "+",
+              "default_value": "False",
+              "is_static": false
+            },
+            {
+              "name": "is_done",
+              "type": "bool",
+              "visibility": "+",
+              "default_value": "",
+              "is_static": false
+            }
+          ],
+          "methods": [
+            {
+              "name": "__init__",
+              "return_type": "void",
+              "params": "config: ScenarioConfig",
+              "visibility": "+",
+              "is_static": false,
+              "is_abstract": false
+            },
+            {
+              "name": "reset",
+              "return_type": "void",
+              "params": "",
+              "visibility": "+",
+              "is_static": false,
+              "is_abstract": false
+            },
+            {
+              "name": "step",
+              "return_type": "VehicleState",
+              "params": "control: ControlCommand, dt: float",
+              "visibility": "+",
+              "is_static": false,
+              "is_abstract": false
+            },
+            {
+              "name": "get_state",
+              "return_type": "VehicleState",
+              "params": "",
+              "visibility": "+",
+              "is_static": false,
+              "is_abstract": false
+            },
+            {
+              "name": "get_error_state",
+              "return_type": "ndarray",
+              "params": "ts: float",
+              "visibility": "+",
+              "is_static": false,
+              "is_abstract": false
+            }
+          ],
+          "position": {
+            "x": 560.0,
+            "y": 100.0
+          },
+          "size": {
+            "width": 240.0,
+            "height": 190.0
+          },
+          "note": "固定步长物理引擎；拥有 World/EgoVehicle/ObstacleManager，按子步细化步进并做碰撞、越界与到点判定。",
+          "provided_interfaces": [],
+          "required_interfaces": []
+        },
+        {
+          "id": "class_world",
+          "name": "World",
+          "stereotype": "class",
+          "attributes": [
+            {
+              "name": "road_def",
+              "type": "RoadDef",
+              "visibility": "+",
+              "default_value": "",
+              "is_static": false
+            },
+            {
+              "name": "lane_width",
+              "type": "float",
+              "visibility": "+",
+              "default_value": "3.5",
+              "is_static": false
+            },
+            {
+              "name": "num_lanes",
+              "type": "int",
+              "visibility": "+",
+              "default_value": "2",
+              "is_static": false
+            },
+            {
+              "name": "ref_path",
+              "type": "List[PathPoint]",
+              "visibility": "+",
+              "default_value": "",
+              "is_static": false
+            },
+            {
+              "name": "s_map",
+              "type": "List[float]",
+              "visibility": "+",
+              "default_value": "",
+              "is_static": false
+            }
+          ],
+          "methods": [
+            {
+              "name": "__init__",
+              "return_type": "void",
+              "params": "road_def: RoadDef",
+              "visibility": "+",
+              "is_static": false,
+              "is_abstract": false
+            },
+            {
+              "name": "get_lane_center",
+              "return_type": "float",
+              "params": "lane_idx: int",
+              "visibility": "+",
+              "is_static": false,
+              "is_abstract": false
+            },
+            {
+              "name": "get_lane_boundaries",
+              "return_type": "List[float]",
+              "params": "",
+              "visibility": "+",
+              "is_static": false,
+              "is_abstract": false
+            },
+            {
+              "name": "distance_to_reference",
+              "return_type": "float",
+              "params": "x: float, y: float",
+              "visibility": "+",
+              "is_static": false,
+              "is_abstract": false
+            },
+            {
+              "name": "is_on_road",
+              "return_type": "bool",
+              "params": "x: float, y: float, margin: float",
+              "visibility": "+",
+              "is_static": false,
+              "is_abstract": false
+            }
+          ],
+          "position": {
+            "x": 224.0,
+            "y": 845.0
+          },
+          "size": {
+            "width": 240.0,
+            "height": 190.0
+          },
+          "note": "由 RoadDef 生成道路参考线(ref_path)与弧长映射(s_map)，提供车道中心/边界与离路判定。",
+          "provided_interfaces": [],
+          "required_interfaces": []
+        },
+        {
+          "id": "class_ego",
+          "name": "EgoVehicle",
+          "stereotype": "class",
+          "attributes": [
+            {
+              "name": "params",
+              "type": "VehicleParams",
+              "visibility": "+",
+              "default_value": "",
+              "is_static": false
+            },
+            {
+              "name": "length",
+              "type": "float",
+              "visibility": "+",
+              "default_value": "",
+              "is_static": false
+            },
+            {
+              "name": "width",
+              "type": "float",
+              "visibility": "+",
+              "default_value": "2.0",
+              "is_static": false
+            }
+          ],
+          "methods": [
+            {
+              "name": "__init__",
+              "return_type": "void",
+              "params": "state: VehicleState, params: VehicleParams",
+              "visibility": "+",
+              "is_static": false,
+              "is_abstract": false
+            },
+            {
+              "name": "kinematic_step",
+              "return_type": "VehicleState",
+              "params": "steer: float, accel: float, dt: float",
+              "visibility": "+",
+              "is_static": false,
+              "is_abstract": false
+            },
+            {
+              "name": "dynamic_step",
+              "return_type": "VehicleState",
+              "params": "steer: float, accel: float, dt: float",
+              "visibility": "+",
+              "is_static": false,
+              "is_abstract": false
+            },
+            {
+              "name": "step",
+              "return_type": "VehicleState",
+              "params": "steer: float, accel: float, dt: float, model: str",
+              "visibility": "+",
+              "is_static": false,
+              "is_abstract": false
+            },
+            {
+              "name": "get_state",
+              "return_type": "VehicleState",
+              "params": "",
+              "visibility": "+",
+              "is_static": false,
+              "is_abstract": false
+            },
+            {
+              "name": "get_error_state",
+              "return_type": "ndarray",
+              "params": "ref_path: list, ts: float",
+              "visibility": "+",
+              "is_static": false,
+              "is_abstract": false
+            },
+            {
+              "name": "get_corners",
+              "return_type": "ndarray",
+              "params": "",
+              "visibility": "+",
+              "is_static": false,
+              "is_abstract": false
+            }
+          ],
+          "position": {
+            "x": 560.0,
+            "y": 845.0
+          },
+          "size": {
+            "width": 240.0,
+            "height": 190.0
+          },
+          "note": "自车运动学/动力学自行车模型，输出世界系误差状态与四角点。",
+          "provided_interfaces": [],
+          "required_interfaces": []
+        },
+        {
+          "id": "class_obsmgr",
+          "name": "ObstacleManager",
+          "stereotype": "class",
+          "attributes": [
+            {
+              "name": "last_collision_ids",
+              "type": "List[int]",
+              "visibility": "+",
+              "default_value": "",
+              "is_static": false
+            }
+          ],
+          "methods": [
+            {
+              "name": "add_obstacle",
+              "return_type": "void",
+              "params": "obs: Obstacle",
+              "visibility": "+",
+              "is_static": false,
+              "is_abstract": false
+            },
+            {
+              "name": "add_from_config",
+              "return_type": "void",
+              "params": "configs: list",
+              "visibility": "+",
+              "is_static": false,
+              "is_abstract": false
+            },
+            {
+              "name": "step",
+              "return_type": "void",
+              "params": "dt: float",
+              "visibility": "+",
+              "is_static": false,
+              "is_abstract": false
+            },
+            {
+              "name": "get_all",
+              "return_type": "List[Obstacle]",
+              "params": "",
+              "visibility": "+",
+              "is_static": false,
+              "is_abstract": false
+            },
+            {
+              "name": "get_obstacle_xy_list",
+              "return_type": "List[Tuple[float, float]]",
+              "params": "",
+              "visibility": "+",
+              "is_static": false,
+              "is_abstract": false
+            },
+            {
+              "name": "check_collision",
+              "return_type": "bool",
+              "params": "ego_x: float, ego_y: float, ego_length: float, ego_width: float, ego_phi: float",
+              "visibility": "+",
+              "is_static": false,
+              "is_abstract": false
+            },
+            {
+              "name": "clear",
+              "return_type": "void",
+              "params": "",
+              "visibility": "+",
+              "is_static": false,
+              "is_abstract": false
+            }
+          ],
+          "position": {
+            "x": 896.0,
+            "y": 845.0
+          },
+          "size": {
+            "width": 240.0,
+            "height": 190.0
+          },
+          "note": "障碍物集合管理；采用 AABB 预筛 + 旋转矩形 SAT 精确碰撞检测。",
+          "provided_interfaces": [],
+          "required_interfaces": []
+        }
+      ],
+      "relations": [
+        {
+          "id": "rel_engine_world",
+          "source": "class_simengine",
+          "target": "class_world",
+          "type": "composition",
+          "vertices": null,
+          "multiplicity_source": "1",
+          "multiplicity_target": "1",
+          "role_name": "world",
+          "note": "引擎拥有道路世界"
+        },
+        {
+          "id": "rel_engine_ego",
+          "source": "class_simengine",
+          "target": "class_ego",
+          "type": "composition",
+          "vertices": null,
+          "multiplicity_source": "1",
+          "multiplicity_target": "1",
+          "role_name": "ego",
+          "note": "引擎拥有自车"
+        },
+        {
+          "id": "rel_engine_obsmgr",
+          "source": "class_simengine",
+          "target": "class_obsmgr",
+          "type": "composition",
+          "vertices": null,
+          "multiplicity_source": "1",
+          "multiplicity_target": "1",
+          "role_name": "obstacles",
+          "note": "引擎拥有障碍物管理"
+        }
+      ],
+      "lifelines": [],
+      "messages": [],
+      "fragments": [],
+      "components": [],
+      "comp_relations": [],
+      "grid_visible": true,
+      "grid_size": 20,
+      "grid_color": "#e0e0e0",
+      "grid_thickness": 1,
+      "snap_to_grid": true,
+      "zoom": 0.3,
+      "pan_x": 351.5,
+      "pan_y": 96.65
+    },
+    {
+      "version": "1.0",
+      "name": "Data Model Classes",
+      "diagram_type": "class",
+      "component_id": "comp_simcore",
+      "classes": [
+        {
+          "id": "class_vehstate",
+          "name": "VehicleState",
+          "stereotype": "class",
+          "attributes": [
+            {
+              "name": "x",
+              "type": "float",
+              "visibility": "+",
+              "default_value": "0.0",
+              "is_static": false
+            },
+            {
+              "name": "y",
+              "type": "float",
+              "visibility": "+",
+              "default_value": "0.0",
+              "is_static": false
+            },
+            {
+              "name": "phi",
+              "type": "float",
+              "visibility": "+",
+              "default_value": "0.0",
+              "is_static": false
+            },
+            {
+              "name": "vx",
+              "type": "float",
+              "visibility": "+",
+              "default_value": "0.0",
+              "is_static": false
+            },
+            {
+              "name": "vy",
+              "type": "float",
+              "visibility": "+",
+              "default_value": "0.0",
+              "is_static": false
+            },
+            {
+              "name": "r",
+              "type": "float",
+              "visibility": "+",
+              "default_value": "0.0",
+              "is_static": false
+            },
+            {
+              "name": "steer",
+              "type": "float",
+              "visibility": "+",
+              "default_value": "0.0",
+              "is_static": false
+            },
+            {
+              "name": "accel",
+              "type": "float",
+              "visibility": "+",
+              "default_value": "0.0",
+              "is_static": false
+            },
+            {
+              "name": "timestamp",
+              "type": "float",
+              "visibility": "+",
+              "default_value": "0.0",
+              "is_static": false
+            },
+            {
+              "name": "speed",
+              "type": "float",
+              "visibility": "+",
+              "default_value": "",
+              "is_static": false
+            },
+            {
+              "name": "speed_kmh",
+              "type": "float",
+              "visibility": "+",
+              "default_value": "",
+              "is_static": false
+            }
+          ],
+          "methods": [],
+          "position": {
+            "x": 792.0,
+            "y": 100.0
+          },
+          "size": {
+            "width": 240.0,
+            "height": 190.0
+          },
+          "note": "车辆状态 dataclass；speed/speed_kmh/world_velocity/position 为只读 property。",
+          "provided_interfaces": [],
+          "required_interfaces": []
+        },
+        {
+          "id": "class_vehparams",
+          "name": "VehicleParams",
+          "stereotype": "class",
+          "attributes": [
+            {
+              "name": "a",
+              "type": "float",
+              "visibility": "+",
+              "default_value": "1.015",
+              "is_static": false
+            },
+            {
+              "name": "b",
+              "type": "float",
+              "visibility": "+",
+              "default_value": "1.895",
+              "is_static": false
+            },
+            {
+              "name": "m",
+              "type": "float",
+              "visibility": "+",
+              "default_value": "1412.0",
+              "is_static": false
+            },
+            {
+              "name": "Cf",
+              "type": "float",
+              "visibility": "+",
+              "default_value": "-148970.0",
+              "is_static": false
+            },
+            {
+              "name": "Cr",
+              "type": "float",
+              "visibility": "+",
+              "default_value": "-82204.0",
+              "is_static": false
+            },
+            {
+              "name": "Iz",
+              "type": "float",
+              "visibility": "+",
+              "default_value": "1537.0",
+              "is_static": false
+            },
+            {
+              "name": "max_steer",
+              "type": "float",
+              "visibility": "+",
+              "default_value": "0.5",
+              "is_static": false
+            },
+            {
+              "name": "max_accel",
+              "type": "float",
+              "visibility": "+",
+              "default_value": "3.0",
+              "is_static": false
+            },
+            {
+              "name": "max_decel",
+              "type": "float",
+              "visibility": "+",
+              "default_value": "6.0",
+              "is_static": false
+            },
+            {
+              "name": "wheelbase",
+              "type": "float",
+              "visibility": "+",
+              "default_value": "",
+              "is_static": false
+            }
+          ],
+          "methods": [],
+          "position": {
+            "x": 1128.0,
+            "y": 100.0
+          },
+          "size": {
+            "width": 240.0,
+            "height": 190.0
+          },
+          "note": "车辆物理参数；wheelbase = a + b 为只读 property。",
+          "provided_interfaces": [],
+          "required_interfaces": []
+        },
+        {
+          "id": "class_pathpoint",
+          "name": "PathPoint",
+          "stereotype": "class",
+          "attributes": [
+            {
+              "name": "x",
+              "type": "float",
+              "visibility": "+",
+              "default_value": "",
+              "is_static": false
+            },
+            {
+              "name": "y",
+              "type": "float",
+              "visibility": "+",
+              "default_value": "",
+              "is_static": false
+            },
+            {
+              "name": "theta",
+              "type": "float",
+              "visibility": "+",
+              "default_value": "",
+              "is_static": false
+            },
+            {
+              "name": "kappa",
+              "type": "float",
+              "visibility": "+",
+              "default_value": "",
+              "is_static": false
+            }
+          ],
+          "methods": [
+            {
+              "name": "__iter__",
+              "return_type": "iterator",
+              "params": "",
+              "visibility": "+",
+              "is_static": false,
+              "is_abstract": false
+            }
+          ],
+          "position": {
+            "x": 1464.0,
+            "y": 100.0
+          },
+          "size": {
+            "width": 240.0,
+            "height": 190.0
+          },
+          "note": "参考线点 (x, y, theta, kappa)。",
+          "provided_interfaces": [],
+          "required_interfaces": []
+        },
+        {
+          "id": "class_ctrlcmd",
+          "name": "ControlCommand",
+          "stereotype": "class",
+          "attributes": [
+            {
+              "name": "steer",
+              "type": "float",
+              "visibility": "+",
+              "default_value": "0.0",
+              "is_static": false
+            },
+            {
+              "name": "throttle",
+              "type": "float",
+              "visibility": "+",
+              "default_value": "0.0",
+              "is_static": false
+            },
+            {
+              "name": "brake",
+              "type": "float",
+              "visibility": "+",
+              "default_value": "0.0",
+              "is_static": false
+            },
+            {
+              "name": "gear",
+              "type": "int",
+              "visibility": "+",
+              "default_value": "1",
+              "is_static": false
+            }
+          ],
+          "methods": [],
+          "position": {
+            "x": 1800.0,
+            "y": 100.0
+          },
+          "size": {
+            "width": 240.0,
+            "height": 190.0
+          },
+          "note": "物理前轮转角(rad) + 归一化油门/刹车。",
+          "provided_interfaces": [],
+          "required_interfaces": []
+        },
+        {
+          "id": "class_frenetpoint",
+          "name": "FrenetPoint",
+          "stereotype": "class",
+          "attributes": [
+            {
+              "name": "s",
+              "type": "float",
+              "visibility": "+",
+              "default_value": "",
+              "is_static": false
+            },
+            {
+              "name": "l",
+              "type": "float",
+              "visibility": "+",
+              "default_value": "",
+              "is_static": false
+            },
+            {
+              "name": "dl",
+              "type": "float",
+              "visibility": "+",
+              "default_value": "0.0",
+              "is_static": false
+            },
+            {
+              "name": "ddl",
+              "type": "float",
+              "visibility": "+",
+              "default_value": "0.0",
+              "is_static": false
+            }
+          ],
+          "methods": [],
+          "position": {
+            "x": 120.0,
+            "y": 100.0
+          },
+          "size": {
+            "width": 240.0,
+            "height": 190.0
+          },
+          "note": "Frenet 坐标点 (s, l, dl, ddl)。",
+          "provided_interfaces": [],
+          "required_interfaces": []
+        },
+        {
+          "id": "class_logentry",
+          "name": "LogEntry",
+          "stereotype": "class",
+          "attributes": [
+            {
+              "name": "timestamp",
+              "type": "float",
+              "visibility": "+",
+              "default_value": "",
+              "is_static": false
+            },
+            {
+              "name": "x",
+              "type": "float",
+              "visibility": "+",
+              "default_value": "",
+              "is_static": false
+            },
+            {
+              "name": "y",
+              "type": "float",
+              "visibility": "+",
+              "default_value": "",
+              "is_static": false
+            },
+            {
+              "name": "speed_kmh",
+              "type": "float",
+              "visibility": "+",
+              "default_value": "",
+              "is_static": false
+            },
+            {
+              "name": "steer",
+              "type": "float",
+              "visibility": "+",
+              "default_value": "",
+              "is_static": false
+            },
+            {
+              "name": "throttle",
+              "type": "float",
+              "visibility": "+",
+              "default_value": "",
+              "is_static": false
+            },
+            {
+              "name": "brake",
+              "type": "float",
+              "visibility": "+",
+              "default_value": "",
+              "is_static": false
+            },
+            {
+              "name": "ed",
+              "type": "float",
+              "visibility": "+",
+              "default_value": "",
+              "is_static": false
+            },
+            {
+              "name": "ephi",
+              "type": "float",
+              "visibility": "+",
+              "default_value": "",
+              "is_static": false
+            },
+            {
+              "name": "target_speed",
+              "type": "float",
+              "visibility": "+",
+              "default_value": "",
+              "is_static": false
+            }
+          ],
+          "methods": [],
+          "position": {
+            "x": 2136.0,
+            "y": 100.0
+          },
+          "size": {
+            "width": 240.0,
+            "height": 190.0
+          },
+          "note": "单步诊断日志记录（含横向误差 ed、航向误差 ephi）。",
+          "provided_interfaces": [],
+          "required_interfaces": []
+        },
+        {
+          "id": "class_scenariocfg",
+          "name": "ScenarioConfig",
+          "stereotype": "class",
+          "attributes": [
+            {
+              "name": "name",
+              "type": "str",
+              "visibility": "+",
+              "default_value": "default",
+              "is_static": false
+            },
+            {
+              "name": "description",
+              "type": "str",
+              "visibility": "+",
+              "default_value": "",
+              "is_static": false
+            },
+            {
+              "name": "road",
+              "type": "RoadDef",
+              "visibility": "+",
+              "default_value": "",
+              "is_static": false
+            },
+            {
+              "name": "ego_start_x",
+              "type": "float",
+              "visibility": "+",
+              "default_value": "20.0",
+              "is_static": false
+            },
+            {
+              "name": "ego_start_y",
+              "type": "float",
+              "visibility": "+",
+              "default_value": "0.0",
+              "is_static": false
+            },
+            {
+              "name": "ego_start_phi",
+              "type": "float",
+              "visibility": "+",
+              "default_value": "0.0",
+              "is_static": false
+            },
+            {
+              "name": "ego_start_speed",
+              "type": "float",
+              "visibility": "+",
+              "default_value": "10.0",
+              "is_static": false
+            },
+            {
+              "name": "target_speed",
+              "type": "float",
+              "visibility": "+",
+              "default_value": "50.0",
+              "is_static": false
+            },
+            {
+              "name": "obstacles",
+              "type": "List[dict]",
+              "visibility": "+",
+              "default_value": "",
+              "is_static": false
+            },
+            {
+              "name": "controller",
+              "type": "str",
+              "visibility": "+",
+              "default_value": "LQR_controller",
+              "is_static": false
+            },
+            {
+              "name": "planner",
+              "type": "dict",
+              "visibility": "+",
+              "default_value": "",
+              "is_static": false
+            },
+            {
+              "name": "destination",
+              "type": "Optional[Tuple[float, float]]",
+              "visibility": "+",
+              "default_value": "",
+              "is_static": false
+            },
+            {
+              "name": "vehicle_model",
+              "type": "str",
+              "visibility": "+",
+              "default_value": "kinematic",
+              "is_static": false
+            }
+          ],
+          "methods": [],
+          "position": {
+            "x": 456.0,
+            "y": 100.0
+          },
+          "size": {
+            "width": 240.0,
+            "height": 190.0
+          },
+          "note": "场景配置聚合体，描述道路、初始位姿与控制器/规划器选择。",
+          "provided_interfaces": [],
+          "required_interfaces": []
+        },
+        {
+          "id": "class_roaddef",
+          "name": "RoadDef",
+          "stereotype": "class",
+          "attributes": [
+            {
+              "name": "segments",
+              "type": "List[RoadSegment]",
+              "visibility": "+",
+              "default_value": "",
+              "is_static": false
+            },
+            {
+              "name": "lane_width",
+              "type": "float",
+              "visibility": "+",
+              "default_value": "3.5",
+              "is_static": false
+            },
+            {
+              "name": "num_lanes",
+              "type": "int",
+              "visibility": "+",
+              "default_value": "2",
+              "is_static": false
+            }
+          ],
+          "methods": [],
+          "position": {
+            "x": 1128.0,
+            "y": 665.0
+          },
+          "size": {
+            "width": 240.0,
+            "height": 190.0
+          },
+          "note": "道路定义：一组线段 + 车道数与车道宽。",
+          "provided_interfaces": [],
+          "required_interfaces": []
+        },
+        {
+          "id": "class_roadsegment",
+          "name": "RoadSegment",
+          "stereotype": "class",
+          "attributes": [
+            {
+              "name": "type",
+              "type": "str",
+              "visibility": "+",
+              "default_value": "waypoints",
+              "is_static": false
+            },
+            {
+              "name": "params",
+              "type": "dict",
+              "visibility": "+",
+              "default_value": "",
+              "is_static": false
+            },
+            {
+              "name": "lane_width",
+              "type": "float",
+              "visibility": "+",
+              "default_value": "3.5",
+              "is_static": false
+            },
+            {
+              "name": "num_lanes",
+              "type": "int",
+              "visibility": "+",
+              "default_value": "2",
+              "is_static": false
+            }
+          ],
+          "methods": [],
+          "position": {
+            "x": 1128.0,
+            "y": 983.0
+          },
+          "size": {
+            "width": 240.0,
+            "height": 190.0
+          },
+          "note": "道路片段：straight / arc / waypoints。",
+          "provided_interfaces": [],
+          "required_interfaces": []
+        }
+      ],
+      "relations": [
+        {
+          "id": "rel_scenariocfg_road",
+          "source": "class_scenariocfg",
+          "target": "class_roaddef",
+          "type": "composition",
+          "vertices": null,
+          "multiplicity_source": "1",
+          "multiplicity_target": "1",
+          "role_name": "road",
+          "note": "场景配置包含道路定义"
+        },
+        {
+          "id": "rel_roaddef_segment",
+          "source": "class_roaddef",
+          "target": "class_roadsegment",
+          "type": "composition",
+          "vertices": null,
+          "multiplicity_source": "1",
+          "multiplicity_target": "1..*",
+          "role_name": "segments",
+          "note": "道路由若干连续片段构成"
+        }
+      ],
+      "lifelines": [],
+      "messages": [],
+      "fragments": [],
+      "components": [],
+      "comp_relations": [],
+      "grid_visible": true,
+      "grid_size": 20,
+      "grid_color": "#e0e0e0",
+      "grid_thickness": 1,
+      "snap_to_grid": true,
+      "zoom": 1.0,
+      "pan_x": -832.5,
+      "pan_y": -268.5
+    },
+    {
+      "version": "1.0",
+      "name": "Planning Module Classes",
+      "diagram_type": "class",
+      "component_id": "comp_planning",
+      "classes": [
+        {
+          "id": "class_motionplanner",
+          "name": "MotionPlanner",
+          "stereotype": "class",
+          "attributes": [
+            {
+              "name": "global_path",
+              "type": "list",
+              "visibility": "+",
+              "default_value": "",
+              "is_static": false
+            },
+            {
+              "name": "lane_width",
+              "type": "float",
+              "visibility": "+",
+              "default_value": "3.5",
+              "is_static": false
+            },
+            {
+              "name": "num_lanes",
+              "type": "int",
+              "visibility": "+",
+              "default_value": "2",
+              "is_static": false
+            },
+            {
+              "name": "logger",
+              "type": "Logger",
+              "visibility": "-",
+              "default_value": "",
+              "is_static": false
+            }
+          ],
+          "methods": [
+            {
+              "name": "start",
+              "return_type": "void",
+              "params": "",
+              "visibility": "+",
+              "is_static": false,
+              "is_abstract": false
+            },
+            {
+              "name": "stop",
+              "return_type": "void",
+              "params": "",
+              "visibility": "+",
+              "is_static": false,
+              "is_abstract": false
+            },
+            {
+              "name": "plan",
+              "return_type": "bool",
+              "params": "ego_state: VehicleState, obstacles: list, pred_loc: tuple, vehicle_loc: tuple",
+              "visibility": "+",
+              "is_static": false,
+              "is_abstract": false
+            },
+            {
+              "name": "poll_result",
+              "return_type": "bool",
+              "params": "",
+              "visibility": "+",
+              "is_static": false,
+              "is_abstract": false
+            },
+            {
+              "name": "get_result",
+              "return_type": "list",
+              "params": "",
+              "visibility": "+",
+              "is_static": false,
+              "is_abstract": false
+            },
+            {
+              "name": "_worker",
+              "return_type": "void",
+              "params": "",
+              "visibility": "-",
+              "is_static": false,
+              "is_abstract": false
+            },
+            {
+              "name": "_plan",
+              "return_type": "list",
+              "params": "pred_loc: tuple, vehicle_loc: tuple, obstacles: list",
+              "visibility": "-",
+              "is_static": false,
+              "is_abstract": false
+            }
+          ],
+          "position": {
+            "x": 224.0,
+            "y": 100.0
+          },
+          "size": {
+            "width": 240.0,
+            "height": 190.0
+          },
+          "note": "异步“最新优先”避障换道规划器：独立 worker 线程 + 单元素请求/响应队列，S 型平滑换道。",
+          "provided_interfaces": [],
+          "required_interfaces": []
+        },
+        {
+          "id": "class_dpplanner",
+          "name": "DPPathPlanner",
+          "stereotype": "class",
+          "attributes": [],
+          "methods": [
+            {
+              "name": "DP_algorithm",
+              "return_type": "Tuple[list, list]",
+              "params": "obs_s_list: list, obs_l_list: list, plan_start_s: float, plan_start_l: float, plan_start_dl: float, plan_start_ddl: float",
+              "visibility": "+",
+              "is_static": true,
+              "is_abstract": false
+            },
+            {
+              "name": "enrich_DP_s_l",
+              "return_type": "Tuple[list, list]",
+              "params": "DP_s_list: list, DP_l_list: list, plan_start_s: float, plan_start_l: float, plan_start_dl: float, plan_start_ddl: float, resolution: float",
+              "visibility": "+",
+              "is_static": true,
+              "is_abstract": false
+            },
+            {
+              "name": "cal_start_cost",
+              "return_type": "float",
+              "params": "obs_s_list: list, obs_l_list: list, begin_s: float, begin_l: float, begin_dl: float, begin_ddl: float",
+              "visibility": "+",
+              "is_static": true,
+              "is_abstract": false
+            },
+            {
+              "name": "cal_neighbor_cost",
+              "return_type": "float",
+              "params": "obs_s_list: list, obs_l_list: list, pre_node_s: float, pre_node_l: float, cur_node_s: float, cur_node_l: float",
+              "visibility": "+",
+              "is_static": true,
+              "is_abstract": false
+            }
+          ],
+          "position": {
+            "x": 560.0,
+            "y": 100.0
+          },
+          "size": {
+            "width": 240.0,
+            "height": 190.0
+          },
+          "note": "S-L 图动态规划避障（纯 numpy），并用五次多项式增密；无障碍时退化为直线 l=0。",
+          "provided_interfaces": [],
+          "required_interfaces": []
+        },
+        {
+          "id": "class_qpplanner",
+          "name": "QPPathPlanner",
+          "stereotype": "class",
+          "attributes": [],
+          "methods": [
+            {
+              "name": "Quadratic_planning",
+              "return_type": "Tuple[list, list, list]",
+              "params": "l_min: list, l_max: list, plan_start_l: float, plan_start_dl: float, plan_start_ddl: float, target_end_l: float",
+              "visibility": "+",
+              "is_static": true,
+              "is_abstract": false
+            },
+            {
+              "name": "cal_lmin_lmax",
+              "return_type": "Tuple[list, list]",
+              "params": "dp_path_s: list, dp_path_l: list, obs_s_list: list, obs_l_list: list",
+              "visibility": "+",
+              "is_static": true,
+              "is_abstract": false
+            }
+          ],
+          "position": {
+            "x": 896.0,
+            "y": 100.0
+          },
+          "size": {
+            "width": 240.0,
+            "height": 190.0
+          },
+          "note": "S-L 二次规划平滑 + 车辆矩形形状约束；无 cvxopt 时回退到凸空间中心线。",
+          "provided_interfaces": [],
+          "required_interfaces": []
+        }
+      ],
+      "relations": [],
+      "lifelines": [],
+      "messages": [],
+      "fragments": [],
+      "components": [],
+      "comp_relations": [],
+      "grid_visible": true,
+      "grid_size": 20,
+      "grid_color": "#e0e0e0",
+      "grid_thickness": 1,
+      "snap_to_grid": true,
+      "zoom": 1.0,
+      "pan_x": 0.0,
+      "pan_y": 0.0
+    },
+    {
+      "version": "1.0",
+      "name": "Control Module Classes",
+      "diagram_type": "class",
+      "component_id": "comp_control",
+      "classes": [
+        {
+          "id": "class_vehctrl",
+          "name": "VehicleController",
+          "stereotype": "class",
+          "attributes": [
+            {
+              "name": "controller_type",
+              "type": "str",
+              "visibility": "+",
+              "default_value": "",
+              "is_static": false
+            },
+            {
+              "name": "vehicle_para",
+              "type": "tuple",
+              "visibility": "+",
+              "default_value": "",
+              "is_static": false
+            },
+            {
+              "name": "lat",
+              "type": "LateralLQRController",
+              "visibility": "+",
+              "default_value": "",
+              "is_static": false
+            },
+            {
+              "name": "lon",
+              "type": "LongitudinalPIDController",
+              "visibility": "+",
+              "default_value": "",
+              "is_static": false
+            },
+            {
+              "name": "ref_path",
+              "type": "list",
+              "visibility": "+",
+              "default_value": "",
+              "is_static": false
+            }
+          ],
+          "methods": [
+            {
+              "name": "__init__",
+              "return_type": "void",
+              "params": "vehicle_para: tuple, controller_type: str, target_speed_kmh: float",
+              "visibility": "+",
+              "is_static": false,
+              "is_abstract": false
+            },
+            {
+              "name": "update_ref_path",
+              "return_type": "void",
+              "params": "ref_path: list",
+              "visibility": "+",
+              "is_static": false,
+              "is_abstract": false
+            },
+            {
+              "name": "set_target_speed",
+              "return_type": "void",
+              "params": "speed_kmh: float",
+              "visibility": "+",
+              "is_static": false,
+              "is_abstract": false
+            },
+            {
+              "name": "step",
+              "return_type": "Tuple[float, float, float]",
+              "params": "x: float, y: float, phi: float, vx: float, vy: float, r: float",
+              "visibility": "+",
+              "is_static": false,
+              "is_abstract": false
+            }
+          ],
+          "position": {
+            "x": 224.0,
+            "y": 100.0
+          },
+          "size": {
+            "width": 240.0,
+            "height": 190.0
+          },
+          "note": "横纵向统一控制器：横向输出前轮转角，纵向加速度换算为油门/刹车归一值。",
+          "provided_interfaces": [],
+          "required_interfaces": []
+        },
+        {
+          "id": "class_latlqr",
+          "name": "LateralLQRController",
+          "stereotype": "class",
+          "attributes": [
+            {
+              "name": "a",
+              "type": "float",
+              "visibility": "+",
+              "default_value": "",
+              "is_static": false
+            },
+            {
+              "name": "b",
+              "type": "float",
+              "visibility": "+",
+              "default_value": "",
+              "is_static": false
+            },
+            {
+              "name": "ts",
+              "type": "float",
+              "visibility": "+",
+              "default_value": "0.05",
+              "is_static": false
+            },
+            {
+              "name": "max_steer",
+              "type": "float",
+              "visibility": "+",
+              "default_value": "0.5",
+              "is_static": false
+            },
+            {
+              "name": "k_lat",
+              "type": "float",
+              "visibility": "+",
+              "default_value": "2.0",
+              "is_static": false
+            },
+            {
+              "name": "k_heading",
+              "type": "float",
+              "visibility": "+",
+              "default_value": "0.6",
+              "is_static": false
+            },
+            {
+              "name": "min_index",
+              "type": "int",
+              "visibility": "+",
+              "default_value": "0",
+              "is_static": false
+            }
+          ],
+          "methods": [
+            {
+              "name": "__init__",
+              "return_type": "void",
+              "params": "vehicle_para: tuple, Q: object, R: float, ts: float",
+              "visibility": "+",
+              "is_static": false,
+              "is_abstract": false
+            },
+            {
+              "name": "control",
+              "return_type": "float",
+              "params": "x: float, y: float, phi: float, vx: float, vy: float, r: float, ref_path: list",
+              "visibility": "+",
+              "is_static": false,
+              "is_abstract": false
+            }
+          ],
+          "position": {
+            "x": 560.0,
+            "y": 100.0
+          },
+          "size": {
+            "width": 240.0,
+            "height": 190.0
+          },
+          "note": "有界几何横向控制器：预瞄点匹配参考线，曲率 + 航向/横向误差反馈，输出前轮转角。",
+          "provided_interfaces": [],
+          "required_interfaces": []
+        },
+        {
+          "id": "class_latmpc",
+          "name": "LateralMPCController",
+          "stereotype": "class",
+          "attributes": [
+            {
+              "name": "N",
+              "type": "int",
+              "visibility": "+",
+              "default_value": "6",
+              "is_static": false
+            },
+            {
+              "name": "P",
+              "type": "int",
+              "visibility": "+",
+              "default_value": "2",
+              "is_static": false
+            }
+          ],
+          "methods": [
+            {
+              "name": "__init__",
+              "return_type": "void",
+              "params": "vehicle_para: tuple, Q: object, F: object, R: float, N: int, P: int, ts: float",
+              "visibility": "+",
+              "is_static": false,
+              "is_abstract": false
+            }
+          ],
+          "position": {
+            "x": 560.0,
+            "y": 679.0
+          },
+          "size": {
+            "width": 240.0,
+            "height": 190.0
+          },
+          "note": "MPC 兼容横向控制器；当前复用 LQR 反馈，保持接口稳定以待数值 QP 后端。",
+          "provided_interfaces": [],
+          "required_interfaces": []
+        },
+        {
+          "id": "class_lonpid",
+          "name": "LongitudinalPIDController",
+          "stereotype": "class",
+          "attributes": [
+            {
+              "name": "K_P",
+              "type": "float",
+              "visibility": "+",
+              "default_value": "1.15",
+              "is_static": false
+            },
+            {
+              "name": "K_I",
+              "type": "float",
+              "visibility": "+",
+              "default_value": "0.0",
+              "is_static": false
+            },
+            {
+              "name": "K_D",
+              "type": "float",
+              "visibility": "+",
+              "default_value": "0.0",
+              "is_static": false
+            },
+            {
+              "name": "dt",
+              "type": "float",
+              "visibility": "+",
+              "default_value": "0.05",
+              "is_static": false
+            },
+            {
+              "name": "error_threshold",
+              "type": "float",
+              "visibility": "+",
+              "default_value": "1.0",
+              "is_static": false
+            },
+            {
+              "name": "target_speed",
+              "type": "float",
+              "visibility": "+",
+              "default_value": "50.0",
+              "is_static": false
+            }
+          ],
+          "methods": [
+            {
+              "name": "control",
+              "return_type": "float",
+              "params": "current_speed_ms: float",
+              "visibility": "+",
+              "is_static": false,
+              "is_abstract": false
+            },
+            {
+              "name": "set_target",
+              "return_type": "void",
+              "params": "speed_kmh: float",
+              "visibility": "+",
+              "is_static": false,
+              "is_abstract": false
+            },
+            {
+              "name": "reset",
+              "return_type": "void",
+              "params": "",
+              "visibility": "+",
+              "is_static": false,
+              "is_abstract": false
+            }
+          ],
+          "position": {
+            "x": 896.0,
+            "y": 100.0
+          },
+          "size": {
+            "width": 240.0,
+            "height": 190.0
+          },
+          "note": "纵向 PID：误差超阈值时清积分抗饱和；输出限幅 [-6, 3] m/s²。",
+          "provided_interfaces": [],
+          "required_interfaces": []
+        }
+      ],
+      "relations": [
+        {
+          "id": "rel_vehctrl_lat",
+          "source": "class_vehctrl",
+          "target": "class_latlqr",
+          "type": "aggregation",
+          "vertices": null,
+          "multiplicity_source": "1",
+          "multiplicity_target": "1",
+          "role_name": "lat",
+          "note": "横向控制器（LQR 或 MPC 子类）"
+        },
+        {
+          "id": "rel_vehctrl_lon",
+          "source": "class_vehctrl",
+          "target": "class_lonpid",
+          "type": "composition",
+          "vertices": null,
+          "multiplicity_source": "1",
+          "multiplicity_target": "1",
+          "role_name": "lon",
+          "note": "纵向 PID 控制器"
+        },
+        {
+          "id": "rel_latmpc_latlqr",
+          "source": "class_latmpc",
+          "target": "class_latlqr",
+          "type": "inheritance",
+          "vertices": null,
+          "multiplicity_source": "",
+          "multiplicity_target": "",
+          "role_name": "",
+          "note": "MPC 控制器继承有界几何横向控制器"
+        }
+      ],
+      "lifelines": [],
+      "messages": [],
+      "fragments": [],
+      "components": [],
+      "comp_relations": [],
+      "grid_visible": true,
+      "grid_size": 20,
+      "grid_color": "#e0e0e0",
+      "grid_thickness": 1,
+      "snap_to_grid": true,
+      "zoom": 1.2,
+      "pan_x": -256.5,
+      "pan_y": -207.89999999999998
+    },
+    {
+      "version": "1.0",
+      "name": "Algorithm Utilities Classes",
+      "diagram_type": "class",
+      "component_id": "comp_utils",
+      "classes": [
+        {
+          "id": "class_frenet",
+          "name": "FrenetUtils",
+          "stereotype": "class",
+          "attributes": [],
+          "methods": [
+            {
+              "name": "find_match_points",
+              "return_type": "Tuple[list, list]",
+              "params": "xy_list: list, path: list, is_first_run: bool, pre_match_index: int",
+              "visibility": "+",
+              "is_static": true,
+              "is_abstract": false
+            },
+            {
+              "name": "cal_s_map_fun",
+              "return_type": "list",
+              "params": "path: list, origin_xy: tuple",
+              "visibility": "+",
+              "is_static": true,
+              "is_abstract": false
+            },
+            {
+              "name": "cal_projection_s_fun",
+              "return_type": "list",
+              "params": "path: list, match_index_list: list, xy_list: list, s_map: list",
+              "visibility": "+",
+              "is_static": true,
+              "is_abstract": false
+            },
+            {
+              "name": "cal_s_l_fun",
+              "return_type": "Tuple[list, list]",
+              "params": "obs_xy_list: list, path: list, s_map: list",
+              "visibility": "+",
+              "is_static": true,
+              "is_abstract": false
+            },
+            {
+              "name": "cal_s_l_deri_fun",
+              "return_type": "Tuple[list, ...]",
+              "params": "xy_list: list, V_xy_list: list, a_xy_list: list, local_path_xy_opt: list, origin_xy: tuple",
+              "visibility": "+",
+              "is_static": true,
+              "is_abstract": false
+            }
+          ],
+          "position": {
+            "x": 224.0,
+            "y": 100.0
+          },
+          "size": {
+            "width": 240.0,
+            "height": 190.0
+          },
+          "note": "折线投影与 Frenet 变换工具：匹配点、弧长映射、s/l 及导数。",
+          "provided_interfaces": [],
+          "required_interfaces": []
+        },
+        {
+          "id": "class_geometry",
+          "name": "GeometryUtils",
+          "stereotype": "class",
+          "attributes": [],
+          "methods": [
+            {
+              "name": "cal_heading_kappa",
+              "return_type": "Tuple[list, list]",
+              "params": "points: list",
+              "visibility": "+",
+              "is_static": true,
+              "is_abstract": false
+            }
+          ],
+          "position": {
+            "x": 560.0,
+            "y": 698.0
+          },
+          "size": {
+            "width": 240.0,
+            "height": 190.0
+          },
+          "note": "折线航向角与曲率计算。",
+          "provided_interfaces": [],
+          "required_interfaces": []
+        },
+        {
+          "id": "class_quintic",
+          "name": "QuinticUtils",
+          "stereotype": "class",
+          "attributes": [],
+          "methods": [
+            {
+              "name": "cal_quintic_coefficient",
+              "return_type": "list",
+              "params": "start_l: float, start_dl: float, start_ddl: float, end_l: float, end_dl: float, end_ddl: float, start_s: float, end_s: float",
+              "visibility": "+",
+              "is_static": true,
+              "is_abstract": false
+            },
+            {
+              "name": "evaluate_quintic",
+              "return_type": "Tuple[ndarray, ndarray, ndarray, ndarray]",
+              "params": "coeffi: list, s: ndarray",
+              "visibility": "+",
+              "is_static": true,
+              "is_abstract": false
+            }
+          ],
+          "position": {
+            "x": 560.0,
+            "y": 100.0
+          },
+          "size": {
+            "width": 240.0,
+            "height": 190.0
+          },
+          "note": "五次多项式插值与求导。",
+          "provided_interfaces": [],
+          "required_interfaces": []
+        },
+        {
+          "id": "class_refline",
+          "name": "ReferenceLineUtils",
+          "stereotype": "class",
+          "attributes": [],
+          "methods": [
+            {
+              "name": "smooth_reference_line",
+              "return_type": "list",
+              "params": "points: list, w_cost_smooth: float, w_cost_length: float, w_cost_ref: float, x_thre: float, y_thre: float",
+              "visibility": "+",
+              "is_static": true,
+              "is_abstract": false
+            }
+          ],
+          "position": {
+            "x": 896.0,
+            "y": 100.0
+          },
+          "size": {
+            "width": 240.0,
+            "height": 190.0
+          },
+          "note": "参考线平滑（可选 cvxopt QP），输出 (x, y, theta, kappa)。",
+          "provided_interfaces": [],
+          "required_interfaces": []
+        }
+      ],
+      "relations": [
+        {
+          "id": "rel_refline_geometry",
+          "source": "class_refline",
+          "target": "class_geometry",
+          "type": "dependency",
+          "vertices": null,
+          "multiplicity_source": "",
+          "multiplicity_target": "",
+          "role_name": "",
+          "note": "平滑后计算航向/曲率"
+        }
+      ],
+      "lifelines": [],
+      "messages": [],
+      "fragments": [],
+      "components": [],
+      "comp_relations": [],
+      "grid_visible": true,
+      "grid_size": 20,
+      "grid_color": "#e0e0e0",
+      "grid_thickness": 1,
+      "snap_to_grid": true,
+      "zoom": 1.0,
+      "pan_x": 0.0,
+      "pan_y": 0.0
+    },
+    {
+      "version": "1.0",
+      "name": "ROS 2 Adapter Classes",
+      "diagram_type": "class",
+      "component_id": "comp_ros",
+      "classes": [
+        {
+          "id": "class_simnode",
+          "name": "SimulatorNode",
+          "stereotype": "class",
+          "attributes": [
+            {
+              "name": "engine",
+              "type": "SimulationEngine",
+              "visibility": "-",
+              "default_value": "",
+              "is_static": false
+            },
+            {
+              "name": "command",
+              "type": "ControlCommand",
+              "visibility": "-",
+              "default_value": "",
+              "is_static": false
+            },
+            {
+              "name": "physics_dt",
+              "type": "float",
+              "visibility": "-",
+              "default_value": "0.05",
+              "is_static": false
+            },
+            {
+              "name": "paused",
+              "type": "bool",
+              "visibility": "-",
+              "default_value": "False",
+              "is_static": false
+            }
+          ],
+          "methods": [
+            {
+              "name": "_on_command",
+              "return_type": "void",
+              "params": "message: RosControlCommand",
+              "visibility": "-",
+              "is_static": false,
+              "is_abstract": false
+            },
+            {
+              "name": "_advance_once",
+              "return_type": "void",
+              "params": "",
+              "visibility": "-",
+              "is_static": false,
+              "is_abstract": false
+            },
+            {
+              "name": "_on_timer",
+              "return_type": "void",
+              "params": "",
+              "visibility": "-",
+              "is_static": false,
+              "is_abstract": false
+            },
+            {
+              "name": "_on_step",
+              "return_type": "Trigger.Response",
+              "params": "request: Trigger.Request, response: Trigger.Response",
+              "visibility": "-",
+              "is_static": false,
+              "is_abstract": false
+            },
+            {
+              "name": "_on_reset",
+              "return_type": "Empty.Response",
+              "params": "request: Empty.Request, response: Empty.Response",
+              "visibility": "-",
+              "is_static": false,
+              "is_abstract": false
+            },
+            {
+              "name": "_on_pause",
+              "return_type": "SetBool.Response",
+              "params": "request: SetBool.Request, response: SetBool.Response",
+              "visibility": "-",
+              "is_static": false,
+              "is_abstract": false
+            },
+            {
+              "name": "_publish_state",
+              "return_type": "void",
+              "params": "",
+              "visibility": "-",
+              "is_static": false,
+              "is_abstract": false
+            }
+          ],
+          "position": {
+            "x": 224.0,
+            "y": 100.0
+          },
+          "size": {
+            "width": 240.0,
+            "height": 190.0
+          },
+          "note": "ROS 2 仿真节点：定时步进引擎、发布 vehicle/state/obstacles/reference_path、订阅 control_command，命令超时则紧急刹车。",
+          "provided_interfaces": [],
+          "required_interfaces": []
+        },
+        {
+          "id": "class_plannernode",
+          "name": "PlannerNode",
+          "stereotype": "class",
+          "attributes": [
+            {
+              "name": "path",
+              "type": "list",
+              "visibility": "-",
+              "default_value": "",
+              "is_static": false
+            },
+            {
+              "name": "state",
+              "type": "VehicleState",
+              "visibility": "-",
+              "default_value": "",
+              "is_static": false
+            },
+            {
+              "name": "obstacles",
+              "type": "List[Obstacle]",
+              "visibility": "-",
+              "default_value": "",
+              "is_static": false
+            },
+            {
+              "name": "planner",
+              "type": "MotionPlanner",
+              "visibility": "-",
+              "default_value": "",
+              "is_static": false
+            }
+          ],
+          "methods": [
+            {
+              "name": "_on_path",
+              "return_type": "void",
+              "params": "message: RosPath",
+              "visibility": "-",
+              "is_static": false,
+              "is_abstract": false
+            },
+            {
+              "name": "_on_state",
+              "return_type": "void",
+              "params": "message: RosVehicleState",
+              "visibility": "-",
+              "is_static": false,
+              "is_abstract": false
+            },
+            {
+              "name": "_on_obstacles",
+              "return_type": "void",
+              "params": "message: ObstacleArray",
+              "visibility": "-",
+              "is_static": false,
+              "is_abstract": false
+            },
+            {
+              "name": "_request_plan",
+              "return_type": "void",
+              "params": "",
+              "visibility": "-",
+              "is_static": false,
+              "is_abstract": false
+            },
+            {
+              "name": "_poll_result",
+              "return_type": "void",
+              "params": "",
+              "visibility": "-",
+              "is_static": false,
+              "is_abstract": false
+            }
+          ],
+          "position": {
+            "x": 560.0,
+            "y": 100.0
+          },
+          "size": {
+            "width": 240.0,
+            "height": 190.0
+          },
+          "note": "ROS 2 规划节点：订阅参考线/状态/障碍，最新优先异步请求规划并发布 planned_path。",
+          "provided_interfaces": [],
+          "required_interfaces": []
+        },
+        {
+          "id": "class_ctrlnode",
+          "name": "ControllerNode",
+          "stereotype": "class",
+          "attributes": [
+            {
+              "name": "controller",
+              "type": "VehicleController",
+              "visibility": "-",
+              "default_value": "",
+              "is_static": false
+            },
+            {
+              "name": "reference_path",
+              "type": "list",
+              "visibility": "-",
+              "default_value": "",
+              "is_static": false
+            },
+            {
+              "name": "planned_path",
+              "type": "list",
+              "visibility": "-",
+              "default_value": "",
+              "is_static": false
+            }
+          ],
+          "methods": [
+            {
+              "name": "_on_state",
+              "return_type": "void",
+              "params": "message: RosVehicleState",
+              "visibility": "-",
+              "is_static": false,
+              "is_abstract": false
+            },
+            {
+              "name": "_on_reference",
+              "return_type": "void",
+              "params": "message: RosPath",
+              "visibility": "-",
+              "is_static": false,
+              "is_abstract": false
+            },
+            {
+              "name": "_on_planned",
+              "return_type": "void",
+              "params": "message: RosPath",
+              "visibility": "-",
+              "is_static": false,
+              "is_abstract": false
+            },
+            {
+              "name": "_on_timer",
+              "return_type": "void",
+              "params": "",
+              "visibility": "-",
+              "is_static": false,
+              "is_abstract": false
+            },
+            {
+              "name": "_publish_command",
+              "return_type": "void",
+              "params": "steer: float, throttle: float, brake: float",
+              "visibility": "-",
+              "is_static": false,
+              "is_abstract": false
+            }
+          ],
+          "position": {
+            "x": 896.0,
+            "y": 100.0
+          },
+          "size": {
+            "width": 240.0,
+            "height": 190.0
+          },
+          "note": "ROS 2 控制节点：优先消费 planned_path，状态超时则输出刹车；发布 command_qos 的 control_command。",
+          "provided_interfaces": [],
+          "required_interfaces": []
+        }
+      ],
+      "relations": [],
+      "lifelines": [],
+      "messages": [],
+      "fragments": [],
+      "components": [],
+      "comp_relations": [],
+      "grid_visible": true,
+      "grid_size": 20,
+      "grid_color": "#e0e0e0",
+      "grid_thickness": 1,
+      "snap_to_grid": true,
+      "zoom": 0.4,
+      "pan_x": 283.5,
+      "pan_y": 169.1
+    },
+    {
+      "version": "1.0",
+      "name": "Autonomous Driving Loop",
+      "diagram_type": "sequence",
+      "component_id": "",
+      "classes": [],
+      "relations": [],
+      "lifelines": [
+        {
+          "id": "life_simnode",
+          "name": "sim: SimulatorNode",
+          "class_ref": "class_simnode",
+          "x": 100.0,
+          "activations": []
+        },
+        {
+          "id": "life_engine",
+          "name": "engine: SimulationEngine",
+          "class_ref": "class_simengine",
+          "x": 378.0,
+          "activations": []
+        },
+        {
+          "id": "life_plannernode",
+          "name": "planner: PlannerNode",
+          "class_ref": "class_plannernode",
+          "x": 656.0,
+          "activations": []
+        },
+        {
+          "id": "life_motion",
+          "name": "motion: MotionPlanner",
+          "class_ref": "class_motionplanner",
+          "x": 910.0,
+          "activations": []
+        },
+        {
+          "id": "life_ctrlnode",
+          "name": "ctrl: ControllerNode",
+          "class_ref": "class_ctrlnode",
+          "x": 1164.0,
+          "activations": []
+        },
+        {
+          "id": "life_veh",
+          "name": "veh: VehicleController",
+          "class_ref": "class_vehctrl",
+          "x": 1426.0,
+          "activations": []
+        }
+      ],
+      "messages": [
+        {
+          "id": "msg_step",
+          "from_lifeline": "life_simnode",
+          "to_lifeline": "life_engine",
+          "label": "step(command, dt)",
+          "type": "sync",
+          "order": 1,
+          "y": 190.0,
+          "note": "仿真节点按 physics_dt 调用引擎步进，传入限幅后的控制指令。"
+        },
+        {
+          "id": "msg_engine_self",
+          "from_lifeline": "life_engine",
+          "to_lifeline": "life_engine",
+          "label": "advanceEgoAndCollisionCheck()",
+          "type": "self",
+          "order": 2,
+          "y": 252.0,
+          "note": "子步推进自车动力学、更新障碍物并做 SAT 碰撞、越界与到点判定。"
+        },
+        {
+          "id": "msg_step_return",
+          "from_lifeline": "life_engine",
+          "to_lifeline": "life_simnode",
+          "label": "return state",
+          "type": "return",
+          "order": 3,
+          "y": 314.0,
+          "note": "返回新的 VehicleState。"
+        },
+        {
+          "id": "msg_publish_state",
+          "from_lifeline": "life_simnode",
+          "to_lifeline": "life_plannernode",
+          "label": "publish(vehicle/state, obstacles, reference_path)",
+          "type": "async",
+          "order": 4,
+          "y": 362.0,
+          "note": "以 sensor_data_qos 广播状态、障碍物与锁存参考线。"
+        },
+        {
+          "id": "msg_plan",
+          "from_lifeline": "life_plannernode",
+          "to_lifeline": "life_motion",
+          "label": "plan(state, obstacles, pred_loc)",
+          "type": "sync",
+          "order": 5,
+          "y": 418.0,
+          "note": "最新优先请求：清空旧请求后入队，返回是否被接受。"
+        },
+        {
+          "id": "msg_worker_self",
+          "from_lifeline": "life_motion",
+          "to_lifeline": "life_motion",
+          "label": "_plan(pred_loc, vehicle_loc, obstacles)",
+          "type": "self",
+          "order": 6,
+          "y": 480.0,
+          "note": "worker 线程选择安全车道并生成 S 型平滑换道轨迹。"
+        },
+        {
+          "id": "msg_plan_return",
+          "from_lifeline": "life_motion",
+          "to_lifeline": "life_plannernode",
+          "label": "return plannedPath",
+          "type": "return",
+          "order": 7,
+          "y": 542.0,
+          "note": "异步结果通过响应队列返回，由轮询取回。"
+        },
+        {
+          "id": "msg_publish_planned",
+          "from_lifeline": "life_plannernode",
+          "to_lifeline": "life_ctrlnode",
+          "label": "publish planned_path",
+          "type": "async",
+          "order": 8,
+          "y": 590.0,
+          "note": "锁存发布规划轨迹，供控制器订阅。"
+        },
+        {
+          "id": "msg_update_ref",
+          "from_lifeline": "life_ctrlnode",
+          "to_lifeline": "life_veh",
+          "label": "update_ref_path(path)",
+          "type": "sync",
+          "order": 9,
+          "y": 638.0,
+          "note": "优先使用 planned_path，否则回退 reference_path。"
+        },
+        {
+          "id": "msg_ctrl_step",
+          "from_lifeline": "life_ctrlnode",
+          "to_lifeline": "life_veh",
+          "label": "step(x, y, phi, vx, vy, r)",
+          "type": "sync",
+          "order": 10,
+          "y": 686.0,
+          "note": "控制周期内计算横向转角与纵向油门/刹车。"
+        },
+        {
+          "id": "msg_lat_self",
+          "from_lifeline": "life_veh",
+          "to_lifeline": "life_veh",
+          "label": "lat.control(x, y, phi, vx, vy, r, ref_path)",
+          "type": "self",
+          "order": 11,
+          "y": 748.0,
+          "note": "几何横向控制器：预瞄点匹配 + 曲率与误差反馈。"
+        },
+        {
+          "id": "msg_lon_self",
+          "from_lifeline": "life_veh",
+          "to_lifeline": "life_veh",
+          "label": "lon.control(speed)",
+          "type": "self",
+          "order": 12,
+          "y": 810.0,
+          "note": "纵向 PID 跟踪目标车速并限幅加速度。"
+        },
+        {
+          "id": "msg_ctrl_return",
+          "from_lifeline": "life_veh",
+          "to_lifeline": "life_ctrlnode",
+          "label": "return (steer, throttle, brake)",
+          "type": "return",
+          "order": 13,
+          "y": 872.0,
+          "note": "加速度映射为归一化油门/刹车。"
+        },
+        {
+          "id": "msg_publish_command",
+          "from_lifeline": "life_ctrlnode",
+          "to_lifeline": "life_simnode",
+          "label": "publish control_command",
+          "type": "async",
+          "order": 14,
+          "y": 920.0,
+          "note": "以 command_qos 发布控制指令，闭环回到仿真节点。"
+        },
+        {
+          "id": "msg_command_fresh",
+          "from_lifeline": "life_simnode",
+          "to_lifeline": "life_engine",
+          "label": "step(command, dt)",
+          "type": "sync",
+          "order": 15,
+          "y": 968.0,
+          "note": "命令新鲜（在超时窗口内）时使用收到的控制指令步进。"
+        },
+        {
+          "id": "msg_command_stale",
+          "from_lifeline": "life_simnode",
+          "to_lifeline": "life_engine",
+          "label": "step(ControlCommand(brake=1.0), dt)",
+          "type": "sync",
+          "order": 16,
+          "y": 1016.0,
+          "note": "命令超时（stale）时施加全刹车，保证安全。"
+        }
+      ],
+      "fragments": [
+        {
+          "id": "frag_loop_tick",
+          "type": "loop",
+          "label": "[each physics tick @ 20 Hz]",
+          "x": 76.0,
+          "width": 466.0,
+          "y_start": 162.0,
+          "y_end": 350.0
+        },
+        {
+          "id": "frag_loop_plan",
+          "type": "loop",
+          "label": "[each plan period @ 2 Hz]",
+          "x": 632.0,
+          "width": 442.0,
+          "y_start": 390.0,
+          "y_end": 578.0
+        },
+        {
+          "id": "frag_loop_ctrl",
+          "type": "loop",
+          "label": "[each control period @ 20 Hz]",
+          "x": 1140.0,
+          "width": 450.0,
+          "y_start": 610.0,
+          "y_end": 908.0
+        },
+        {
+          "id": "frag_alt_fresh",
+          "type": "alt",
+          "label": "[command age <= timeout]",
+          "x": 76.0,
+          "width": 466.0,
+          "y_start": 940.0,
+          "y_end": 1040.0
+        },
+        {
+          "id": "frag_alt_stale",
+          "type": "alt",
+          "label": "[else: command stale]",
+          "x": 76.0,
+          "width": 466.0,
+          "y_start": 988.0,
+          "y_end": 1088.0
+        }
+      ],
+      "components": [],
+      "comp_relations": [],
+      "grid_visible": true,
+      "grid_size": 20,
+      "grid_color": "#e0e0e0",
+      "grid_thickness": 1,
+      "snap_to_grid": true,
+      "zoom": 0.5787037037037038,
+      "pan_x": 12.5,
+      "pan_y": 82.5
+    }
+  ],
+  "active_diagram_index": 2
+}

@@ -1,0 +1,47 @@
+{
+  "map_id": "three_lane_double_obs",
+  "lane_width": 3.5,
+  "num_lanes": 3,
+  "nodes": [
+    {"id": "n0", "x": 0.0, "y": 0.0},
+    {"id": "n1", "x": 1000.0, "y": 0.0}
+  ],
+  "edges": [
+    {
+      "id": "straight_l0",
+      "road_id": "straight_1000m",
+      "lane_id": "straight_l0",
+      "from": "n0",
+      "to": "n1",
+      "lane_index": 0,
+      "speed_limit_kmh": 40.0,
+      "maneuver": "straight",
+      "centerline": [[0.0, -3.5], [1000.0, -3.5]],
+      "successors": []
+    },
+    {
+      "id": "straight_l1",
+      "road_id": "straight_1000m",
+      "lane_id": "straight_l1",
+      "from": "n0",
+      "to": "n1",
+      "lane_index": 1,
+      "speed_limit_kmh": 40.0,
+      "maneuver": "straight",
+      "centerline": [[0.0, 0.0], [1000.0, 0.0]],
+      "successors": []
+    },
+    {
+      "id": "straight_l2",
+      "road_id": "straight_1000m",
+      "lane_id": "straight_l2",
+      "from": "n0",
+      "to": "n1",
+      "lane_index": 2,
+      "speed_limit_kmh": 40.0,
+      "maneuver": "straight",
+      "centerline": [[0.0, 3.5], [1000.0, 3.5]],
+      "successors": []
+    }
+  ]
+}

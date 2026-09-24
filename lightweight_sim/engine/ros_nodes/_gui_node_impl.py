@@ -1,15 +1,20 @@
 """ROS 2 adapter that connects simulator topics and services to the GUI view."""
 
 import rclpy
+from std_msgs.msg import String
 from lightweight_sim_msgs.msg import ControlCommand, ObstacleArray, Path as RosPath
+from lightweight_sim_msgs.msg import RoutePlan as RosRoutePlan
+from lightweight_sim_msgs.msg import ReferenceLine as RosReferenceLine
 from lightweight_sim_msgs.msg import SimulationStatus, VehicleState as RosVehicleState
 from rclpy.node import Node
 from std_srvs.srv import Empty, SetBool, Trigger
 
 from ..simulator.data_types import Obstacle, PathPoint
+from ..runtime_config import DEFAULT_RUNTIME_CONFIG
 from ..visualization.ros_gui import GuiAction, GuiControl, GuiSnapshot, GuiStatus, RosGuiView
 from .planner_node import message_to_state, path_to_tuples
 from .qos import command_qos, latched_path_qos, sensor_data_qos, status_qos
+from .route_session import parse_context
 
 
 class GuiNode(Node):
@@ -19,9 +24,12 @@ class GuiNode(Node):
         super().__init__("simulator_gui")
         self.declare_parameter("screen_width", 1200)
         self.declare_parameter("screen_height", 800)
-        self.declare_parameter("lane_width", 3.5)
-        self.declare_parameter("num_lanes", 2)
-        self.declare_parameter("target_speed_kmh", 40.0)
+        self.declare_parameter("lane_width", DEFAULT_RUNTIME_CONFIG.lane_width)
+        self.declare_parameter("num_lanes", DEFAULT_RUNTIME_CONFIG.num_lanes)
+        self.declare_parameter("target_speed_kmh", DEFAULT_RUNTIME_CONFIG.target_speed_kmh)
+        self.declare_parameter("render_fps", 60)
+        self.declare_parameter("initial_mode", "CRUISE")
+        self.declare_parameter("initial_control_source", "AUTO")
 
         self.snapshot = GuiSnapshot()
         self.view = RosGuiView(
@@ -30,6 +38,7 @@ class GuiNode(Node):
             lane_width=float(self.get_parameter("lane_width").value),
             num_lanes=int(self.get_parameter("num_lanes").value),
             target_speed_kmh=float(self.get_parameter("target_speed_kmh").value),
+            render_fps=int(self.get_parameter("render_fps").value),
         )
 
         sensor_qos = sensor_data_qos()
@@ -44,6 +53,18 @@ class GuiNode(Node):
         )
         self.create_subscription(
             RosPath, "planned_path", self._on_planned, latched_path_qos()
+        )
+        self.create_subscription(
+            RosRoutePlan, "routing/route", self._on_routing, latched_path_qos()
+        )
+        self.create_subscription(
+            RosReferenceLine,
+            "routing/reference_line",
+            self._on_routing_reference,
+            latched_path_qos(),
+        )
+        self.create_subscription(
+            String, "sim/context", self._on_context, latched_path_qos()
         )
         self.create_subscription(
             SimulationStatus, "sim/status", self._on_status, status_qos()
@@ -83,6 +104,74 @@ class GuiNode(Node):
 
     def _on_planned(self, message: RosPath) -> None:
         self.snapshot.planned_path = path_to_tuples(message)
+
+    def _on_routing(self, message: RosRoutePlan) -> None:
+        if (
+            hasattr(self, "route_context")
+            and self.route_context
+            and int(message.request_id) != int(self.route_context["run_id"])
+        ):
+            return
+        self.snapshot.routing_request_id = int(message.request_id)
+        if not message.success:
+            self.snapshot.routing_path = []
+            return
+        self.snapshot.routing_path = [
+            PathPoint(x=point.x, y=point.y, theta=point.theta, kappa=point.kappa)
+            for point in message.points
+        ]
+
+    def _on_context(self, message: String) -> None:
+        context = parse_context(message)
+        if int(context["run_id"]) == self.snapshot.routing_request_id:
+            return
+        self.snapshot.routing_request_id = 0
+        self.snapshot.routing_path = []
+        self.snapshot.reference_line_path = []
+        self.snapshot.reference_lane_index = int(
+            context.get("reference_lane_index", -1)
+        )
+        self.snapshot.routing_left_boundary = []
+        self.snapshot.routing_right_boundary = []
+        self.snapshot.drivable_left_boundary = []
+        self.snapshot.drivable_right_boundary = []
+
+    def _on_routing_reference(self, message: RosReferenceLine) -> None:
+        if (
+            hasattr(self, "route_context")
+            and self.route_context
+            and int(message.request_id) != int(self.route_context["run_id"])
+        ):
+            return
+        if not message.success:
+            self.snapshot.reference_line_path = []
+            self.snapshot.reference_lane_index = -1
+            self.snapshot.routing_left_boundary = []
+            self.snapshot.routing_right_boundary = []
+            self.snapshot.drivable_left_boundary = []
+            self.snapshot.drivable_right_boundary = []
+            return
+        self.snapshot.reference_line_path = [
+            PathPoint(x=point.x, y=point.y, theta=point.theta, kappa=point.kappa)
+            for point in message.points
+        ]
+        self.snapshot.reference_lane_index = int(message.reference_lane_index)
+        self.snapshot.routing_left_boundary = [
+            PathPoint(x=point.x, y=point.y, theta=point.theta, kappa=point.kappa)
+            for point in message.left_boundary
+        ]
+        self.snapshot.routing_right_boundary = [
+            PathPoint(x=point.x, y=point.y, theta=point.theta, kappa=point.kappa)
+            for point in message.right_boundary
+        ]
+        self.snapshot.drivable_left_boundary = [
+            PathPoint(x=point.x, y=point.y, theta=point.theta, kappa=point.kappa)
+            for point in message.drivable_left_boundary
+        ]
+        self.snapshot.drivable_right_boundary = [
+            PathPoint(x=point.x, y=point.y, theta=point.theta, kappa=point.kappa)
+            for point in message.drivable_right_boundary
+        ]
 
     def _on_status(self, message: SimulationStatus) -> None:
         self.snapshot.status = GuiStatus(

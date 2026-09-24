@@ -9,7 +9,7 @@ from lightweight_sim.engine.analysis.tracking import TrackingMonitor, FigureEigh
 from lightweight_sim.engine.algorithms.utils.route import RouteGeometry
 from lightweight_sim.engine.simulator.data_types import VehicleState, PathPoint
 from lightweight_sim.visualization.ros_gui import RosGuiView
-from lightweight_sim.visualization._ros_gui_impl import GuiSnapshot
+from lightweight_sim.visualization._ros_gui_impl import GuiSnapshot, road_strip_polygons
 
 
 def test_gui_and_monitor_measure_actual_state_with_same_units():
@@ -42,6 +42,27 @@ def test_density_experiment_keeps_vertices_and_length():
     dense = resample(path, 0.5)
     assert all(p in dense for p in path)
     assert RouteGeometry(dense).length == pytest.approx(RouteGeometry(path).length)
+
+
+def test_figure_eight_road_uses_local_non_self_intersecting_strips():
+    path = []
+    for index in range(241):
+        t = 2.0 * math.pi * index / 240.0
+        x = 78.0 * math.cos(t)
+        y = 42.0 * math.sin(2.0 * t)
+        theta = math.atan2(84.0 * math.cos(2.0 * t), -78.0 * math.sin(t))
+        path.append(PathPoint(x=x, y=y, theta=theta, kappa=0.0))
+
+    strips = list(road_strip_polygons(path, lane_width=3.5, num_lanes=3))
+
+    assert len(strips) == 240
+    assert all(len(strip) == 4 for strip in strips)
+    assert all(
+        math.isfinite(value)
+        for strip in strips
+        for point in strip
+        for value in point
+    )
 
 
 def test_peak_statistics_include_time_and_empty_window_is_explicit():

@@ -3,6 +3,7 @@
 import math
 
 import numpy as np
+from ...simulator.steering import SteeringParams
 
 
 class LateralLQRController:
@@ -50,6 +51,17 @@ class LateralLQRController:
         self.last_feedforward = 0.0
         self.last_feedback = 0.0
         self.last_unclipped_steer = 0.0
+        self.actuator_params = SteeringParams()
+        self.actual_steer = 0.0
+        self.command_history = []
+
+    def configure_actuator(self, params):
+        self.actuator_params = params
+        self.command_history = [0.0] * params.delay_steps(self.ts)
+
+    def reset_actuator_history(self):
+        self.command_history = [0.0] * self.actuator_params.delay_steps(self.ts)
+        self.actual_steer = 0.0
 
     def _continuous_model(self, vx: float) -> tuple[np.ndarray, np.ndarray]:
         """Build the linearized lateral bicycle model at the current speed."""
@@ -82,7 +94,9 @@ class LateralLQRController:
 
     def _solve_dare(self, A_d: np.ndarray, B_d: np.ndarray) -> np.ndarray:
         """Iterate the discrete algebraic Riccati equation to convergence."""
-        P = self.Q.copy()
+        cost = np.zeros_like(A_d)
+        cost[:4, :4] = self.Q
+        P = cost.copy()
         self.riccati_converged = False
         max_iterations = 500
         tolerance = 1e-8
@@ -92,7 +106,7 @@ class LateralLQRController:
             next_P = (
                 A_d.T @ P @ A_d
                 - feedback_term @ np.linalg.solve(control_cost, feedback_term.T)
-                + self.Q
+                + cost
             )
             next_P = 0.5 * (next_P + next_P.T)
             if np.max(np.abs(next_P - P)) < tolerance:
@@ -108,7 +122,11 @@ class LateralLQRController:
     def update_lqr_gain(self, vx: float) -> np.ndarray:
         """Recompute ``A_d``, ``B_d``, ``P`` and ``K`` for the current speed."""
         A_c, B_c = self._continuous_model(vx)
-        if self.discretization == "plant":
+        if self.actuator_params.mode == "dynamic":
+            if self.discretization != "plant":
+                raise ValueError("augmented actuator LQR requires plant discretization")
+            A_d, B_d = self._plant_discretize(vx, actuator=True)
+        elif self.discretization == "plant":
             A_d, B_d = self._plant_discretize(vx)
         elif self.discretization == "bilinear":
             A_d, B_d = self._discretize(A_c, B_c)
@@ -122,7 +140,7 @@ class LateralLQRController:
         )
         return self.K
 
-    def _plant_discretize(self, vx):
+    def _plant_discretize(self, vx, actuator=False):
         """Linearize the simulator's held-input substeps at constant speed.
 
         z=[y, vy, phi, r]; e=[y, vy+v*phi, phi, r]. The simulator uses
@@ -145,12 +163,35 @@ class LateralLQRController:
         F[3, 1], F[3, 3] = h*m21, 1+h*m22
         F[2, 1], F[2, 3] = h*h*m21, h*(1+h*m22)
         G[1, 0], G[3, 0], G[2, 0] = h*steer_vy, h*steer_r, h*h*steer_r
-        Ad, Bd = np.eye(4), np.zeros((4, 1))
+        dimension = 4
+        if actuator:
+            # Updated actuator angle drives the vehicle in each substep.
+            alpha = math.exp(-h/self.actuator_params.time_constant_s)
+            augmented = np.eye(5)
+            augmented[:4, :4] = F
+            augmented[:4, 4] = G[:, 0]*alpha
+            augmented[4, 4] = alpha
+            input_matrix = np.zeros((5, 1))
+            input_matrix[:4, 0] = G[:, 0]*(1-alpha)
+            input_matrix[4, 0] = 1-alpha
+            F, G, dimension = augmented, input_matrix, 5
+        Ad, Bd = np.eye(dimension), np.zeros((dimension, 1))
         for _ in range(n):
             Ad, Bd = F@Ad, F@Bd+G
-        T = np.eye(4)
+        T = np.eye(dimension)
         T[1, 2] = v
-        return T@Ad@np.linalg.inv(T), T@Bd
+        Ad, Bd = T@Ad@np.linalg.inv(T), T@Bd
+        delay = self.actuator_params.delay_steps(self.ts) if actuator else 0
+        if delay:
+            delayed_A = np.zeros((dimension+delay, dimension+delay))
+            delayed_B = np.zeros((dimension+delay, 1))
+            delayed_A[:dimension, :dimension] = Ad
+            delayed_A[:dimension, dimension] = Bd[:, 0]
+            for i in range(delay-1):
+                delayed_A[dimension+i, dimension+i+1] = 1.0
+            delayed_B[-1, 0] = 1.0
+            return delayed_A, delayed_B
+        return Ad, Bd
 
     def control_from_error(self, error_state, kappa: float, vx: float) -> float:
         """Return curvature feedforward plus Riccati state feedback."""
@@ -164,11 +205,17 @@ class LateralLQRController:
             self.b / self.Cf - self.a / self.Cr
         )
         delta_ff = math.atan(wheelbase * float(kappa) + understeer * float(kappa))
+        if self.actuator_params.mode == "dynamic":
+            error = np.concatenate((error, [self.actual_steer-delta_ff],
+                                    np.asarray(self.command_history)-delta_ff))
         delta = delta_ff - float((self.K @ error)[0])
         self.last_feedforward = delta_ff
         self.last_feedback = -float((self.K @ error)[0])
         self.last_unclipped_steer = delta
-        return max(-self.max_steer, min(self.max_steer, delta))
+        command = max(-self.max_steer, min(self.max_steer, delta))
+        if self.command_history:
+            self.command_history = self.command_history[1:] + [command]
+        return command
 
     def control(self, x, y, phi, vx, vy, r, ref_path):
         """Fallback point-based control for callers without projected matching."""

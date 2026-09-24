@@ -17,6 +17,7 @@ class LateralLQRController(_DynamicLateralLQRController):
         self.smooth_reference_heading = True
 
     def reset_tracking(self):
+        self.reset_actuator_history()
         self.tracker = None
         self._path = None
         self.min_index = 0

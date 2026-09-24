@@ -68,3 +68,142 @@ ros2 service call /sim/pause std_srvs/srv/SetBool "{data: true}"
 `gui:=true` 启动的是 ROS 2 GUI 客户端，不会创建第二个 `SimulationEngine`。仿真仍由 `simulator_node` 推进，GUI 只订阅状态、障碍物、参考路径、规划路径和 `/sim/status`，并通过服务控制仿真。
 
 GUI 依赖 Pygame；首次使用前执行 `python3 -m pip install -r requirements.txt`。WSL 下会自动优先使用 WSLg 的 X11 桥接；也可以通过 `SDL_VIDEODRIVER` 显式覆盖。GUI 需要 WSLg 或其他 Linux 图形环境；如果只做后台测试，可以不传 `gui:=true`。快捷键：`R` 重置，`P` 暂停/继续，`N` 单步，`+/-` 或鼠标滚轮缩放，`ESC` 退出 GUI。
+## Runtime parameter alignment
+
+Both execution paths use the same core `VehicleController`, `MotionPlanner` and `SimulationEngine`. Shared timing and safety defaults are maintained in `engine/runtime_config.py`: physics/control period 0.05 s, planning period 0.5 s, prediction horizon 0.2 s, and the common timeout values. Scenario-specific vehicle, road and target-speed values are carried by `sim/context` in ROS 2; ROS transport and stale-data braking remain adapter behavior.
+## Current WSL2 quick start
+
+The current environment uses ROS 2 `lyrical` inside WSL2. Every new terminal must source the ROS environment before `ros2`, `colcon`, or the Python ROS packages are available.
+
+```bash
+cd /mnt/d/AI_tools/vehicle_motion
+source /opt/ros/lyrical/setup.bash
+
+# The repository is on /mnt/d. Use a regular build here; --symlink-install
+# can fail while colcon cleans Python package links on the Windows-mounted drive.
+colcon build
+source install/setup.bash
+```
+
+Start the three-lane figure-eight scenario:
+
+```bash
+ros2 launch lightweight_sim lightweight_sim.launch.py \
+  scenario:=figure_eight \
+  gui:=true \
+  steering_profile:=ideal
+```
+
+Use `gui:=false` when WSLg or a Linux display is unavailable. The simulation can then be inspected from another WSL terminal:
+
+```bash
+source /opt/ros/lyrical/setup.bash
+cd /mnt/d/AI_tools/vehicle_motion
+source install/setup.bash
+
+ros2 topic list
+ros2 topic echo /vehicle/state
+ros2 topic echo /planned_path
+ros2 topic echo /control_command
+ros2 topic echo /sim/status --once
+ros2 topic hz /vehicle/state
+```
+
+If `ros2: command not found` appears, run `source /opt/ros/lyrical/setup.bash` in that same terminal. If a previous build failed, remove only the generated package artifacts and rebuild:
+
+```bash
+rm -rf build/lightweight_sim install/lightweight_sim log
+colcon build
+source install/setup.bash
+```
+
+## Unified mode framework
+
+The recommended integrated launch is provided by `parking_module` so that
+`lightweight_sim` remains independent from the parking implementation:
+
+```bash
+ros2 launch parking_module unified_vehicle.launch.py gui:=true
+```
+
+The graph has one final actuator writer:
+
+```text
+cruise_controller_node  --/control_command/cruise--+
+parking_controller_node --/control_command/parking-+--> controller_manager
+GUI                     --/control_mode------------+    --/control_command--> simulator_node
+```
+
+The GUI shows task buttons `CRUISE`, `PARKING` and `E-STOP`, plus a control
+source button `AUTO`/`MANUAL`. Clicking `PARKING` also switches the scene to
+`reverse_parking`; clicking `CRUISE` returns from that scene to `default`.
+The same task actions are available with `C`, `K` and `E`, while `Q` toggles
+the control source. In manual mode, `W/S` drive forward/reverse, `A/D` steer,
+and `SPACE` brakes; releasing the movement keys produces a zero-throttle
+command. The manager brakes during a mode transition and whenever the
+selected candidate command is missing or stale.
+
+To start directly in the parking mode without the GUI:
+
+```bash
+ros2 launch parking_module unified_vehicle.launch.py \
+  scenario:=reverse_parking mode:=PARKING gui:=false
+```
+
+The legacy `lightweight_sim.launch.py` remains available for compatibility.
+In that launch, `controller_node` still writes directly to
+`/control_command`; use the unified launch when switching between multiple
+control modes.
+## Reverse parking scene
+
+The `reverse_parking` scene provides a perpendicular parking slot bounded by
+two side walls and a rear wall. It is intended for an external parking
+controller rather than the built-in forward tracking controller.
+
+```bash
+ros2 launch lightweight_sim lightweight_sim.launch.py \
+  scenario:=reverse_parking \
+  controller_enabled:=false \
+  gui:=true
+```
+
+The external controller should publish `lightweight_sim_msgs/msg/ControlCommand`
+with `gear: -1` for reverse motion. The simulator publishes the resulting
+signed longitudinal velocity in `VehicleState.vx`. Use `controller_enabled:=true`
+only when testing the standard forward tracking controller.
+
+### 独立泊车规划控制模块
+
+仓库根目录下的 `parking_module/` 是独立的泊车规划控制 ROS 2 包。其核心
+规划器和控制器不导入 `lightweight_sim`；只有 `parking_controller_node` 负责
+将核心接口适配到 ROS 消息。因此后续可以独立替换规划器（例如 Hybrid A*）
+或控制器，而不修改仿真器。
+
+先构建并加载工作空间：
+
+```bash
+source /opt/ros/lyrical/setup.bash
+colcon build
+source install/setup.bash
+```
+
+在 `/mnt/d` Windows 挂载目录上建议使用普通 `colcon build`，不要使用
+`--symlink-install`，避免 colcon 清理符号链接时触发文件系统兼容性错误。
+
+启动倒车入库仿真时关闭内置控制器：
+
+```bash
+ros2 launch lightweight_sim lightweight_sim.launch.py \
+  scenario:=reverse_parking controller_enabled:=false gui:=true
+```
+
+另一个终端启动独立泊车控制器：
+
+```bash
+source /opt/ros/lyrical/setup.bash
+source install/setup.bash
+ros2 run parking_module parking_controller_node
+```
+
+该节点读取 `vehicle/state`、`obstacles` 和锁存的 `sim/context`，只在上下文
+中的 `maneuver` 为 `reverse_parking` 时规划并发布 `control_command`。

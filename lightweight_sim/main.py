@@ -7,14 +7,7 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from lightweight_sim.engine.simulator.app import SimulatorApp
-
-
-SCENARIOS = {
-    "default": SimulatorApp._default_config,
-    "obstacle": SimulatorApp.straight_with_obstacle,
-    "three_lane": SimulatorApp.three_lane_double_obstacle,
-    "curve": SimulatorApp.curve_scenario,
-}
+from lightweight_sim.engine.simulator.scenarios import SCENARIOS, make_scenario
 
 
 def main(argv=None):
@@ -28,7 +21,7 @@ def main(argv=None):
         help="scenario to run",
     )
     args = parser.parse_args(argv)
-    SimulatorApp(SCENARIOS[args.scenario]()).run()
+    SimulatorApp(make_scenario(args.scenario)).run()
 
 
 if __name__ == "__main__":

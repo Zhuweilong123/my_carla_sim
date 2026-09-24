@@ -237,3 +237,30 @@ SimulatorApp 内置四个场景工厂：
 8. 将控制器和规划器参数外置，支持批量实验。
 
 设计原则是：先保证单位一致、时间确定、失败可恢复，再逐步增加高保真模型和复杂算法。
+
+## 14. 转向执行器适配（2026-09-19）
+
+当前有两种显式模式：默认 `ideal` 保留 P2 理想执行器结果；`assumed` 启用未标定的
+转向执行器。ROS 启动参数为 `steering_profile:=assumed`。此配置不是实车标定，
+不得把通过仿真验收表述为实车可部署。
+
+- `ScenarioConfig.vehicle_params` / `steering` 为车辆与执行器参数入口，仿真器通过
+  `sim/context` 发布同一配置；控制器同步轴距、质量、侧偏刚度、输入限值及执行器模型。
+- 请求量是物理前轮转角 rad；`VehicleState.steer` / ROS `steering_angle` 是实际前轮角，
+  不再保证等于请求角。方向盘传动比、死区和零偏标定尚未实现。
+- 假设模式：一周期 0.05 s 纯延迟、0.15 s 一阶时间常数、0.6 rad/s 物理速率上限；
+  最大前轮角取 `VehicleParams.max_steer`（默认 0.5 rad）。来源标为 engineering assumption。
+- 执行器在物理子步解限速一阶响应；纯延迟以外层周期 FIFO 实现。延迟必须是固定周期
+  的整数倍，不做隐藏取整；换周期需复位。理想模式忽略延迟/惯性/速率参数。
+- LQR 增广为四维误差 + 实际前轮角 + 延迟命令队列；在当前曲率前馈附近进行反馈，
+  线性模型包含一阶动态与延迟，但不含激活的速率饱和。实际对象始终执行物理限制。
+- `VehicleController` 的受限模式采用 R=300，理想模式仍为 R=100；Q 的四维跟踪权重不变，
+  增广状态没有额外直接代价。模型失配实验记录了这一精度/平顺性取舍。
+- 复位清空两端执行器历史；普通参考路径刷新保留历史。ROS 受限模式检测到状态周期缺口时
+  锁存保持当前转角/制动请求，需 reset 或切换新场景才能恢复；这不是车辆安全停车证明。
+- 纵向执行器仍为线性加速度映射；轮胎饱和、附着约束、状态估计和可行速度规划属于后续工作。
+
+实验、失败对照和限制见 [执行器适配报告](records/actuator_20260919/README.md)。
+## Runtime alignment
+
+The standalone and ROS 2 entry points share the controller, planner, vehicle model and runtime defaults from `engine/runtime_config.py`. The standalone adapter uses the same 0.05 s physics/control period and 0.5 s planning period as the ROS configuration. Transport, timers and ROS safety timeouts remain adapter-specific.

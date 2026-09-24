@@ -12,10 +12,34 @@ from ..utils.frenet import find_match_points
 
 
 class MotionPlanner:
-    def __init__(self, global_frenet_path, lane_width=3.5, num_lanes=2):
+    def __init__(
+        self,
+        global_frenet_path,
+        lane_width=3.5,
+        num_lanes=2,
+        *,
+        horizon_points=80,
+        corridor_margin_m=1.1,
+        transition_distance_m=35.0,
+        obstacle_longitudinal_min_m=-5.0,
+        obstacle_longitudinal_max_m=65.0,
+        obstacle_lateral_clearance_m=2.2,
+    ):
         self.global_path = global_frenet_path
         self.lane_width = lane_width
         self.num_lanes = num_lanes
+        self.horizon_points = int(horizon_points)
+        self.corridor_margin_m = float(corridor_margin_m)
+        self.transition_distance_m = float(transition_distance_m)
+        self.obstacle_longitudinal_min_m = float(obstacle_longitudinal_min_m)
+        self.obstacle_longitudinal_max_m = float(obstacle_longitudinal_max_m)
+        self.obstacle_lateral_clearance_m = float(obstacle_lateral_clearance_m)
+        if self.horizon_points < 2:
+            raise ValueError("horizon_points must be at least two")
+        if self.corridor_margin_m < 0.0:
+            raise ValueError("corridor margin must be non-negative")
+        if self.transition_distance_m <= 0.0:
+            raise ValueError("transition distance must be positive")
         self._requests = queue.Queue(maxsize=1)
         self._responses = queue.Queue(maxsize=1)
         self._thread = None
@@ -160,7 +184,7 @@ class MotionPlanner:
 
         idx, _ = find_match_points([pred_loc], path, True, 0)
         start = max(0, int(idx[0]))
-        horizon = min(len(path), start + 80)
+        horizon = min(len(path), start + self.horizon_points)
         ref = path[start:horizon]
         theta = ref[0][2]
         normal = (-math.sin(theta), math.cos(theta))
@@ -169,7 +193,7 @@ class MotionPlanner:
         )
 
         half_road = self.num_lanes * self.lane_width / 2
-        usable = half_road - 1.1
+        usable = half_road - self.corridor_margin_m
         candidates = [
             -half_road + self.lane_width * (i + 0.5)
             for i in range(self.num_lanes)
@@ -194,7 +218,12 @@ class MotionPlanner:
 
         def is_safe(target):
             for ds_index, _, lateral in obstacle_sl:
-                if -5 <= ds_index <= 65 and abs(target - lateral) < 2.2:
+                if (
+                    self.obstacle_longitudinal_min_m
+                    <= ds_index
+                    <= self.obstacle_longitudinal_max_m
+                    and abs(target - lateral) < self.obstacle_lateral_clearance_m
+                ):
                     return False
             return True
 
@@ -209,7 +238,6 @@ class MotionPlanner:
         # downsampled three-lane road and was restarted at every replan.
         result = []
         travelled = 0.0
-        transition_distance = 35.0
         for index, point in enumerate(ref):
             if index > 0:
                 previous = ref[index - 1]
@@ -217,7 +245,7 @@ class MotionPlanner:
                     point[0] - previous[0],
                     point[1] - previous[1],
                 )
-            ratio = max(0.0, min(1.0, travelled / transition_distance))
+            ratio = max(0.0, min(1.0, travelled / self.transition_distance_m))
             smooth = ratio * ratio * (3 - 2 * ratio)
             lateral = l0 + (target - l0) * smooth
             normal = (-math.sin(point[2]), math.cos(point[2]))

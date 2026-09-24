@@ -1,0 +1,35 @@
+{
+  "map_id": "straight_obstacle",
+  "lane_width": 3.5,
+  "num_lanes": 2,
+  "nodes": [
+    {"id": "n0", "x": 0.0, "y": 0.0},
+    {"id": "n1", "x": 200.0, "y": 0.0}
+  ],
+  "edges": [
+    {
+      "id": "straight_l0",
+      "road_id": "straight_200m",
+      "lane_id": "straight_l0",
+      "from": "n0",
+      "to": "n1",
+      "lane_index": 0,
+      "speed_limit_kmh": 40.0,
+      "maneuver": "straight",
+      "centerline": [[0.0, -1.75], [200.0, -1.75]],
+      "successors": []
+    },
+    {
+      "id": "straight_l1",
+      "road_id": "straight_200m",
+      "lane_id": "straight_l1",
+      "from": "n0",
+      "to": "n1",
+      "lane_index": 1,
+      "speed_limit_kmh": 40.0,
+      "maneuver": "straight",
+      "centerline": [[0.0, 1.75], [200.0, 1.75]],
+      "successors": []
+    }
+  ]
+}

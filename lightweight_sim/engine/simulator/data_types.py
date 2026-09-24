@@ -2,6 +2,8 @@
 from dataclasses import dataclass, field
 from typing import List, Tuple, Optional
 import math
+from .steering import SteeringParams
+from ..runtime_config import DEFAULT_RUNTIME_CONFIG
 
 @dataclass
 class PathPoint:
@@ -55,6 +57,27 @@ class VehicleParams:
     max_steer: float = 0.5
     max_accel: float = 3.0
     max_decel: float = 6.0
+    width: float = 2.0
+    body_overhang: float = 1.0
+    def __post_init__(self):
+        positive = (
+            self.a,
+            self.b,
+            self.m,
+            self.Iz,
+            self.max_steer,
+            self.max_accel,
+            self.max_decel,
+            self.width,
+            self.body_overhang,
+        )
+        if not all(math.isfinite(v) and v > 0 for v in positive):
+            raise ValueError("vehicle geometry, mass, inertia and limits must be positive and finite")
+        if not all(math.isfinite(v) and v < 0 for v in (self.Cf, self.Cr)):
+            raise ValueError("cornering stiffness uses the negative-force sign convention")
+    @property
+    def lateral_tuple(self):
+        return (self.a, self.b, self.m, self.Cf, self.Cr, self.Iz)
     @property
     def wheelbase(self) -> float:
         return self.a + self.b
@@ -84,14 +107,19 @@ class Obstacle:
 class RoadSegment:
     type: str = "waypoints"
     params: dict = field(default_factory=dict)
-    lane_width: float = 3.5
-    num_lanes: int = 2
+    lane_width: float = DEFAULT_RUNTIME_CONFIG.lane_width
+    num_lanes: int = DEFAULT_RUNTIME_CONFIG.num_lanes
 
 @dataclass
 class RoadDef:
     segments: List[RoadSegment] = field(default_factory=list)
-    lane_width: float = 3.5
-    num_lanes: int = 2
+    lane_width: float = DEFAULT_RUNTIME_CONFIG.lane_width
+    num_lanes: int = DEFAULT_RUNTIME_CONFIG.num_lanes
+    # The road geometry is allowed to be authored on a lane centerline.  A
+    # negative value keeps the legacy geometric-centerline convention.
+    reference_lane_index: int = -1
+    max_reference_curvature_1pm: float = DEFAULT_RUNTIME_CONFIG.max_reference_curvature_1pm
+    junction_angle_threshold_rad: float = DEFAULT_RUNTIME_CONFIG.junction_angle_threshold_rad
 
 @dataclass
 class ScenarioConfig:
@@ -103,11 +131,24 @@ class ScenarioConfig:
     ego_start_phi: float = 0.0
     ego_start_speed: float = 10.0
     target_speed: float = 50.0
+    speed_limit_type: str = "straight"
+    speed_limit_kmh: float = 40.0
+    target_speed_ratio: float = 0.85
+    speed_limits: dict = field(default_factory=dict)
+    max_lateral_accel_mps2: float = 2.0
     obstacles: List[dict] = field(default_factory=list)
-    controller: str = "LQR_controller"
+    controller: str = DEFAULT_RUNTIME_CONFIG.controller
     planner: dict = field(default_factory=dict)
     destination: Optional[Tuple[float, float]] = None
+    routing_map_id: Optional[str] = None
+    routing_start_lane: int = -1
+    routing_goal_lane: int = -1
     vehicle_model: str = "kinematic"
+    maneuver: str = "cruise"
+    parking_goal: Optional[Tuple[float, float, float]] = None
+    vehicle_params: VehicleParams = field(default_factory=VehicleParams)
+    steering: SteeringParams = field(default_factory=SteeringParams)
+    physics_dt: float = DEFAULT_RUNTIME_CONFIG.physics_dt
 
 @dataclass
 class LogEntry:
