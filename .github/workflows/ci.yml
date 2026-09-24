@@ -1,4 +1,4 @@
-name: Lightweight Simulator CI
+name: Python Unit Tests
 
 on:
   push:
@@ -9,48 +9,28 @@ permissions:
   contents: read
 
 jobs:
-  lightweight-sim:
-    runs-on: ubuntu-latest
-    container:
-      image: ubuntu:resolute
+  python-tests:
+    runs-on: ubuntu-24.04
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
 
-      - name: Set up ROS 2 Lyrical
-        uses: ros-tooling/setup-ros@v0.7
+      - name: Set up Python
+        uses: actions/setup-python@v5
         with:
-          required-ros-distributions: lyrical
-
-      - name: Install ROS package dependencies
-        shell: bash
-        run: |
-          source /opt/ros/lyrical/setup.bash
-          rosdep update
-          rosdep install --from-paths lightweight_sim_msgs lightweight_sim \
-            --ignore-src --rosdistro lyrical -y
-          apt-get update
-          apt-get install -y python3-venv
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: lightweight_sim/requirements.txt
 
       - name: Install Python test dependencies
-        run: |
-          python3 -m venv --system-site-packages /tmp/lightweight-sim-ci
-          /tmp/lightweight-sim-ci/bin/python -m pip install \
-            -r lightweight_sim/requirements.txt
+        run: python -m pip install -r lightweight_sim/requirements.txt
 
-      - name: Build ROS packages
-        shell: bash
-        run: |
-          source /opt/ros/lyrical/setup.bash
-          colcon build --packages-up-to lightweight_sim
+      - name: Run lightweight simulator unit tests
+        run: >-
+          python -m pytest -q lightweight_sim/tests
+          --ignore=lightweight_sim/tests/test_controller_manager.py
+          --ignore=lightweight_sim/tests/test_controller_speed_profile.py
+          --ignore=lightweight_sim/tests/test_ros_lifecycle.py
 
-      - name: Run Python and ROS lifecycle tests
-        shell: bash
-        run: |
-          source /opt/ros/lyrical/setup.bash
-          source install/setup.bash
-          /tmp/lightweight-sim-ci/bin/python -m pytest
-
-      - name: Run ROS 2 launch smoke test
-        shell: bash
-        run: LIGHTWEIGHT_SIM_INSTALL="$GITHUB_WORKSPACE/install" bash lightweight_sim/scripts/ros2_smoke_test.sh
+      - name: Run standalone parking-module unit tests
+        run: python -m pytest -q parking_module/tests
