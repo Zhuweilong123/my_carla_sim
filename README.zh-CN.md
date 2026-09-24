@@ -10,9 +10,9 @@ Vehicle Motion 是一个轻量级二维车辆仿真与 ROS 2 规划控制工作�
 - ROS 2 节点覆盖仿真、A* 车道拓扑 Routing、路线参考线生成、局部规划、巡航控制、模式仲裁，以及 Routing/规划数据缺失或过期时的安全停车。
 - 二维 GUI 作为 ROS 图的客户端运行，不会创建第二个仿真实例；可显示道路、Routing/参考线、局部规划路径、车辆状态和控制状态，并支持运行时切换场景和模式。
 - 独立的 `parking_module` ROS 2 包，提供倒车入库基线规划器和控制器适配节点。
-- 回归测试及 GitHub Actions：构建 ROS 包、运行 Python/ROS 测试和 launch smoke test。
+- 回归测试与拆分后的 GitHub Actions：每次 push/PR 运行无 ROS 的 Python 测试；相关改动或手动触发时运行 ROS 构建、集成测试和 launch smoke test。
 
-默认仿真与控制周期为 0.05 秒（20 Hz）。车辆、规划器、Routing、控制器、GUI 和安全相关参数主要配置在 `lightweight_sim/config/default.yaml`；共享时序默认值位于 `lightweight_sim/engine/runtime_config.py`。
+默认仿真与控制周期为 0.05 秒（20 Hz）。车辆、规划器、Routing、控制器、GUI 和安全相关参数主要配置在 `lightweight_sim/config/default.yaml`；共享时序默认值位于 `lightweight_sim/engine/runtime_config.py`。设计文档统一位于 `lightweight_sim/`：[设计总览](lightweight_sim/design/DESIGN.md)、[算法说明](lightweight_sim/design/ALGORITHMS.md)、[ROS 2 架构](lightweight_sim/design/ROS2.md)、[Routing](lightweight_sim/design/ROUTING.md) 和[参考线](lightweight_sim/design/REFERENCE_LINE.md)。
 
 ## 构建与启动（ROS 2 / WSL2）
 
@@ -50,7 +50,7 @@ GUI 使用数字键 `1`–`7` 切换场景：
 | 6 | `reverse_parking` | 垂直车位倒车入库场景；自动泊车需使用泊车模块。 |
 | 7 | `demo_grid` | 双向城市路网，每个方向两条车道，包含多个路口。 |
 
-标准仿真 launch 默认启动 Routing。内置 JSON 地图位于 `lightweight_sim/config/maps/`；Routing 节点默认加载该地图目录，各场景会请求对应地图和车道。可以通过 Routing 节点参数 `map_dir` 或 `map_file` 使用自定义地图。地图格式、A* 行为及参考线校验/平滑详见 [Routing 文档](lightweight_sim/ROUTING.md) 和[参考线文档](lightweight_sim/REFERENCE_LINE.md)。
+标准仿真 launch 默认启动 Routing。内置 JSON 地图位于 `lightweight_sim/config/maps/`；Routing 节点默认加载该地图目录，各场景会请求对应地图和车道。可以通过 Routing 节点参数 `map_dir` 或 `map_file` 使用自定义地图。地图格式、A* 行为及参考线校验/平滑详见 [Routing 文档](lightweight_sim/design/ROUTING.md) 和[参考线文档](lightweight_sim/design/REFERENCE_LINE.md)。
 
 ## GUI 操作
 
@@ -105,7 +105,7 @@ ros2 service call /sim/pause std_srvs/srv/SetBool '{data: true}'
 ros2 service call /sim/step std_srvs/srv/Trigger '{}'
 ```
 
-`/control_command` 是最终执行器指令。巡航、手动和泊车控制器使用不同的候选话题，由 `controller_manager` 仲裁。若当前 run 缺少匹配的 Routing/参考线/局部规划结果，或规划数据过期，`safe_stop_node` 会请求制动。节点图、QoS、服务和 launch 参数详见 [ROS 2 架构文档](lightweight_sim/ROS2.md)。
+`/control_command` 是最终执行器指令。巡航、手动和泊车控制器使用不同的候选话题，由 `controller_manager` 仲裁。若当前 run 缺少匹配的 Routing/参考线/局部规划结果，或规划数据过期，`safe_stop_node` 会请求制动。节点图、QoS、服务和 launch 参数详见 [ROS 2 架构文档](lightweight_sim/design/ROS2.md)。
 
 ## 测试与 CI
 
