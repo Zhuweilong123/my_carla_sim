@@ -1,15 +1,16 @@
 """ROS 2 node that exposes the deterministic SimulationEngine."""
 
 import math
+import json
+from pathlib import Path
 from typing import Optional
 
 import rclpy
+from ament_index_python.packages import get_package_share_directory
 from builtin_interfaces.msg import Time
 from lightweight_sim_msgs.msg import ControlCommand as RosControlCommand
 from lightweight_sim_msgs.msg import Obstacle as RosObstacle
 from lightweight_sim_msgs.msg import ObstacleArray
-from lightweight_sim_msgs.msg import Path as RosPath
-from lightweight_sim_msgs.msg import PathPoint
 from lightweight_sim_msgs.msg import SimulationStatus
 from lightweight_sim_msgs.msg import VehicleState as RosVehicleState
 from rclpy.node import Node
@@ -24,6 +25,32 @@ from ..runtime_config import DEFAULT_RUNTIME_CONFIG
 from .qos import clock_qos, command_qos, latched_path_qos, sensor_data_qos, status_qos
 
 
+def attach_map_road_network(config) -> None:
+    """Attach optional full-map drivable geometry from the selected map file."""
+    map_id = getattr(config, "routing_map_id", None)
+    if not map_id:
+        return
+    try:
+        map_path = Path(get_package_share_directory("lightweight_sim")) / "config" / "maps" / f"{map_id}.json"
+    except Exception:
+        map_path = Path(__file__).resolve().parents[2] / "config" / "maps" / f"{map_id}.json"
+    if not map_path.is_file():
+        return
+    with map_path.open("r", encoding="utf-8") as stream:
+        data = json.load(stream)
+    network = data.get("road_network", [])
+    if not network:
+        return
+    config.road.road_network = [
+        [(float(point[0]), float(point[1])) for point in polyline]
+        for polyline in network
+    ]
+    config.road.road_network_num_lanes = int(
+        data.get("road_network_num_lanes", config.road.num_lanes)
+    )
+    config.road.lane_width = float(data.get("lane_width", config.road.lane_width))
+
+
 def seconds_to_time(seconds: float) -> Time:
     seconds = max(0.0, float(seconds))
     whole = int(seconds)
@@ -36,6 +63,9 @@ class SimulatorNode(Node):
         self.declare_parameter("scenario", "obstacle")
         self.declare_parameter("steering_profile", "ideal")
         self.declare_parameter("physics_dt", DEFAULT_RUNTIME_CONFIG.physics_dt)
+        self.declare_parameter(
+            "dynamic_max_substep_s", DEFAULT_RUNTIME_CONFIG.dynamic_max_substep_s
+        )
         self.declare_parameter("command_timeout", DEFAULT_RUNTIME_CONFIG.command_timeout)
         self.declare_parameter(
             "default_speed_limit_kmh", DEFAULT_RUNTIME_CONFIG.default_speed_limit_kmh
@@ -86,7 +116,16 @@ class SimulatorNode(Node):
         self.publish_clock_enabled = bool(self.get_parameter("publish_clock").value)
         self.frame_id = str(self.get_parameter("frame_id").value)
         config = make_scenario(scenario_name)
+        attach_map_road_network(config)
         config.physics_dt = self.physics_dt
+        config.dynamic_max_substep_s = float(
+            self.get_parameter("dynamic_max_substep_s").value
+        )
+        if (
+            not math.isfinite(config.dynamic_max_substep_s)
+            or config.dynamic_max_substep_s <= 0.0
+        ):
+            raise ValueError("dynamic_max_substep_s must be positive and finite")
         self._apply_runtime_parameters(config)
         self.engine = SimulationEngine(config)
         self.command = ControlCommand()
@@ -96,9 +135,6 @@ class SimulatorNode(Node):
         sensor_qos = sensor_data_qos()
         self.state_pub = self.create_publisher(RosVehicleState, "vehicle/state", sensor_qos)
         self.obstacle_pub = self.create_publisher(ObstacleArray, "obstacles", sensor_qos)
-        self.reference_pub = self.create_publisher(
-            RosPath, "reference_path", latched_path_qos()
-        )
         self.status_pub = self.create_publisher(
             SimulationStatus, "sim/status", status_qos()
         )
@@ -110,7 +146,7 @@ class SimulatorNode(Node):
         self.pause_srv = self.create_service(SetBool, "sim/pause", self._on_pause)
         self.step_srv = self.create_service(Trigger, "sim/step", self._on_step)
         self.timer = self.create_timer(self.physics_dt, self._on_timer)
-        self._publish_reference(sequence=0)
+        self._publish_run_context(sequence=0)
         self._publish_status()
         self.get_logger().info(
             f"simulator ready: scenario={scenario_name} dt={self.physics_dt:.3f}"
@@ -222,7 +258,7 @@ class SimulatorNode(Node):
         self.command = ControlCommand()
         self.last_command_time = self.get_clock().now()
         self.paused = False
-        self._publish_reference(sequence=0)
+        self._publish_run_context(sequence=0)
         self._publish_state()
         self._publish_status()
         return response
@@ -234,16 +270,8 @@ class SimulatorNode(Node):
         response.message = "paused" if self.paused else "running"
         return response
 
-    def _publish_reference(self, sequence: int) -> None:
-        message = RosPath()
-        message.header.stamp = seconds_to_time(self.engine.sim_time)
-        message.header.frame_id = self.frame_id
-        message.sequence = sequence
-        message.points = [
-            PathPoint(x=p[0], y=p[1], theta=p[2], kappa=p[3])
-            for p in self.engine.world.ref_path_as_tuples
-        ]
-        self.reference_pub.publish(message)
+    def _publish_run_context(self, sequence: int) -> None:
+        """Hook for run-scoped routing context in the ROS adapter."""
 
     def _publish_state(self) -> None:
         stamp = seconds_to_time(self.engine.sim_time)

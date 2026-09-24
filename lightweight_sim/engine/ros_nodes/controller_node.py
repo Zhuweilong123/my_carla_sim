@@ -20,6 +20,41 @@ from ..simulator.steering import SteeringParams
 from ..runtime_config import DEFAULT_RUNTIME_CONFIG
 
 
+def maximum_path_curvature(path, x: float, y: float, lookahead_m: float) -> float:
+    """Return the greatest absolute curvature near the pose and ahead on a path."""
+
+    if not path:
+        return 0.0
+    nearest = min(
+        range(len(path)),
+        key=lambda index: (path[index][0] - x) ** 2 + (path[index][1] - y) ** 2,
+    )
+    maximum = abs(float(path[nearest][3]))
+    distance = 0.0
+    for index in range(nearest + 1, len(path)):
+        previous, current = path[index - 1], path[index]
+        distance += math.hypot(current[0] - previous[0], current[1] - previous[1])
+        if distance > lookahead_m:
+            break
+        maximum = max(maximum, abs(float(current[3])))
+    return maximum
+
+
+def curvature_limited_speed_kmh(
+    target_speed_kmh: float,
+    maximum_curvature_1pm: float,
+    maximum_lateral_accel_mps2: float,
+) -> float:
+    """Limit the route speed so local path curvature respects lateral acceleration."""
+
+    if maximum_curvature_1pm <= 1e-6:
+        return target_speed_kmh
+    curve_speed_kmh = math.sqrt(
+        maximum_lateral_accel_mps2 / maximum_curvature_1pm
+    ) * 3.6
+    return min(target_speed_kmh, curve_speed_kmh)
+
+
 class ControllerNode(Node):
     def __init__(self) -> None:
         super().__init__("controller_node")
@@ -33,7 +68,7 @@ class ControllerNode(Node):
         self.declare_parameter(
             "speed_profile_lookahead_m", DEFAULT_RUNTIME_CONFIG.speed_profile_lookahead_m
         )
-        self.declare_parameter("output_topic", "control_command")
+        self.declare_parameter("output_topic", "control_command/cruise")
         self.declare_parameter("actuator_compensation", True)
         self.declare_parameter("lateral_q_weights", [200.0, 1.0, 50.0, 1.0])
         self.declare_parameter("lateral_r", 100.0)
@@ -85,13 +120,11 @@ class ControllerNode(Node):
             self._on_routing_reference,
             latched_path_qos(),
         )
+        self._pending_routing_reference = None
 
         sensor_qos = sensor_data_qos()
         self.state_sub = self.create_subscription(
             RosVehicleState, "vehicle/state", self._on_state, sensor_qos
-        )
-        self.reference_sub = self.create_subscription(
-            RosPath, "reference_path", self._on_reference, latched_path_qos()
         )
         self.planned_sub = self.create_subscription(
             RosPath, "planned_path", self._on_planned, latched_path_qos()
@@ -160,6 +193,9 @@ class ControllerNode(Node):
         )
         self.actuator_timing_fault = False
         self.active_run = None
+        if self.reference_run != context["run_id"]:
+            self.reference_path = []
+            self.reference_run = None
         self.routing_speed_points = []
         self.routing_speed_s = []
         self.routing_speed_profile = []
@@ -169,16 +205,40 @@ class ControllerNode(Node):
         self.state = None
         self.last_control_stamp = None
         self.last_sequence = -1
+        pending_reference = self._pending_routing_reference
+        if (
+            pending_reference is not None
+            and int(pending_reference.request_id) == context["run_id"]
+        ):
+            self._pending_routing_reference = None
+            self._on_routing_reference(pending_reference)
         self._activate_reference()
 
     def _on_routing_reference(self, message: RosReferenceLine) -> None:
-        """Cache route segment limits for ratio-based longitudinal control."""
-
-        if not message.success or len(message.points) < 2:
-            return
+        """Use only the routing reference matching the active simulation run."""
         run_id = int(message.request_id)
-        if self.route_context and run_id != self.route_context["run_id"]:
+        if self.route_context is None:
+            self._pending_routing_reference = message
             return
+        if self.route_context and run_id != self.route_context["run_id"]:
+            if run_id > self.route_context["run_id"]:
+                self._pending_routing_reference = message
+            return
+        if not message.success or len(message.points) < 2:
+            self.reference_path = []
+            self.reference_run = None
+            self.active_run = None
+            self.planned_path = []
+            self.plan_ready = False
+            self.routing_speed_points = []
+            self.routing_speed_s = []
+            self.routing_speed_profile = []
+            return
+        self.reference_path = [
+            (float(point.x), float(point.y), float(point.theta), float(point.kappa))
+            for point in message.points
+        ]
+        self.reference_run = run_id
         points = [
             (float(point.x), float(point.y), float(point.kappa))
             for point in message.points
@@ -215,6 +275,7 @@ class ControllerNode(Node):
         self.routing_speed_points = points
         self.routing_speed_s = cumulative
         self.routing_speed_profile = profile
+        self._activate_reference()
 
     def _target_speed_at(self, x: float, y: float) -> float:
         """Return the current route-limit target, or the scene fallback."""
@@ -248,12 +309,20 @@ class ControllerNode(Node):
             abs(self.routing_speed_points[index][2])
             for index in range(nearest_index, end_index + 1)
         )
-        if max_abs_curvature > 1e-6:
-            curve_speed_mps = math.sqrt(
-                self.max_lateral_accel_mps2 / max_abs_curvature
+        max_abs_curvature = max(
+            max_abs_curvature,
+            maximum_path_curvature(
+                self.planned_path,
+                x,
+                y,
+                self.speed_profile_lookahead_m,
             )
-            target_speed = min(target_speed, curve_speed_mps * 3.6)
-        return target_speed
+        )
+        return curvature_limited_speed_kmh(
+            target_speed,
+            max_abs_curvature,
+            self.max_lateral_accel_mps2,
+        )
 
     def _activate_reference(self):
         if not self.route_context or self.reference_run != self.route_context["run_id"]:
@@ -277,21 +346,6 @@ class ControllerNode(Node):
         self.controller.lon.dt = float(self.route_context["physics_dt"])
         from rclpy.parameter import Parameter
         self.set_parameters([Parameter("target_speed_kmh", value=float(self.route_context["target_speed_kmh"]))])
-
-    def _on_reference(self, message: RosPath) -> None:
-        run, version = decode_sequence(message.sequence)
-        if version or (self.route_context and run < self.route_context["run_id"]):
-            return
-        path = path_to_tuples(message)
-        if path:
-            self.reference_path = path
-            self.reference_run = run
-            if run != self.active_run:
-                self.active_run = None
-                self.planned_path = []
-                self.plan_time = None
-                self.plan_ready = False
-            self._activate_reference()
 
     def _on_planned(self, message: RosPath) -> None:
         run, version = decode_sequence(message.sequence)

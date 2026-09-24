@@ -7,6 +7,7 @@ import math
 from ..algorithms.planner.motion_planner import MotionPlanner
 from ..algorithms.utils.frenet import find_match_points
 from ..algorithms.utils.geometry import cal_heading_kappa
+from ..runtime_config import DEFAULT_RUNTIME_CONFIG
 
 
 class RouteAwareMotionPlanner(MotionPlanner):
@@ -24,7 +25,7 @@ class RouteAwareMotionPlanner(MotionPlanner):
         drivable_right_boundary=(),
         corridor_margin_m: float = 1.1,
         horizon_points: int = 80,
-        transition_distance_m: float = 12.0,
+        transition_distance_m: float = DEFAULT_RUNTIME_CONFIG.local_transition_distance_m,
         collision_margin_m: float = 0.25,
         obstacle_longitudinal_min_m: float = -5.0,
         obstacle_longitudinal_max_m: float = 65.0,
@@ -72,8 +73,20 @@ class RouteAwareMotionPlanner(MotionPlanner):
 
         idx, _ = find_match_points([pred_loc], path, True, 0)
         start = max(0, int(idx[0]))
-        horizon = min(len(path), start + self.horizon_points)
-        ref = path[start:horizon]
+        closed = math.hypot(path[0][0] - path[-1][0], path[0][1] - path[-1][1]) < 1e-6
+        cycle_size = len(path) - 1 if closed else len(path)
+        start = min(start, cycle_size - 1)
+        indices = [
+            (start + offset) % cycle_size if closed else start + offset
+            for offset in range(min(self.horizon_points, cycle_size - start if not closed else cycle_size))
+        ]
+        if closed and len(indices) < min(self.horizon_points, cycle_size):
+            indices.extend(
+                range(0, min(self.horizon_points, cycle_size) - len(indices))
+            )
+        ref = [path[index] for index in indices]
+        if len(ref) < 2:
+            return []
         theta = ref[0][2]
         normal = (-math.sin(theta), math.cos(theta))
         l0 = normal[0] * (vehicle_loc[0] - ref[0][0]) + normal[1] * (
@@ -98,7 +111,12 @@ class RouteAwareMotionPlanner(MotionPlanner):
             lateral = (ox - reference[0]) * normal[0] + (
                 oy - reference[1]
             ) * normal[1]
-            obstacle_sl.append((index - start, lateral))
+            index_delta = index - start
+            if closed:
+                index_delta %= cycle_size
+                if index_delta > cycle_size / 2.0:
+                    index_delta -= cycle_size
+            obstacle_sl.append((index_delta, lateral))
 
         def is_safe(target):
             return all(
@@ -114,8 +132,8 @@ class RouteAwareMotionPlanner(MotionPlanner):
         def is_in_corridor(target):
             return all(
                 lower <= target <= upper
-                for index, point in enumerate(ref)
-                for lower, upper in [self._corridor_bounds(start + index, point)]
+                for index, point in zip(indices, ref)
+                for lower, upper in [self._corridor_bounds(index, point)]
             )
 
         preferred = (
@@ -130,7 +148,7 @@ class RouteAwareMotionPlanner(MotionPlanner):
         for candidate in candidates:
             if not is_safe(candidate) or not is_in_corridor(candidate):
                 continue
-            candidate_path = self._build_candidate(ref, start, l0, candidate)
+            candidate_path = self._build_candidate(ref, indices, l0, candidate)
             if self._trajectory_is_safe(candidate_path, obstacles):
                 candidates_with_paths.append((candidate, candidate_path))
 
@@ -151,19 +169,19 @@ class RouteAwareMotionPlanner(MotionPlanner):
         )
         return result
 
-    def _build_candidate(self, ref, start, l0, target):
+    def _build_candidate(self, ref, indices, l0, target):
         xy_points = []
         travelled = 0.0
-        for index, point in enumerate(ref):
-            if index > 0:
-                previous = ref[index - 1]
+        for local_index, (path_index, point) in enumerate(zip(indices, ref)):
+            if local_index > 0:
+                previous = ref[local_index - 1]
                 travelled += math.hypot(
                     point[0] - previous[0], point[1] - previous[1]
                 )
             ratio = max(0.0, min(1.0, travelled / self.transition_distance_m))
             smooth = ratio * ratio * (3.0 - 2.0 * ratio)
             lateral = l0 + (target - l0) * smooth
-            lower, upper = self._corridor_bounds(start + index, point)
+            lower, upper = self._corridor_bounds(path_index, point)
             lateral = max(lower, min(upper, lateral))
             normal = (-math.sin(point[2]), math.cos(point[2]))
             xy_points.append(

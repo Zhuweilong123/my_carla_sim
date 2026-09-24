@@ -37,6 +37,8 @@ class GuiNode(_LegacyGuiNode):
         self.snapshot.mode = self._requested_mode
         self.snapshot.control_source = self._control_source
         self.route_context = None
+        self._pending_route = None
+        self._pending_reference_line = None
         self.create_subscription(String, "sim/context", self._on_context, latched_path_qos())
         self.create_subscription(String, "tracking/metrics", self._on_tracking, sensor_data_qos())
         self.scenario_client = self.create_client(
@@ -64,25 +66,70 @@ class GuiNode(_LegacyGuiNode):
         self.view.target_speed_kmh = context["target_speed_kmh"]
         self.view.lane_width = context["lane_width"]
         self.view.num_lanes = context["num_lanes"]
-        self.snapshot.reference_line_path = []
-        self.snapshot.routing_left_boundary = []
-        self.snapshot.routing_right_boundary = []
-        self.snapshot.drivable_left_boundary = []
-        self.snapshot.drivable_right_boundary = []
+        self.snapshot.road_network = [
+            [(float(point[0]), float(point[1])) for point in road]
+            for road in context.get("road_network", [])
+        ]
+        self.snapshot.road_network_num_lanes = int(
+            context.get("road_network_num_lanes", 0)
+        )
+        if self.snapshot.reference_line_request_id != context["run_id"]:
+            self.snapshot.reference_line_path = []
+            self.snapshot.reference_line_request_id = 0
+            self.snapshot.reference_lane_index = int(
+                context.get("reference_lane_index", -1)
+            )
+            self.snapshot.routing_left_boundary = []
+            self.snapshot.routing_right_boundary = []
+            self.snapshot.drivable_left_boundary = []
+            self.snapshot.drivable_right_boundary = []
         if self.snapshot.routing_request_id != context["run_id"]:
             self.snapshot.routing_path = []
             self.snapshot.routing_request_id = 0
         self.snapshot.state = None
         self.snapshot.obstacles = []
-        # ``sim/context`` and ``reference_path`` are independent latched
-        # topics; their callbacks are not ordered. Keep the simulator path
-        # until the matching new reference arrives. Routing overlays are
-        # cleared above because they are tied to the previous run ID.
+        # Routing overlays are tied to the previous run ID; clear them until
+        # matching route and reference-line messages arrive.
         self.snapshot.planned_path = []
         self.snapshot.tracking_metrics = None
         self.snapshot._tracking_monitor = None
         self.view.hud.ed_history.clear()
         self.view.hud.ephi_history.clear()
+        for attribute, callback in (
+            ("_pending_route", self._on_routing),
+            ("_pending_reference_line", self._on_routing_reference),
+        ):
+            pending = getattr(self, attribute)
+            if pending is None:
+                continue
+            pending_run = int(pending.request_id)
+            if pending_run < context["run_id"]:
+                setattr(self, attribute, None)
+            elif pending_run == context["run_id"]:
+                setattr(self, attribute, None)
+                callback(pending)
+
+    def _on_routing(self, message):
+        if self.route_context:
+            message_run = int(message.request_id)
+            current_run = int(self.route_context["run_id"])
+            if message_run > current_run:
+                self._pending_route = message
+                return
+            if message_run < current_run:
+                return
+        super()._on_routing(message)
+
+    def _on_routing_reference(self, message):
+        if self.route_context:
+            message_run = int(message.request_id)
+            current_run = int(self.route_context["run_id"])
+            if message_run > current_run:
+                self._pending_reference_line = message
+                return
+            if message_run < current_run:
+                return
+        super()._on_routing_reference(message)
 
     def _on_tracking(self, message):
         measured = json.loads(message.data)

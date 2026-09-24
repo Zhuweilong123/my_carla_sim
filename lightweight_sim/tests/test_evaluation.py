@@ -18,7 +18,7 @@ def test_gui_and_monitor_measure_actual_state_with_same_units():
     measured = TrackingMonitor(path).update(state)
     assert measured["ed_m"] == pytest.approx(0.5)
     assert measured["ephi_deg"] == pytest.approx(5)
-    snapshot = GuiSnapshot(state=state, reference_path=[PathPoint(*p) for p in path])
+    snapshot = GuiSnapshot(state=state, reference_line_path=[PathPoint(*p) for p in path])
     ed, ephi = RosGuiView._tracking_error(snapshot)
     assert (ed, math.degrees(ephi)) == pytest.approx((0.5, 5))
     snapshot.tracking_metrics = measured

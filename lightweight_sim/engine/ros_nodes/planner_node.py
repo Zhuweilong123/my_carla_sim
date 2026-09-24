@@ -16,7 +16,7 @@ from ..reference_line import RouteAwareMotionPlanner
 from ..simulator.data_types import Obstacle, VehicleState
 from ..runtime_config import DEFAULT_RUNTIME_CONFIG
 from .qos import latched_path_qos, sensor_data_qos
-from .route_session import decode_sequence, encode_sequence, parse_context
+from .route_session import encode_sequence, parse_context
 
 
 def message_to_state(message: RosVehicleState) -> VehicleState:
@@ -45,38 +45,37 @@ class PlannerNode(Node):
         self.declare_parameter("lane_width", DEFAULT_RUNTIME_CONFIG.lane_width)
         self.declare_parameter("num_lanes", DEFAULT_RUNTIME_CONFIG.num_lanes)
         self.declare_parameter("prediction_time", DEFAULT_RUNTIME_CONFIG.prediction_time)
-        self.declare_parameter("use_routing_reference", True)
         self.declare_parameter("routing_reference_topic", "routing/reference_line")
         self.declare_parameter("routing_corridor_margin_m", 1.1)
         self.declare_parameter("local_plan_points", 80)
-        self.declare_parameter("local_transition_distance_m", 12.0)
+        self.declare_parameter(
+            "local_transition_distance_m",
+            DEFAULT_RUNTIME_CONFIG.local_transition_distance_m,
+        )
         self.declare_parameter("local_collision_margin_m", 0.25)
         self.declare_parameter("local_obstacle_longitudinal_min_m", -5.0)
         self.declare_parameter("local_obstacle_longitudinal_max_m", 65.0)
         self.declare_parameter("local_obstacle_lateral_clearance_m", 2.2)
         self.declare_parameter("local_vehicle_length_m", 4.0)
         self.declare_parameter("local_vehicle_width_m", 2.0)
-        self.path = []
         self.state: Optional[VehicleState] = None
         self.obstacles = []
         self.sequence = 0
         self.planner: Optional[MotionPlanner] = None
         self.plan_pending = False
         self.route_context = None
-        self.reference_run = None
         self.active_run = None
         self.active_reference_source = None
+        self.sequence = 0
         self.routing_reference_path = []
         self.routing_reference_run = None
+        self._pending_routing_reference = None
         self.routing_reference_lane = -1
         self.routing_target_lane = -1
         self.routing_drivable_left_boundary = []
         self.routing_drivable_right_boundary = []
         self.create_subscription(String, "sim/context", self._on_context, latched_path_qos())
 
-        self.path_sub = self.create_subscription(
-            RosPath, "reference_path", self._on_path, latched_path_qos()
-        )
         self.routing_reference_sub = self.create_subscription(
             RosReferenceLine,
             str(self.get_parameter("routing_reference_topic").value),
@@ -100,25 +99,13 @@ class PlannerNode(Node):
             self._poll_result,
         )
 
-    def _on_path(self, message: RosPath) -> None:
-        run, version = decode_sequence(message.sequence)
-        if version or (self.route_context and run < self.route_context["run_id"]):
-            return
-        path = path_to_tuples(message)
-        if not path:
-            return
-        self.path = path
-        self.reference_run = run
-        self._activate_reference()
-
     def _on_context(self, message):
         context = parse_context(message)
         if self.route_context and context["run_id"] <= self.route_context["run_id"]:
             return
         self.route_context = context
-        self.active_run = None
-        self.active_reference_source = None
-        self.plan_pending = False
+        self._stop_planner()
+        self.sequence = 0
         self.state = None
         self.obstacles = []
         if self.routing_reference_run != context["run_id"]:
@@ -128,16 +115,25 @@ class PlannerNode(Node):
             self.routing_target_lane = -1
             self.routing_drivable_left_boundary = []
             self.routing_drivable_right_boundary = []
-        if self.planner is not None:
-            self.planner.stop()
-            self.planner = None
+        pending_reference = self._pending_routing_reference
+        if pending_reference is not None:
+            pending_run = int(pending_reference.request_id)
+            if pending_run <= context["run_id"]:
+                self._pending_routing_reference = None
+                if pending_run == context["run_id"]:
+                    self._on_routing_reference(pending_reference)
         self._activate_reference()
 
     def _on_routing_reference(self, message: RosReferenceLine) -> None:
-        if not message.success or len(message.points) < 2:
-            return
         run_id = int(message.request_id)
         if self.route_context and run_id != self.route_context["run_id"]:
+            if run_id > self.route_context["run_id"]:
+                self._pending_routing_reference = message
+            return
+        if not message.success or len(message.points) < 2:
+            self.routing_reference_path = []
+            self.routing_reference_run = run_id
+            self._stop_planner()
             return
         self.routing_reference_path = [
             (point.x, point.y, point.theta, point.kappa)
@@ -162,35 +158,27 @@ class PlannerNode(Node):
         self._activate_reference()
 
     def _activate_reference(self):
-        if not self.route_context or self.reference_run != self.route_context["run_id"]:
+        if not self.route_context:
             return
-        routing_ready = (
-            bool(self.get_parameter("use_routing_reference").value)
-            and self.routing_reference_run == self.route_context["run_id"]
-            and len(self.routing_reference_path) >= 2
-        )
-        source = "routing" if routing_ready else "simulator"
         if (
-            self.active_run == self.reference_run
-            and self.active_reference_source == source
+            self.routing_reference_run != self.route_context["run_id"]
+            or len(self.routing_reference_path) < 2
         ):
             return
-        if self.planner is not None:
-            self.planner.stop()
-        new_run = self.active_run != self.reference_run
-        self.active_run = self.reference_run
-        self.active_reference_source = source
+        if self.active_run == self.route_context["run_id"]:
+            return
+        self._stop_planner()
+        self.active_run = self.route_context["run_id"]
+        self.active_reference_source = "routing"
         self.plan_pending = False
-        if new_run:
-            self.sequence = 0
+        self.sequence = 0
         from rclpy.parameter import Parameter
         self.set_parameters([
             Parameter("lane_width", value=float(self.route_context["lane_width"])),
             Parameter("num_lanes", value=int(self.route_context["num_lanes"]))])
         lane_width = float(self.get_parameter("lane_width").value)
         num_lanes = int(self.get_parameter("num_lanes").value)
-        if routing_ready:
-            self.planner = RouteAwareMotionPlanner(
+        self.planner = RouteAwareMotionPlanner(
                 self.routing_reference_path,
                 lane_width=lane_width,
                 num_lanes=num_lanes,
@@ -224,32 +212,18 @@ class PlannerNode(Node):
                     self.get_parameter("local_vehicle_width_m").value
                 ),
             )
-        else:
-            self.planner = MotionPlanner(
-                self.path,
-                lane_width=lane_width,
-                num_lanes=num_lanes,
-                horizon_points=int(self.get_parameter("local_plan_points").value),
-                corridor_margin_m=float(
-                    self.get_parameter("routing_corridor_margin_m").value
-                ),
-                transition_distance_m=float(
-                    self.get_parameter("local_transition_distance_m").value
-                ),
-                obstacle_longitudinal_min_m=float(
-                    self.get_parameter("local_obstacle_longitudinal_min_m").value
-                ),
-                obstacle_longitudinal_max_m=float(
-                    self.get_parameter("local_obstacle_longitudinal_max_m").value
-                ),
-                obstacle_lateral_clearance_m=float(
-                    self.get_parameter("local_obstacle_lateral_clearance_m").value
-                ),
-            )
         self.planner.start()
         if self.state is not None:
             self._request_plan()
-        self.get_logger().info(f"planner reference source={source}")
+        self.get_logger().info("planner reference source=routing")
+
+    def _stop_planner(self):
+        if self.planner is not None:
+            self.planner.stop()
+            self.planner = None
+        self.active_run = None
+        self.active_reference_source = None
+        self.plan_pending = False
 
     def _on_state(self, message: RosVehicleState) -> None:
         self.state = message_to_state(message)
@@ -257,7 +231,8 @@ class PlannerNode(Node):
         # a reference and a state.  Waiting for the periodic timer leaves the
         # controller tracking the road centre line for one planning period.
         if (
-            self.active_run == self.reference_run
+            self.route_context
+            and self.active_run == self.route_context["run_id"]
             and self.planner is not None
             and self.sequence == 0
             and not self.plan_pending
@@ -280,7 +255,7 @@ class PlannerNode(Node):
         ]
 
     def _request_plan(self) -> None:
-        if self.active_run != self.reference_run or self.planner is None or self.state is None or self.plan_pending:
+        if self.route_context is None or self.active_run != self.route_context["run_id"] or self.planner is None or self.state is None or self.plan_pending:
             return
         prediction_time = float(self.get_parameter("prediction_time").value)
         state = self.state

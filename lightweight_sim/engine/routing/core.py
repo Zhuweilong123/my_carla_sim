@@ -82,6 +82,7 @@ class RoutingCore:
         goal_lane: int = -1,
         route_policy: str = "fastest",
         allow_u_turn: bool = False,
+        closed_loop: bool = False,
     ) -> RoutePlan:
         from .models import Pose2D
 
@@ -94,5 +95,6 @@ class RoutingCore:
                 goal_lane=goal_lane,
                 route_policy=route_policy,
                 allow_u_turn=allow_u_turn,
+                closed_loop=closed_loop,
             )
         )

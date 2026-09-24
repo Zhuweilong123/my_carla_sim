@@ -59,7 +59,29 @@ class World(_LegacyWorld):
                 best_lateral = (-dy * offset_x + dx * offset_y) / math.sqrt(length_sq)
         return best_lateral
 
+    def distance_to_reference(self, x, y):
+        if not self.road_def.road_network:
+            return super().distance_to_reference(x, y)
+        best = float("inf")
+        for polyline in self.road_def.road_network:
+            for first, second in zip(polyline[:-1], polyline[1:]):
+                dx = second[0] - first[0]
+                dy = second[1] - first[1]
+                length_sq = dx * dx + dy * dy
+                if length_sq <= 1e-12:
+                    continue
+                projection = ((x - first[0]) * dx + (y - first[1]) * dy) / length_sq
+                projection = max(0.0, min(1.0, projection))
+                px = first[0] + projection * dx
+                py = first[1] + projection * dy
+                best = min(best, math.hypot(x - px, y - py))
+        return best
+
     def is_on_road(self, x, y, margin=0.0):
+        if self.road_def.road_network:
+            lane_count = self.road_def.road_network_num_lanes or self.num_lanes
+            half_width = lane_count * self.lane_width / 2.0
+            return self.distance_to_reference(x, y) <= half_width + margin
         if self.reference_lane_index < 0:
             return super().is_on_road(x, y, margin)
         lateral = self._signed_lateral_to_reference(x, y)

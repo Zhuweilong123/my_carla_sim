@@ -49,9 +49,6 @@ class GuiNode(Node):
             ObstacleArray, "obstacles", self._on_obstacles, sensor_qos
         )
         self.create_subscription(
-            RosPath, "reference_path", self._on_reference, latched_path_qos()
-        )
-        self.create_subscription(
             RosPath, "planned_path", self._on_planned, latched_path_qos()
         )
         self.create_subscription(
@@ -96,12 +93,6 @@ class GuiNode(Node):
             for item in message.obstacles
         ]
 
-    def _on_reference(self, message: RosPath) -> None:
-        self.snapshot.reference_path = [
-            PathPoint(x=p[0], y=p[1], theta=p[2], kappa=p[3])
-            for p in path_to_tuples(message)
-        ]
-
     def _on_planned(self, message: RosPath) -> None:
         self.snapshot.planned_path = path_to_tuples(message)
 
@@ -143,6 +134,7 @@ class GuiNode(Node):
             and int(message.request_id) != int(self.route_context["run_id"])
         ):
             return
+        self.snapshot.reference_line_request_id = int(message.request_id)
         if not message.success:
             self.snapshot.reference_line_path = []
             self.snapshot.reference_lane_index = -1

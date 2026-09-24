@@ -1,12 +1,13 @@
 """Select exactly one controller candidate for the simulator actuator topic."""
 
 import json
+import time
 from typing import Dict, Optional
 
 import rclpy
 from lightweight_sim_msgs.msg import ControlCommand, ControlMode, VehicleState
 from rclpy.node import Node
-from std_msgs.msg import String
+from std_msgs.msg import Bool, String
 
 from .qos import command_qos, latched_path_qos, sensor_data_qos, status_qos
 
@@ -32,6 +33,7 @@ class ControllerManager(Node):
         self.declare_parameter("switch_hold_s", 0.5)
         self.declare_parameter("command_timeout", 0.35)
         self.declare_parameter("update_period", 0.02)
+        self.declare_parameter("safety_stop_timeout_s", 0.25)
         requested = self._normalize(str(self.get_parameter("default_mode").value))
         self._mode = requested or "CRUISE"
         self._control_source = self._normalize_source(
@@ -40,8 +42,11 @@ class ControllerManager(Node):
         self._commands: Dict[str, ControlCommand] = {}
         self._received_at: Dict[str, object] = {}
         self._vehicle_speed = 0.0
-        self._hold_until = self.get_clock().now()
+        self._hold_until = time.monotonic()
         self._run_id = 0
+        self._safety_stop = True
+        self._safety_received_at = None
+        self._last_brake_reason = None
 
         self._output_pub = self.create_publisher(ControlCommand, "control_command", command_qos())
         self._status_pub = self.create_publisher(ControlMode, "control_mode/status", status_qos())
@@ -50,6 +55,9 @@ class ControllerManager(Node):
         self.create_subscription(ControlMode, "control_mode", self._on_mode, command_qos())
         self.create_subscription(VehicleState, "vehicle/state", self._on_state, sensor_data_qos())
         self.create_subscription(String, "sim/context", self._on_context, latched_path_qos())
+        self.create_subscription(
+            Bool, "safety/stop_request", self._on_safety_stop, command_qos()
+        )
         for mode, topic in self.MODES.items():
             self.create_subscription(
                 ControlCommand,
@@ -83,15 +91,15 @@ class ControllerManager(Node):
             return
         if mode != self._mode:
             self._mode = mode
-            self._hold_until = self.get_clock().now() + rclpy.duration.Duration(
-                seconds=float(self.get_parameter("switch_hold_s").value)
+            self._hold_until = time.monotonic() + float(
+                self.get_parameter("switch_hold_s").value
             )
             self.get_logger().info(f"control mode switched to {mode} (source={message.source})")
         source = self._normalize_source(message.control_source)
         if source != self._control_source:
             self._control_source = source
-            self._hold_until = self.get_clock().now() + rclpy.duration.Duration(
-                seconds=float(self.get_parameter("switch_hold_s").value)
+            self._hold_until = time.monotonic() + float(
+                self.get_parameter("switch_hold_s").value
             )
             self.get_logger().info(
                 f"control source switched to {source} (source={message.source})"
@@ -113,14 +121,20 @@ class ControllerManager(Node):
         self._run_id = run_id
         self._commands.clear()
         self._received_at.clear()
-        self._hold_until = self.get_clock().now() + rclpy.duration.Duration(
-            seconds=float(self.get_parameter("switch_hold_s").value)
+        self._safety_stop = True
+        self._safety_received_at = None
+        self._hold_until = time.monotonic() + float(
+            self.get_parameter("switch_hold_s").value
         )
         self._publish_status("route_reset")
 
     def _on_candidate(self, mode: str, message: ControlCommand) -> None:
         self._commands[mode] = message
         self._received_at[mode] = self.get_clock().now()
+
+    def _on_safety_stop(self, message: Bool) -> None:
+        self._safety_stop = bool(message.data)
+        self._safety_received_at = time.monotonic()
 
     def _publish_status(self, source: str) -> None:
         message = ControlMode()
@@ -130,7 +144,10 @@ class ControllerManager(Node):
         message.source = f"controller_manager:{source}"
         self._status_pub.publish(message)
 
-    def _brake_command(self) -> ControlCommand:
+    def _brake_command(self, reason: str) -> ControlCommand:
+        if reason != self._last_brake_reason:
+            self.get_logger().warning(f"actuator arbitration braking: {reason}")
+            self._last_brake_reason = reason
         message = ControlCommand()
         message.header.stamp = self.get_clock().now().to_msg()
         message.brake = 1.0
@@ -141,22 +158,37 @@ class ControllerManager(Node):
         return message
 
     def _tick(self) -> None:
-        if self._mode == "EMERGENCY_STOP":
-            self._output_pub.publish(self._brake_command())
+        safety_age = (
+            float("inf")
+            if self._safety_received_at is None
+            else time.monotonic() - self._safety_received_at
+        )
+        if (
+            self._safety_stop
+            or safety_age > float(self.get_parameter("safety_stop_timeout_s").value)
+        ):
+            reason = "safety stop requested" if self._safety_stop else "safety heartbeat stale"
+            self._output_pub.publish(self._brake_command(reason))
             return
-        if self.get_clock().now() < self._hold_until:
-            self._output_pub.publish(self._brake_command())
+        if self._mode == "EMERGENCY_STOP":
+            self._output_pub.publish(self._brake_command("emergency stop mode"))
+            return
+        if time.monotonic() < self._hold_until:
+            self._output_pub.publish(self._brake_command("mode switch hold"))
             return
         selected = "MANUAL" if self._control_source == "MANUAL" else self._mode
         received_at = self._received_at.get(selected)
         command = self._commands.get(selected)
         if received_at is None or command is None:
-            self._output_pub.publish(self._brake_command())
+            self._output_pub.publish(self._brake_command("selected controller has no command"))
             return
         age = (self.get_clock().now() - received_at).nanoseconds / 1e9
         if age > float(self.get_parameter("command_timeout").value):
-            self._output_pub.publish(self._brake_command())
+            self._output_pub.publish(self._brake_command("selected controller command stale"))
             return
+        if self._last_brake_reason is not None:
+            self.get_logger().info("actuator arbitration resumed: controller command is fresh")
+            self._last_brake_reason = None
         self._output_pub.publish(command)
 
 

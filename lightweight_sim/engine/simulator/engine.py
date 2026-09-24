@@ -37,6 +37,9 @@ class SimulationEngine:
         self.step_count = 0
         self.physics_dt = 0.05
         self.vehicle_model = getattr(config, "vehicle_model", "kinematic")
+        self.dynamic_max_substep_s = float(config.dynamic_max_substep_s)
+        if not math.isfinite(self.dynamic_max_substep_s) or self.dynamic_max_substep_s <= 0.0:
+            raise ValueError("dynamic_max_substep_s must be positive and finite")
         self.target_speed = config.target_speed
         self.destination = config.destination
         self.collision_occurred = False
@@ -101,6 +104,11 @@ class SimulationEngine:
         accel = throttle * params.max_accel - brake * params.max_decel
         self.steering.begin_period(raw_steer, dt)
         substeps = max(1, int(math.ceil(self.ego.get_state().speed * dt / 0.5)))
+        if self.vehicle_model == "dynamic":
+            substeps = max(
+                substeps,
+                int(math.ceil(dt / self.dynamic_max_substep_s)),
+            )
         subdt = dt / substeps
         state = self.ego.get_state()
 

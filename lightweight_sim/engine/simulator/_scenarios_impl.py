@@ -32,61 +32,32 @@ def default_config() -> ScenarioConfig:
 
 
 def demo_grid_scenario() -> ScenarioConfig:
-    """Follow the left branch of the built-in demo-grid routing map."""
+    """Follow a multi-intersection route through the built-in city grid."""
 
     road = RoadDef(
         segments=[
             RoadSegment(
-                "straight",
-                {"length": 100.0, "heading": 0.0, "start": (0.0, 0.0)},
-            ),
-            RoadSegment(
-                "arc",
-                {
-                    "radius": 35.0,
-                    "angle": math.pi / 2.0,
-                    "center": (100.0, 35.0),
-                    "start_angle": -math.pi / 2.0,
-                    "resolution": 2.0,
-                },
-            ),
-            RoadSegment(
-                "straight",
-                {"length": 6.5, "heading": math.pi / 2.0, "start": (135.0, 35.0)},
-            ),
-            RoadSegment(
-                "arc",
-                {
-                    "radius": 35.0,
-                    "angle": -math.pi / 2.0,
-                    "center": (170.0, 41.5),
-                    "start_angle": math.pi,
-                    "resolution": 2.0,
-                },
-            ),
-            RoadSegment(
-                "straight",
-                {"length": 30.0, "heading": 0.0, "start": (170.0, 76.5)},
+                "waypoints",
+                {"points": [(0.0, 0.0), (100.0, 0.0), (100.0, 100.0), (100.0, 200.0)]},
             ),
         ],
         lane_width=3.5,
-        num_lanes=2,
-        reference_lane_index=0,
+        num_lanes=4,
     )
     return ScenarioConfig(
         name="demo_grid",
-        description="Demo grid junction with a left-turn route",
+        description="Two-way 3x3 city grid with two lanes per direction",
         road=road,
-        ego_start_x=10.0,
-        ego_start_y=0.0,
+        ego_start_x=20.0,
+        ego_start_y=-1.75,
         ego_start_phi=0.0,
         ego_start_speed=3.0,
         speed_limit_type="straight",
         controller="LQR_controller",
-        destination=(200.0, 76.5),
+        destination=(101.75, 160.0),
         routing_map_id="demo_grid",
-        routing_start_lane=0,
-        routing_goal_lane=0,
+        routing_start_lane=1,
+        routing_goal_lane=1,
     )
 
 

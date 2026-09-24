@@ -27,6 +27,7 @@ def figure_eight_three_lane() -> ScenarioConfig:
         segments=[RoadSegment("waypoints", {"points": points})],
         lane_width=3.5,
         num_lanes=3,
+        reference_lane_index=1,
     )
     return ScenarioConfig(
         name="figure_eight_three_lane",
@@ -40,6 +41,10 @@ def figure_eight_three_lane() -> ScenarioConfig:
         controller="LQR_controller",
         vehicle_model="dynamic",
         destination=None,
+        routing_map_id="figure_eight",
+        routing_start_lane=1,
+        routing_goal_lane=1,
+        routing_closed_loop=True,
     )
 
 

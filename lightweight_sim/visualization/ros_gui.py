@@ -27,7 +27,7 @@ class _ScenarioHUD(_LegacyHUD):
         pygame.draw.rect(panel, (12, 18, 27, 215), panel.get_rect(), border_radius=7)
         pygame.draw.rect(panel, self.BORDER, panel.get_rect(), 1, border_radius=7)
         if auto_mode:
-            hint = "1-6 scene   C cruise   K parking   E stop   P pause   R reset"
+            hint = "1-7 scene   C cruise   K parking   E stop   P pause   R reset"
         else:
             hint = "W/S drive   A/D steer   SPACE brake   Q auto   E stop"
         self._text(hint, x + 14, y + 10, self.font_small, self.MUTED)
@@ -46,6 +46,7 @@ class RosGuiView(_LegacyRosGuiView):
         (pygame.K_4, "curve"),
         (pygame.K_5, "figure_eight"),
         (pygame.K_6, "reverse_parking"),
+        (pygame.K_7, "demo_grid"),
     )
 
     MODE_BUTTONS = (
@@ -64,7 +65,7 @@ class RosGuiView(_LegacyRosGuiView):
         measured = getattr(snapshot, "tracking_metrics", None)
         if measured and abs(state.timestamp-measured["timestamp"]) <= 0.25:
             return measured["ed_m"], math.radians(measured["ephi_deg"])
-        source = snapshot.planned_path or snapshot.reference_path
+        source = snapshot.planned_path or snapshot.reference_line_path
         if len(source) < 2:
             return 0.0, 0.0
         monitor = getattr(snapshot, "_tracking_monitor", None)
@@ -108,6 +109,7 @@ class RosGuiView(_LegacyRosGuiView):
         self.render_fps = max(1, int(render_fps))
         self.started_at = time.monotonic()
         self._history_scenario = ""
+        self._camera_scenario = ""
         self._scenario_key_state = {
             key: False for key, _name in self.SCENARIO_KEYS
         }

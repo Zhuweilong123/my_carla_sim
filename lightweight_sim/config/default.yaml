@@ -4,6 +4,7 @@ simulator_node:
     # The simulator owns /clock and uses a wall timer to advance fixed-step physics.
     use_sim_time: false
     scenario: obstacle
+    dynamic_max_substep_s: 0.0025
     # Opt in with launch steering_profile:=assumed; not real-vehicle calibration.
     steering_profile: ideal
     physics_dt: 0.05
@@ -38,12 +39,11 @@ planner_node:
   ros__parameters:
     # Planner timers and output timestamps follow the simulator clock.
     use_sim_time: true
-    plan_period: 0.5
+    plan_period: 0.05
     result_poll_period: 0.02
     prediction_time: 0.2
     lane_width: 3.5
     num_lanes: 2
-    use_routing_reference: true
     routing_reference_topic: routing/reference_line
     routing_corridor_margin_m: 1.1
     local_plan_points: 80
@@ -67,7 +67,7 @@ controller_node:
     control_period: 0.05
     state_timeout: 0.25
     plan_timeout: 1.5
-    output_topic: control_command
+    output_topic: control_command/cruise
     actuator_compensation: true
     lateral_q_weights: [200.0, 1.0, 50.0, 1.0]
     lateral_r: 100.0
@@ -129,4 +129,13 @@ controller_manager:
     default_control_source: AUTO
     switch_hold_s: 0.5
     command_timeout: 0.35
+    safety_stop_timeout_s: 0.25
     update_period: 0.02
+
+safe_stop_node:
+  ros__parameters:
+    use_sim_time: false
+    planned_path_timeout_s: 0.25
+    update_period_s: 0.05
+    reference_topic: routing/reference_line
+    stop_topic: safety/stop_request

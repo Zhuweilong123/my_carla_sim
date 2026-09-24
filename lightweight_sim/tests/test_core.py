@@ -42,6 +42,23 @@ def test_dynamic_vehicle_model_produces_lateral_state():
     assert math.isfinite(state.r)
 
 
+def test_dynamic_engine_limits_physics_substep_duration():
+    config = ScenarioConfig(vehicle_model="dynamic", ego_start_speed=6.0)
+    engine = SimulationEngine(config)
+    original_step = engine.ego.step
+    step_durations = []
+
+    def record_step(steer, accel, dt, model="kinematic"):
+        step_durations.append(dt)
+        return original_step(steer, accel, dt, model)
+
+    engine.ego.step = record_step
+    engine.step(ControlCommand(steer=0.02), dt=0.05)
+
+    assert len(step_durations) == 20
+    assert max(step_durations) <= config.dynamic_max_substep_s
+
+
 def test_rotated_rectangle_collision_uses_geometry():
     manager = ObstacleManager()
     manager.add_obstacle(Obstacle(id=1, x=4.0, y=0.0, length=4.0, width=2.0))
@@ -98,7 +115,7 @@ def test_first_four_scenarios_use_their_active_lane_as_road_reference(
 def test_gui_tracking_error_prefers_heading_at_figure_eight_crossing():
     snapshot = GuiSnapshot(
         state=VehicleState(x=0.0, y=0.0, phi=0.0),
-        reference_path=[
+        reference_line_path=[
             PathPoint(0.0, 0.0, 0.0, 0.0),
             PathPoint(0.0, 0.0, math.pi, 0.0),
         ],

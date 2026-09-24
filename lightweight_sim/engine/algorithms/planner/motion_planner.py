@@ -9,6 +9,7 @@ import time
 
 from ...simulator.logging_utils import get_run_logger
 from ..utils.frenet import find_match_points
+from ...runtime_config import DEFAULT_RUNTIME_CONFIG
 
 
 class MotionPlanner:
@@ -20,7 +21,7 @@ class MotionPlanner:
         *,
         horizon_points=80,
         corridor_margin_m=1.1,
-        transition_distance_m=35.0,
+        transition_distance_m=DEFAULT_RUNTIME_CONFIG.local_transition_distance_m,
         obstacle_longitudinal_min_m=-5.0,
         obstacle_longitudinal_max_m=65.0,
         obstacle_lateral_clearance_m=2.2,

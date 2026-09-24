@@ -54,6 +54,11 @@ class AStarRouter:
         except ValueError as exc:
             return RoutePlan.failure(route_id, request_id, self.road_map.map_id, str(exc))
 
+        if request.closed_loop:
+            return self._search_closed_loop(
+                request, route_id, request_id, start_edge, goal_edge
+            )
+
         open_set: List[Tuple[float, int, str]] = []
         sequence = itertools.count()
         heapq.heappush(open_set, (0.0, next(sequence), start_edge.edge_id))
@@ -91,6 +96,63 @@ class AStarRouter:
             request_id,
             self.road_map.map_id,
             f"no route from {start_edge.edge_id} to {goal_edge.edge_id}",
+        )
+
+    def _search_closed_loop(
+        self, request, route_id, request_id, start_edge, goal_edge
+    ) -> RoutePlan:
+        """Find the shortest directed cycle through the selected start edge."""
+        if start_edge.edge_id != goal_edge.edge_id:
+            return RoutePlan.failure(
+                route_id, request_id, self.road_map.map_id,
+                "closed-loop start and goal must resolve to the same lane edge",
+            )
+        if start_edge.from_node == start_edge.to_node:
+            return self._build_plan(
+                request, route_id, request_id, (start_edge.edge_id,),
+                start_edge.lane_index,
+            )
+
+        sequence = itertools.count()
+        open_set = [(0.0, next(sequence), start_edge.edge_id, (start_edge.edge_id,))]
+        best_cost = {start_edge.edge_id: 0.0}
+        best_cycle = None
+        best_cycle_cost = float("inf")
+        while open_set:
+            cost, _, edge_id, path = heapq.heappop(open_set)
+            if cost >= best_cycle_cost:
+                break
+            if cost > best_cost.get(edge_id, float("inf")):
+                continue
+            current = self.road_map.edges[edge_id]
+            for successor in self.road_map.outgoing(edge_id):
+                if not request.allow_u_turn and successor.maneuver.lower() in {
+                    "u_turn", "uturn", "u-turn"
+                }:
+                    continue
+                next_path = path + (successor.edge_id,)
+                candidate = cost + self._transition_cost(current, successor, request)
+                if successor.to_node == start_edge.from_node:
+                    if candidate < best_cycle_cost:
+                        best_cycle = next_path
+                        best_cycle_cost = candidate
+                    continue
+                if successor.edge_id in path:
+                    continue
+                if candidate >= best_cost.get(successor.edge_id, float("inf")):
+                    continue
+                best_cost[successor.edge_id] = candidate
+                heapq.heappush(
+                    open_set,
+                    (candidate, next(sequence), successor.edge_id, next_path),
+                )
+        if best_cycle is not None:
+            return self._build_plan(
+                request, route_id, request_id, best_cycle, start_edge.lane_index
+            )
+        return RoutePlan.failure(
+            route_id, request_id, self.road_map.map_id,
+            f"no directed cycle through lane edge {start_edge.edge_id}",
         )
 
     def _transition_cost(self, current: LaneEdge, successor: LaneEdge, request: RouteRequest) -> float:
@@ -162,6 +224,7 @@ class AStarRouter:
                 "route_policy": request.route_policy,
                 "start_edge": edges[0].edge_id,
                 "goal_edge": edges[-1].edge_id,
+                "closed_loop": str(request.closed_loop).lower(),
             },
         )
 

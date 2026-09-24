@@ -14,7 +14,6 @@ from ._simulator_node_impl import *  # noqa: F401,F403
 from ..simulator.data_types import ControlCommand
 from ..simulator.engine import SimulationEngine
 from ..simulator.scenarios import make_scenario
-from .route_session import encode_sequence
 
 
 _LegacySimulatorNode = SimulatorNode
@@ -27,9 +26,9 @@ class SimulatorNode(_LegacySimulatorNode):
         super().__init__()
         self.add_on_set_parameters_callback(self._on_parameters)
 
-    def _publish_reference(self, sequence=0):
-        # Called at startup, reset and scenario switch, including by the base
-        # constructor. The context and reference are paired by this run ID.
+    def _publish_run_context(self, sequence=0):
+        # Called at startup, reset and scenario switch. The context and route
+        # request are paired by this run ID.
         if not hasattr(self, "context_pub"):
             self.context_pub = self.create_publisher(String, "sim/context", latched_path_qos())
         self.run_id = max(int(time.time()*1000), getattr(self, "run_id", 0)+1)
@@ -70,12 +69,18 @@ class SimulatorNode(_LegacySimulatorNode):
                        routing_map_id=getattr(config, "routing_map_id", None),
                        routing_start_lane=getattr(config, "routing_start_lane", -1),
                        routing_goal_lane=getattr(config, "routing_goal_lane", -1),
+                       routing_closed_loop=getattr(config, "routing_closed_loop", False),
                        reference_lane_index=reference_lane_index,
                        lane_width=config.road.lane_width,
-                       num_lanes=config.road.num_lanes, physics_dt=self.physics_dt)
+                       num_lanes=config.road.num_lanes,
+                       road_network=config.road.road_network,
+                       road_network_num_lanes=(
+                           config.road.road_network_num_lanes
+                           or config.road.num_lanes
+                       ),
+                       physics_dt=self.physics_dt)
         self.context_pub.publish(String(data=json.dumps(context)))
         self._publish_route_request(config)
-        super()._publish_reference(encode_sequence(self.run_id))
 
     def _publish_route_request(self, config) -> None:
         """Publish the scenario mission once per run/reset for the routing node."""
@@ -86,7 +91,8 @@ class SimulatorNode(_LegacySimulatorNode):
             )
         destination = getattr(config, "destination", None)
         map_id = getattr(config, "routing_map_id", None)
-        if not map_id or destination is None:
+        closed_loop = bool(getattr(config, "routing_closed_loop", False))
+        if not map_id or (destination is None and not closed_loop):
             return
 
         message = RouteRequest()
@@ -97,13 +103,14 @@ class SimulatorNode(_LegacySimulatorNode):
         message.start_x = float(config.ego_start_x)
         message.start_y = float(config.ego_start_y)
         message.start_yaw = float(config.ego_start_phi)
-        message.goal_x = float(destination[0])
-        message.goal_y = float(destination[1])
+        message.goal_x = float(destination[0] if destination else config.ego_start_x)
+        message.goal_y = float(destination[1] if destination else config.ego_start_y)
         message.goal_yaw = float(config.ego_start_phi)
         message.start_lane = int(getattr(config, "routing_start_lane", -1))
         message.goal_lane = int(getattr(config, "routing_goal_lane", -1))
         message.route_policy = "fastest"
         message.allow_u_turn = False
+        message.closed_loop = closed_loop
         self.route_request_pub.publish(message)
 
     def _on_parameters(self, parameters):
@@ -125,6 +132,7 @@ class SimulatorNode(_LegacySimulatorNode):
 
         try:
             config = make_scenario(requested)
+            attach_map_road_network(config)
             config.physics_dt = self.physics_dt
             self._apply_runtime_parameters(config)
         except ValueError as exc:
@@ -134,7 +142,7 @@ class SimulatorNode(_LegacySimulatorNode):
         self.command = ControlCommand()
         self.last_command_time = self.get_clock().now()
         self.paused = False
-        self._publish_reference(sequence=0)
+        self._publish_run_context(sequence=0)
         self._publish_state()
         self._publish_status()
         self.get_logger().info(

@@ -113,6 +113,9 @@ class RoadSegment:
 @dataclass
 class RoadDef:
     segments: List[RoadSegment] = field(default_factory=list)
+    # Optional physical road centerlines for connected multi-road scenes.
+    road_network: List[List[Tuple[float, float]]] = field(default_factory=list)
+    road_network_num_lanes: int = 0
     lane_width: float = DEFAULT_RUNTIME_CONFIG.lane_width
     num_lanes: int = DEFAULT_RUNTIME_CONFIG.num_lanes
     # The road geometry is allowed to be authored on a lane centerline.  A
@@ -143,12 +146,14 @@ class ScenarioConfig:
     routing_map_id: Optional[str] = None
     routing_start_lane: int = -1
     routing_goal_lane: int = -1
+    routing_closed_loop: bool = False
     vehicle_model: str = "kinematic"
     maneuver: str = "cruise"
     parking_goal: Optional[Tuple[float, float, float]] = None
     vehicle_params: VehicleParams = field(default_factory=VehicleParams)
     steering: SteeringParams = field(default_factory=SteeringParams)
     physics_dt: float = DEFAULT_RUNTIME_CONFIG.physics_dt
+    dynamic_max_substep_s: float = DEFAULT_RUNTIME_CONFIG.dynamic_max_substep_s
 
 @dataclass
 class LogEntry:
