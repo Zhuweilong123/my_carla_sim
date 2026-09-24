@@ -1,0 +1,56 @@
+name: Lightweight Simulator CI
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  lightweight-sim:
+    runs-on: ubuntu-latest
+    container:
+      image: ubuntu:resolute
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up ROS 2 Lyrical
+        uses: ros-tooling/setup-ros@v0.7
+        with:
+          required-ros-distributions: lyrical
+
+      - name: Install ROS package dependencies
+        shell: bash
+        run: |
+          source /opt/ros/lyrical/setup.bash
+          rosdep update
+          rosdep install --from-paths lightweight_sim_msgs lightweight_sim \
+            --ignore-src --rosdistro lyrical -y
+          apt-get update
+          apt-get install -y python3-venv
+
+      - name: Install Python test dependencies
+        run: |
+          python3 -m venv --system-site-packages /tmp/lightweight-sim-ci
+          /tmp/lightweight-sim-ci/bin/python -m pip install \
+            -r lightweight_sim/requirements.txt
+
+      - name: Build ROS packages
+        shell: bash
+        run: |
+          source /opt/ros/lyrical/setup.bash
+          colcon build --packages-up-to lightweight_sim
+
+      - name: Run Python and ROS lifecycle tests
+        shell: bash
+        run: |
+          source /opt/ros/lyrical/setup.bash
+          source install/setup.bash
+          /tmp/lightweight-sim-ci/bin/python -m pytest
+
+      - name: Run ROS 2 launch smoke test
+        shell: bash
+        run: LIGHTWEIGHT_SIM_INSTALL="$GITHUB_WORKSPACE/install" bash lightweight_sim/scripts/ros2_smoke_test.sh
