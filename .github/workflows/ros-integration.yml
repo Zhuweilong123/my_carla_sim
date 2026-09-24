@@ -1,0 +1,91 @@
+name: ROS 2 Integration Tests
+
+on:
+  push:
+    paths:
+      - ".github/workflows/**"
+      - "lightweight_sim/package.xml"
+      - "lightweight_sim/setup.cfg"
+      - "lightweight_sim/setup.py"
+      - "lightweight_sim/config/**"
+      - "lightweight_sim/engine/ros_nodes/**"
+      - "lightweight_sim/engine/routing/**"
+      - "lightweight_sim/engine/reference_line/**"
+      - "lightweight_sim/engine/runtime_config.py"
+      - "lightweight_sim/scripts/ros2_smoke_test.sh"
+      - "lightweight_sim/tests/test_controller_manager.py"
+      - "lightweight_sim/tests/test_controller_speed_profile.py"
+      - "lightweight_sim/tests/test_ros_lifecycle.py"
+      - "lightweight_sim_msgs/**"
+      - "parking_module/**"
+  pull_request:
+    paths:
+      - ".github/workflows/**"
+      - "lightweight_sim/package.xml"
+      - "lightweight_sim/setup.cfg"
+      - "lightweight_sim/setup.py"
+      - "lightweight_sim/config/**"
+      - "lightweight_sim/engine/ros_nodes/**"
+      - "lightweight_sim/engine/routing/**"
+      - "lightweight_sim/engine/reference_line/**"
+      - "lightweight_sim/engine/runtime_config.py"
+      - "lightweight_sim/scripts/ros2_smoke_test.sh"
+      - "lightweight_sim/tests/test_controller_manager.py"
+      - "lightweight_sim/tests/test_controller_speed_profile.py"
+      - "lightweight_sim/tests/test_ros_lifecycle.py"
+      - "lightweight_sim_msgs/**"
+      - "parking_module/**"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  ros-integration:
+    runs-on: ubuntu-latest
+    container:
+      image: ubuntu:resolute
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up ROS 2 Lyrical
+        uses: ros-tooling/setup-ros@v0.7
+        with:
+          required-ros-distributions: lyrical
+
+      - name: Install ROS package dependencies
+        shell: bash
+        run: |
+          source /opt/ros/lyrical/setup.bash
+          rosdep update
+          rosdep install --from-paths lightweight_sim_msgs lightweight_sim parking_module \
+            --ignore-src --rosdistro lyrical --skip-keys=ament_python -y
+          apt-get update
+          apt-get install -y python3-venv
+
+      - name: Install Python test dependencies
+        run: |
+          python3 -m venv --system-site-packages /tmp/lightweight-sim-ci
+          /tmp/lightweight-sim-ci/bin/python -m pip install \
+            -r lightweight_sim/requirements.txt
+
+      - name: Build ROS packages
+        shell: bash
+        run: |
+          source /opt/ros/lyrical/setup.bash
+          colcon build
+
+      - name: Run ROS-dependent pytest modules
+        shell: bash
+        run: |
+          source /opt/ros/lyrical/setup.bash
+          source install/setup.bash
+          /tmp/lightweight-sim-ci/bin/python -m pytest -q \
+            lightweight_sim/tests/test_controller_manager.py \
+            lightweight_sim/tests/test_controller_speed_profile.py \
+            lightweight_sim/tests/test_ros_lifecycle.py
+
+      - name: Run ROS 2 launch smoke test
+        shell: bash
+        run: LIGHTWEIGHT_SIM_INSTALL="$GITHUB_WORKSPACE/install" bash lightweight_sim/scripts/ros2_smoke_test.sh

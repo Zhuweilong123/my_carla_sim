@@ -1,218 +1,138 @@
-# Vehicle Motion 仿真环境使用指南
+# Vehicle Motion
 
-## 1. 项目用途
+[English](README.md) | [简体中文](README.zh-CN.md)
 
-本仓库包含两套环境：
+Vehicle Motion is a lightweight 2D vehicle simulation and ROS 2 planning/control workspace. It is intended for repeatable development of vehicle dynamics, lane-level routing, local obstacle avoidance, path tracking, and parking interfaces. The simulator is independent of CARLA; `carla_legacy/` contains archived CARLA code and is not part of the current ROS 2 runtime.
 
-- lightweight_sim：脱离 CARLA 的二维规划控制仿真器，适合快速调试；
-- `carla_legacy/`：归档的 CARLA 原始高保真仿真实现，需要 CARLA 运行时和对应 Python API。
+## Current capabilities
 
-本文主要介绍 lightweight_sim。
+- Fixed-step simulation with configurable physics period, vehicle dimensions, speed limits, and actuator parameters; supports kinematic and simplified dynamic bicycle models.
+- ROS 2 nodes for simulation, A* lane-topology routing, route-derived reference-line generation, local planning, cruise control, mode arbitration, and safe stopping when required routing/planning data is missing or stale.
+- A 2D GUI client that subscribes to the ROS graph (it does not run a second simulator), visualizes the road, routing/reference paths, local planned path, vehicle state, and control status, and supports runtime scene/mode switching.
+- An independent `parking_module` ROS 2 package with a reverse-parking baseline and controller adapter.
+- Regression tests and a GitHub Actions workflow for ROS package build, Python/ROS tests, and a launch smoke test.
 
-CARLA 历史源码和测试已统一归档到 `carla_legacy/`，当前轻量仿真与 ROS 2 开发不依赖该目录。
+The default simulation and control periods are 0.05 s (20 Hz). These settings and most vehicle, planner, routing, controller, GUI, and safety parameters are in `lightweight_sim/config/default.yaml`; shared timing defaults are defined in `lightweight_sim/engine/runtime_config.py`.
 
-## 2. 安装依赖
+## Build and launch (ROS 2 / WSL2)
 
-推荐使用 Python 3.10 至 3.13。Python 3.14 下建议使用 pygame-ce，因为它通常比原版 pygame 更容易获得预编译包。
+The maintained workflow uses ROS 2 Lyrical in WSL2. In a new terminal:
 
-在仓库根目录执行：
+```bash
+source /opt/ros/lyrical/setup.bash
+cd /mnt/d/AI_tools/vehicle_motion
+python3 -m pip install -r lightweight_sim/requirements.txt
+colcon build
+source install/setup.bash
+ros2 launch lightweight_sim lightweight_sim.launch.py gui:=true
+```
 
-    python -m pip install -r requirements.txt
+On a Windows-mounted `/mnt/d` workspace, use plain `colcon build` rather than `--symlink-install`. For a headless run, use `gui:=false`. Choose the initial scene and steering model with launch arguments:
 
-如果使用 Conda：
+```bash
+ros2 launch lightweight_sim lightweight_sim.launch.py \
+  scenario:=figure_eight gui:=true steering_profile:=ideal
+```
 
-    conda run -n hello_agents python -m pip install -r requirements.txt
+`steering_profile:=assumed` enables the simulated delayed/rate-limited steering actuator. Its parameters are engineering assumptions, not calibration data for a real vehicle.
 
-运行日志会自动写入仓库根目录的 temp/logs，每次启动生成一个带时间戳的 run_*.log 文件。
+## Built-in scenes
 
-cvxopt 是可选依赖。当前默认规划链不要求它；只有直接使用历史 QP 模块或启用 QP 参考线平滑时才需要安装。
+The GUI scene shortcuts are `1`–`7`:
 
-## 3. 启动仿真器
+| Key | Scene | Description |
+| --- | --- | --- |
+| 1 | `default` | Two-lane straight-road cruise. |
+| 2 | `obstacle` | Straight road with a static obstacle. |
+| 3 | `three_lane` | Three-lane road with sequential obstacles. |
+| 4 | `curve` | Road with a 90-degree curve. |
+| 5 | `figure_eight` | Closed three-lane figure-eight route. |
+| 6 | `reverse_parking` | Perpendicular reverse-parking scene; use the parking module for autonomous parking. |
+| 7 | `demo_grid` | Synthetic two-way city grid with two lanes per direction and multiple intersections. |
 
-从仓库根目录执行：
+Routing is part of the standard simulator launch. The bundled JSON maps are in `lightweight_sim/config/maps/`; the routing node loads the map set by default and each routed scene requests its matching map/lanes. `map_dir` and `map_file` can be set on `routing_node` to use custom maps. See [Routing](lightweight_sim/ROUTING.md) and [Reference Line](lightweight_sim/REFERENCE_LINE.md) for map format, A* behavior, and reference-line validation/smoothing.
 
-    python -m lightweight_sim.main --scenario three_lane
+## GUI controls
 
-可用场景：
+- Click `CRUISE`, `PARKING`, or `E-STOP` to select the task; the GUI control-source button or `Q` switches `AUTO`/`MANUAL`.
+- `C`, `K`, and `E` select cruise, parking, and emergency stop. `1`–`7` switch scenes.
+- In manual mode, `W/S` or the up/down arrows drive, `A/D` or the left/right arrows steer, and `SPACE` brakes.
+- `P` pauses/resumes, `R` resets, the mouse wheel or `+`/`-` zooms, and `ESC` closes the GUI.
 
-| 参数 | 说明 |
+GUI rendering requires a Linux display (for WSL2, WSLg). Headless simulation, ROS topics, services, and tests do not require the GUI.
+
+## Unified cruise and parking interface
+
+To start the GUI with the independent parking controller and shared control-mode interface:
+
+```bash
+ros2 launch parking_module unified_vehicle.launch.py gui:=true
+```
+
+The parking package can also be launched directly in parking mode:
+
+```bash
+ros2 launch parking_module unified_vehicle.launch.py \
+  scenario:=reverse_parking mode:=PARKING gui:=false
+```
+
+The cruise and parking controllers publish candidate commands; `controller_manager` selects the active source/mode and is the final command arbiter. The parking planner/controller is a baseline for the reverse-parking maneuver, not a production-grade planner or vehicle safety system. More details are in [`parking_module/README.md`](parking_module/README.md).
+
+## ROS interfaces and diagnostics
+
+Useful topics include:
+
+| Topic | Purpose |
 | --- | --- |
-| default | 200 m 两车道直道 |
-| obstacle | 两车道直道静态障碍物 |
-| three_lane | 三车道双障碍连续避障，默认场景 |
-| curve | 直道接 90 度弯道 |
+| `/vehicle/state`, `/obstacles` | Current ego state and detected/simulated obstacles. |
+| `/routing/request`, `/routing/route` | Mission request and A* topology route. |
+| `/routing/reference_line` | Smoothed, map-validated routed-lane reference. |
+| `/planned_path` | Current local planner trajectory. |
+| `/control_command` | Final arbitrated command to the simulator. |
+| `/sim/status`, `/tracking/metrics` | Lifecycle/safety outcome and tracking diagnostics. |
 
-示例：
+Useful checks and controls:
 
-    python -m lightweight_sim.main --scenario default
-    python -m lightweight_sim.main --scenario obstacle
-    python -m lightweight_sim.main --scenario curve
+```bash
+ros2 topic list
+ros2 topic echo /vehicle/state
+ros2 topic echo /routing/route
+ros2 topic echo /routing/reference_line
+ros2 topic echo /planned_path
+ros2 topic echo /sim/status --once
+ros2 service call /sim/reset std_srvs/srv/Empty '{}'
+ros2 service call /sim/pause std_srvs/srv/SetBool '{data: true}'
+ros2 service call /sim/step std_srvs/srv/Trigger '{}'
+```
 
-如果从 lightweight_sim 目录内部运行，建议仍然使用模块方式，并确保仓库根目录在 Python 搜索路径中。
+`/control_command` is the final actuator-facing command. Cruise, manual, and parking candidates use separate topics and are arbitrated by `controller_manager`. The `safe_stop_node` requests braking if the active run lacks a matching routing/reference/local plan or the planning data becomes stale. See [ROS 2 architecture](lightweight_sim/ROS2.md) for node graph, QoS, services, and launch options.
 
-## 4. GUI 操作
+## Tests and CI
 
-程序启动后默认进入 AUTO 自动驾驶模式；按 Q 可切换到手动模式。
+Build and run the simulator test suite from the repository root with the ROS environment sourced:
 
-| 按键 | 功能 |
-| --- | --- |
-| Q | 切换手动 / 自动模式 |
-| W 或上方向键 | 手动增加油门 |
-| S 或下方向键 | 手动刹车 |
-| A、D 或左右方向键 | 手动转向 |
-| Space | 全刹车 |
-| M | 切换 LQR / MPC 兼容控制器 |
-| R | 重置当前场景 |
-| P | 暂停 / 继续 |
-| 鼠标滚轮、加减号 | 缩放视图 |
-| ESC | 退出 |
+```bash
+source /opt/ros/lyrical/setup.bash
+cd /mnt/d/AI_tools/vehicle_motion
+colcon build --packages-up-to lightweight_sim
+source install/setup.bash
+python3 -m pytest
+```
 
-进入自动模式后，控制器使用横向路径跟踪和纵向 PID；局部规划器在后台线程周期性处理障碍物并更新参考轨迹。
+The ROS launch smoke test can be run with:
 
-## 5. 自定义场景
+```bash
+LIGHTWEIGHT_SIM_INSTALL="$PWD/install" \
+  bash lightweight_sim/scripts/ros2_smoke_test.sh
+```
 
-当前场景使用 Python 数据类，不是 YAML 文件。最小示例：
+Run the independent parking-module tests with `python3 -m pytest parking_module/tests`. GitHub Actions runs the Python-only tests on every push and pull request without installing ROS. A separate ROS 2 integration workflow builds the ROS packages and runs ROS-dependent tests plus the launch smoke test when ROS interfaces, launch/configuration, or related packages change; it can also be started manually. Experimental process records under `lightweight_sim/records/` are kept locally and ignored by Git.
 
-    from lightweight_sim.simulator.data_types import RoadDef, RoadSegment, ScenarioConfig
-    from lightweight_sim.simulator.engine import SimulationEngine
+## Repository layout
 
-    road = RoadDef(
-        segments=[
-            RoadSegment(
-                type="straight",
-                params={"length": 300, "heading": 0, "start": (0, 0)},
-            )
-        ],
-        lane_width=3.5,
-        num_lanes=3,
-    )
-
-    config = ScenarioConfig(
-        name="my_test",
-        road=road,
-        ego_start_x=20.0,
-        ego_start_y=0.0,
-        ego_start_phi=0.0,
-        ego_start_speed=8.0,
-        target_speed=40.0,
-        obstacles=[
-            {
-                "id": 1,
-                "x": 80.0,
-                "y": 0.0,
-                "length": 4.5,
-                "width": 2.0,
-                "speed": 0.0,
-                "heading": 0.0,
-            }
-        ],
-        controller="LQR_controller",
-        vehicle_model="kinematic",
-    )
-
-    engine = SimulationEngine(config)
-    state = engine.step()
-
-道路段的连接点必须连续；相邻段间隙超过 0.5 m 会直接抛出异常。车辆初始速度使用 m/s，目标速度使用 km/h。
-
-## 6. 直接使用核心仿真
-
-核心引擎不要求 pygame：
-
-    from lightweight_sim.simulator.data_types import ControlCommand, ScenarioConfig
-    from lightweight_sim.simulator.engine import SimulationEngine
-
-    engine = SimulationEngine(ScenarioConfig())
-    for _ in range(100):
-        state = engine.step(
-            ControlCommand(throttle=0.4, steer=0.0),
-            dt=0.05,
-        )
-        if engine.is_done:
-            break
-
-可读取：
-
-- engine.get_state()：当前 VehicleState；
-- engine.get_error_state()：相对于参考线的误差；
-- engine.collision_occurred：是否碰撞；
-- engine.offroad_occurred：是否越界；
-- engine.reached_destination：是否到达终点；
-- engine.sim_time：仿真时间；
-- engine.step_count：物理步数。
-
-## 7. 运动学和动力学模型
-
-默认配置使用运动学模型：
-
-    config = ScenarioConfig(vehicle_model="kinematic")
-
-需要验证横向侧滑时可切换动力学模型：
-
-    config = ScenarioConfig(vehicle_model="dynamic")
-
-动力学模型是简化自行车模型，适合接口和趋势验证，不应直接视为经过实车标定的高保真车辆模型。
-
-## 8. 运行测试
-
-轻量环境测试：
-
-    python -m pytest
-
-测试配置只收集 lightweight_sim/tests，避免在没有 CARLA Python API 的机器上误收集根目录 CARLA 测试。
-
-也可以只运行核心测试文件：
-
-    python -m pytest lightweight_sim/tests/test_core.py
-
-`carla_legacy/test_code*.py` 属于 CARLA 测试，需要先安装并配置 CARLA 0.9.12 及其 Python API。
-
-## 9. 运行日志和问题排查
-
-日志文件位置：
-
-    temp/logs/run_YYYYMMDD_HHMMSS_xxxxxx.log
-
-日志包含以下关键节点：
-
-- 引擎和规划器初始化、重置和退出；
-- 控制量被限幅、物理步进异常；
-- 规划请求、规划耗时、输出点数、障碍物位置、轨迹首/中/末点、超时和异常；
-- 控制器实际参考点、局部横向/航向误差、全局参考误差和控制输出；
-- 碰撞对象 ID/位置、越界距离/边界阈值和到达终点；
-- 控制器切换和 GUI 生命周期。
-
-排查时优先搜索 WARNING、ERROR、collision、offroad、planning failed 和 timed out。
-
-## 10. 常见问题
-
-### pygame 导入失败
-
-确认依赖已经安装。如果使用 Python 3.14，优先安装 pygame-ce：
-
-    python -m pip install pygame-ce
-
-代码仍然使用 import pygame，pygame-ce 会提供兼容的模块名。
-
-### 窗口启动后立即退出
-
-检查是否从仓库根目录启动，并确认 pygame 能创建窗口。远程服务器或无桌面环境不能运行 GUI，但可以直接使用 SimulationEngine 做无窗口测试。
-
-### 规划轨迹没有换道
-
-当前 MotionPlanner 是车道级启发式规划器，要求道路有足够车道宽度和可行空间。两车道中间障碍物可能没有足够横向安全余量，此时规划器会返回最接近的可行基线，而不是保证强行换道。
-
-### 想使用完整 MPC 或 DP+QP
-
-当前默认链路优先保证实时性和稳定性。历史 DP/QP 文件仍保留，但完整 QP-MPC、纵向 ST 速度规划和 YAML 场景加载尚未纳入默认执行链，详见 lightweight_sim/DESIGN.md。
-
-## 11. 建议的调试顺序
-
-1. 运行 default 场景，确认道路、车辆和控制器正常；
-2. 运行 obstacle 场景，观察规划结果和碰撞状态；
-3. 运行 three_lane 场景，检查连续换道；
-4. 运行 curve 场景，观察曲率和航向误差；
-5. 最后切换 vehicle_model=dynamic，检查侧滑和横摆状态；
-6. 调参时优先记录速度、ed、ephi、steer、throttle、brake 和碰撞标志。
-
-设计细节、接口约定和后续路线见 lightweight_sim/DESIGN.md。
+```text
+lightweight_sim/       Simulator, ROS 2 nodes, planners/controllers, maps, GUI and tests
+lightweight_sim_msgs/  ROS 2 message and service definitions
+parking_module/        Independent reverse-parking planner/controller ROS 2 package
+carla_legacy/          Archived CARLA implementation (not required by lightweight_sim)
+```
