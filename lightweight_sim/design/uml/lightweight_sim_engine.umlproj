@@ -2496,7 +2496,7 @@
             "width": 240.0,
             "height": 190.0
           },
-          "note": "ROS 2 仿真节点：定时步进引擎、发布 vehicle/state/obstacles/reference_path、订阅 control_command，命令超时则紧急刹车。",
+          "note": "ROS 2 仿真节点：定时步进引擎、发布 vehicle/state/obstacles 与 sim/context，订阅唯一仲裁后的 control_command。",
           "provided_interfaces": [],
           "required_interfaces": []
         },
@@ -2601,7 +2601,7 @@
               "is_static": false
             },
             {
-              "name": "reference_path",
+              "name": "routing_reference_path",
               "type": "list",
               "visibility": "-",
               "default_value": "",
@@ -2665,7 +2665,7 @@
             "width": 240.0,
             "height": 190.0
           },
-          "note": "ROS 2 控制节点：优先消费 planned_path，状态超时则输出刹车；发布 command_qos 的 control_command。",
+          "note": "ROS 2 控制节点：消费当前 routing reference 与 planned_path；仅发布 control_command/cruise 候选命令。",
           "provided_interfaces": [],
           "required_interfaces": []
         }
@@ -2771,7 +2771,7 @@
           "id": "msg_publish_state",
           "from_lifeline": "life_simnode",
           "to_lifeline": "life_plannernode",
-          "label": "publish(vehicle/state, obstacles, reference_path)",
+          "label": "publish(vehicle/state, obstacles, sim/context)",
           "type": "async",
           "order": 4,
           "y": 362.0,
@@ -2825,7 +2825,7 @@
           "type": "sync",
           "order": 9,
           "y": 638.0,
-          "note": "优先使用 planned_path，否则回退 reference_path。"
+          "note": "只接受当前 run 的 routing/reference_line 和新鲜 planned_path；缺失时由 safe_stop 请求停车。"
         },
         {
           "id": "msg_ctrl_step",

@@ -10,9 +10,9 @@ Vehicle Motion is a lightweight 2D vehicle simulation and ROS 2 planning/control
 - ROS 2 nodes for simulation, A* lane-topology routing, route-derived reference-line generation, local planning, cruise control, mode arbitration, and safe stopping when required routing/planning data is missing or stale.
 - A 2D GUI client that subscribes to the ROS graph (it does not run a second simulator), visualizes the road, routing/reference paths, local planned path, vehicle state, and control status, and supports runtime scene/mode switching.
 - An independent `parking_module` ROS 2 package with a reverse-parking baseline and controller adapter.
-- Regression tests and a GitHub Actions workflow for ROS package build, Python/ROS tests, and a launch smoke test.
+- Regression tests with split GitHub Actions: ROS-independent Python tests run on every push/PR; ROS build, integration tests and launch smoke run for relevant changes or manual dispatch.
 
-The default simulation and control periods are 0.05 s (20 Hz). These settings and most vehicle, planner, routing, controller, GUI, and safety parameters are in `lightweight_sim/config/default.yaml`; shared timing defaults are defined in `lightweight_sim/engine/runtime_config.py`.
+The default simulation and control periods are 0.05 s (20 Hz). These settings and most vehicle, planner, routing, controller, GUI, and safety parameters are in `lightweight_sim/config/default.yaml`; shared timing defaults are defined in `lightweight_sim/engine/runtime_config.py`. Architecture and algorithm notes: [design overview](lightweight_sim/design/DESIGN.md), [algorithms](lightweight_sim/design/ALGORITHMS.md), [ROS 2](lightweight_sim/design/ROS2.md), [Routing](lightweight_sim/design/ROUTING.md), and [reference line](lightweight_sim/design/REFERENCE_LINE.md).
 
 ## Build and launch (ROS 2 / WSL2)
 
@@ -50,7 +50,7 @@ The GUI scene shortcuts are `1`–`7`:
 | 6 | `reverse_parking` | Perpendicular reverse-parking scene; use the parking module for autonomous parking. |
 | 7 | `demo_grid` | Synthetic two-way city grid with two lanes per direction and multiple intersections. |
 
-Routing is part of the standard simulator launch. The bundled JSON maps are in `lightweight_sim/config/maps/`; the routing node loads the map set by default and each routed scene requests its matching map/lanes. `map_dir` and `map_file` can be set on `routing_node` to use custom maps. See [Routing](lightweight_sim/ROUTING.md) and [Reference Line](lightweight_sim/REFERENCE_LINE.md) for map format, A* behavior, and reference-line validation/smoothing.
+Routing is part of the standard simulator launch. The bundled JSON maps are in `lightweight_sim/config/maps/`; the routing node loads the map set by default and each routed scene requests its matching map/lanes. `map_dir` and `map_file` can be set on `routing_node` to use custom maps. See [Routing](lightweight_sim/design/ROUTING.md) and [Reference Line](lightweight_sim/design/REFERENCE_LINE.md) for map format, A* behavior, and reference-line validation/smoothing.
 
 ## GUI controls
 
@@ -105,7 +105,7 @@ ros2 service call /sim/pause std_srvs/srv/SetBool '{data: true}'
 ros2 service call /sim/step std_srvs/srv/Trigger '{}'
 ```
 
-`/control_command` is the final actuator-facing command. Cruise, manual, and parking candidates use separate topics and are arbitrated by `controller_manager`. The `safe_stop_node` requests braking if the active run lacks a matching routing/reference/local plan or the planning data becomes stale. See [ROS 2 architecture](lightweight_sim/ROS2.md) for node graph, QoS, services, and launch options.
+`/control_command` is the final actuator-facing command. Cruise, manual, and parking candidates use separate topics and are arbitrated by `controller_manager`. The `safe_stop_node` requests braking if the active run lacks a matching routing/reference/local plan or the planning data becomes stale. See [ROS 2 architecture](lightweight_sim/design/ROS2.md) for node graph, QoS, services, and launch options.
 
 ## Tests and CI
 
