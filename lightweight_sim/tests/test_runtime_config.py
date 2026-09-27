@@ -13,7 +13,7 @@ def test_shared_runtime_defaults_match_fixed_step_planning():
     assert runtime.dynamic_max_substep_s == pytest.approx(0.0025)
     assert runtime.local_transition_distance_m == pytest.approx(12.0)
     assert runtime.control_period == pytest.approx(runtime.physics_dt)
-    assert runtime.plan_interval_steps() == 1
+    assert runtime.plan_period == pytest.approx(runtime.physics_dt)
 
 
 def test_shared_runtime_speed_defaults_match_ros_configuration():

@@ -110,13 +110,13 @@ ros2 service call /sim/pause std_srvs/srv/SetBool "{data: true}"
 
 `gui:=true` 启动的是同一仿真节点的 ROS 客户端，不会启动第二个 `SimulationEngine`。GUI 依赖 Pygame 和可用 Linux 图形显示（例如 WSLg）。具体按键和场景切换以 GUI 当前实现为准。
 
-`parking_module/` 是独立的泊车规划/控制包。集成启动入口为：
+`parking_module/` 提供独立的泊车规划/控制节点，由通用仿真 launch 统一启动：
 
 ```bash
-ros2 launch parking_module unified_vehicle.launch.py gui:=true
+ros2 launch lightweight_sim lightweight_sim.launch.py gui:=true
 ```
 
-`controller_manager` 统一仲裁不同控制候选，最终 topic 仍只有一个写入者。倒车泊车场景可关闭仿真器内置前向控制器，并单独启动泊车控制节点；没有与当前 run 匹配的泊车规划结果时保持停车。泊车模块本身不属于 lightweight_sim 内核依赖。
+`controller_manager` 统一仲裁不同控制候选，最终 topic 仍只有一个写入者。GUI 切换到倒车泊车场景时，泊车节点生成并发布当前 run 的泊车轨迹；没有匹配且新鲜的泊车规划结果时，安全监督保持停车。泊车规划算法仍独立于 lightweight_sim 内核实现，但由通用仿真 launch 集成启动。
 
 ## 测试
 

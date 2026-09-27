@@ -33,7 +33,10 @@ class ParkingController:
         if self._progress_index < first_reverse:
             staging = trajectory.points[first_reverse].pose
             staging_distance = math.hypot(staging.x - state.x, staging.y - state.y)
-            if staging_distance <= 0.4 and abs(state.vx) > self.config.speed_tolerance:
+            if (
+                staging_distance <= self.config.staging_tolerance
+                and abs(state.vx) > self.config.speed_tolerance
+            ):
                 return ControlCommand(brake=1.0, gear=0)
         target = trajectory.points[target_index]
         cfg = self.config
@@ -51,7 +54,7 @@ class ParkingController:
                 return ControlCommand(brake=1.0, gear=0)
         self._active_gear = desired_gear
 
-        motion_heading = target.pose.yaw if desired_gear > 0 else wrap_angle(target.pose.yaw + math.pi)
+        motion_heading = state.yaw if desired_gear > 0 else wrap_angle(state.yaw + math.pi)
         target_angle = math.atan2(target.pose.y - state.y, target.pose.x - state.x)
         # For forward motion, steer from the current body heading to the
         # target point.  For reverse motion, the vehicle's travel direction is
@@ -83,6 +86,14 @@ class ParkingController:
         # the slot instead of carrying the nominal reverse speed into the rear
         # boundary.
         desired_speed = min(abs(target.speed), max(0.0, goal_error * 0.2))
+        if desired_gear > 0 and self._progress_index < first_reverse:
+            staging = trajectory.points[first_reverse].pose
+            staging_distance = math.hypot(staging.x - state.x, staging.y - state.y)
+            remaining_distance = max(0.0, staging_distance - cfg.staging_tolerance)
+            staging_speed = math.sqrt(
+                2.0 * cfg.approach_deceleration * remaining_distance
+            )
+            desired_speed = min(desired_speed, staging_speed)
         speed_error = desired_speed - abs(state.vx)
         throttle = _clamp(speed_error * 1.5, 0.0, 1.0)
         brake = _clamp(-speed_error * 2.0, 0.0, 1.0)
@@ -107,7 +118,8 @@ class ParkingController:
             self._progress_index = max(self._progress_index, nearest)
             staging = trajectory.points[approach_end].pose
             if (
-                math.hypot(staging.x - state.x, staging.y - state.y) <= 0.4
+                math.hypot(staging.x - state.x, staging.y - state.y)
+                <= self.config.staging_tolerance
                 and abs(state.vx) <= self.config.speed_tolerance
             ):
                 self._progress_index = first_reverse

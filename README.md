@@ -16,7 +16,7 @@ The default simulation and control periods are 0.05 s (20 Hz). These settings an
 
 ## Build and launch (ROS 2 / WSL2)
 
-The maintained workflow uses ROS 2 Lyrical in WSL2. In a new terminal:
+The simulator runs through ROS 2 only; the former standalone Pygame application has been removed. The maintained workflow uses ROS 2 Lyrical in WSL2. In a new terminal:
 
 ```bash
 source /opt/ros/lyrical/setup.bash
@@ -47,7 +47,7 @@ The GUI scene shortcuts are `1`–`7`:
 | 3 | `three_lane` | Three-lane road with sequential obstacles. |
 | 4 | `curve` | Road with a 90-degree curve. |
 | 5 | `figure_eight` | Closed three-lane figure-eight route. |
-| 6 | `reverse_parking` | Perpendicular reverse-parking scene; use the parking module for autonomous parking. |
+| 6 | `reverse_parking` | Perpendicular reverse-parking scene, handled by the integrated parking module. |
 | 7 | `demo_grid` | Synthetic two-way city grid with two lanes per direction and multiple intersections. |
 
 Routing is part of the standard simulator launch. The bundled JSON maps are in `lightweight_sim/config/maps/`; the routing node loads the map set by default and each routed scene requests its matching map/lanes. `map_dir` and `map_file` can be set on `routing_node` to use custom maps. See [Routing](lightweight_sim/design/ROUTING.md) and [Reference Line](lightweight_sim/design/REFERENCE_LINE.md) for map format, A* behavior, and reference-line validation/smoothing.
@@ -61,22 +61,21 @@ Routing is part of the standard simulator launch. The bundled JSON maps are in `
 
 GUI rendering requires a Linux display (for WSL2, WSLg). Headless simulation, ROS topics, services, and tests do not require the GUI.
 
-## Unified cruise and parking interface
+## Unified cruise and parking simulation
 
-To start the GUI with the independent parking controller and shared control-mode interface:
-
-```bash
-ros2 launch parking_module unified_vehicle.launch.py gui:=true
-```
-
-The parking package can also be launched directly in parking mode:
+The standard simulator launch starts the parking planner/controller together
+with routing, local planning, safety supervision, and the shared controller
+arbiter. Use the same GUI entrypoint for every scene:
 
 ```bash
-ros2 launch parking_module unified_vehicle.launch.py \
-  scenario:=reverse_parking mode:=PARKING gui:=false
+ros2 launch lightweight_sim lightweight_sim.launch.py gui:=true
 ```
 
-The cruise and parking controllers publish candidate commands; `controller_manager` selects the active source/mode and is the final command arbiter. The parking planner/controller is a baseline for the reverse-parking maneuver, not a production-grade planner or vehicle safety system. More details are in [`parking_module/README.md`](parking_module/README.md).
+Press `6` or select `PARKING` to switch to reverse parking. The cruise and
+parking controllers publish candidate commands; `controller_manager` selects
+the active source/mode and is the final command arbiter. The parking planner
+is a baseline maneuver planner, not a production-grade planner or safety
+system. More details are in [`parking_module/README.md`](parking_module/README.md).
 
 ## ROS interfaces and diagnostics
 

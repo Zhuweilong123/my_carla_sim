@@ -1,19 +1,15 @@
-"""Shared runtime defaults for all lightweight simulator front ends.
+"""Runtime defaults for the ROS 2 lightweight simulator.
 
-The standalone and ROS 2 adapters keep different transport layers, but they
-must start from the same timing and safety defaults. Scenario-specific values
-remain in :class:`ScenarioConfig` and are propagated by the ROS simulator
-through ``sim/context``.
+Scenario-specific values remain in :class:`ScenarioConfig` and are propagated
+by the ROS simulator through ``sim/context``.
 """
 
 from dataclasses import dataclass
-import math
-from typing import Optional
 
 
 @dataclass(frozen=True)
 class RuntimeConfig:
-    """Defaults shared by the standalone and ROS 2 execution paths."""
+    """Defaults shared by the ROS 2 nodes and simulation core."""
 
     physics_dt: float = 0.05
     dynamic_max_substep_s: float = 0.0025
@@ -47,14 +43,6 @@ class RuntimeConfig:
         """Return the commanded speed as a ratio of the active limit."""
 
         return max(0.0, float(speed_limit_kmh)) * self.target_speed_ratio
-
-    def plan_interval_steps(self, physics_dt: Optional[float] = None) -> int:
-        """Return the fixed-step count matching ``plan_period``."""
-
-        dt = self.physics_dt if physics_dt is None else float(physics_dt)
-        if not math.isfinite(dt) or dt <= 0.0:
-            raise ValueError("physics_dt must be positive and finite")
-        return max(1, round(self.plan_period / dt))
 
 
 DEFAULT_RUNTIME_CONFIG = RuntimeConfig()

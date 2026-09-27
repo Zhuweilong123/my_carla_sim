@@ -32,6 +32,21 @@ def test_controller_emits_reverse_command_for_reverse_segment():
     assert -0.5 <= command.steering <= 0.5
 
 
+def test_reverse_tracking_steers_back_toward_path_from_lateral_offset():
+    slot = ParkingSlot(46.0, 7.5, -math.pi / 2.0)
+    trajectory = ReverseParkingPlanner().plan(Pose2D(30.0, 0.0, 0.0), slot)
+    controller = ParkingController()
+    first_reverse = next(index for index, point in enumerate(trajectory.points) if point.gear < 0)
+    controller._progress_index = first_reverse
+
+    command = controller.command(VehicleState(46.6, 2.0, -1.27, -0.6), trajectory)
+
+    assert command.gear == -1
+    # With negative longitudinal velocity, a negative steering angle moves
+    # the reverse trajectory back toward decreasing x.
+    assert command.steering < 0.0
+
+
 def test_controller_does_not_jump_to_reverse_before_staging():
     slot = ParkingSlot(46.0, 7.5, -math.pi / 2.0)
     trajectory = ReverseParkingPlanner().plan(Pose2D(30.0, 0.0, 0.0), slot)
@@ -47,6 +62,15 @@ def test_controller_brakes_at_staging_before_reverse():
     command = controller.command(VehicleState(45.98, -8.16, -1.3, 0.6), trajectory)
     assert command.gear == 0
     assert command.brake == 1.0
+
+
+def test_controller_tapers_approach_speed_before_staging():
+    slot = ParkingSlot(46.0, 7.5, -math.pi / 2.0)
+    trajectory = ReverseParkingPlanner().plan(Pose2D(30.0, 0.0, 0.0), slot)
+    controller = ParkingController()
+    command = controller.command(VehicleState(46.0, -8.0, -math.pi / 2.0, 0.8), trajectory)
+    assert command.brake > 0.0
+    assert command.throttle == 0.0
 
 
 def test_controller_tapers_speed_near_parking_goal():

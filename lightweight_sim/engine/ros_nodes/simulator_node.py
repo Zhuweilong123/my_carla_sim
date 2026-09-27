@@ -12,7 +12,7 @@ from rcl_interfaces.msg import SetParametersResult
 
 from ._simulator_node_impl import *  # noqa: F401,F403
 from ..simulator.data_types import ControlCommand
-from ..simulator.engine import SimulationEngine
+from ..simulator.reverse_engine import SimulationEngine
 from ..simulator.scenarios import make_scenario
 
 

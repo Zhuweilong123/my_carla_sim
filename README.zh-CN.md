@@ -16,7 +16,7 @@ Vehicle Motion 是一个轻量级二维车辆仿真与 ROS 2 规划控制工作�
 
 ## 构建与启动（ROS 2 / WSL2）
 
-当前维护的工作流是在 WSL2 中使用 ROS 2 Lyrical。打开新终端后执行：
+仿真器仅通过 ROS 2 运行；原独立 Pygame 主程序已下线。当前维护的工作流是在 WSL2 中使用 ROS 2 Lyrical。打开新终端后执行：
 
 ```bash
 source /opt/ros/lyrical/setup.bash
@@ -63,17 +63,17 @@ GUI 需要 Linux 图形显示环境（WSL2 下可使用 WSLg）。无头仿真�
 
 ## 巡航与泊车统一控制接口
 
-启动带独立泊车控制器和共享控制模式接口的 GUI：
+标准 launch 同时启动泊车控制器和共享控制模式接口：
 
 ```bash
-ros2 launch parking_module unified_vehicle.launch.py gui:=true
+ros2 launch lightweight_sim lightweight_sim.launch.py gui:=true
 ```
 
-也可以直接以泊车模式启动：
+无 GUI 时可以先加载泊车场景，再通过 `control_mode` 话题选择 `PARKING` 模式：
 
 ```bash
-ros2 launch parking_module unified_vehicle.launch.py \
-  scenario:=reverse_parking mode:=PARKING gui:=false
+ros2 launch lightweight_sim lightweight_sim.launch.py \
+  scenario:=reverse_parking gui:=false
 ```
 
 巡航和泊车控制器发布候选控制指令；`controller_manager` 根据当前模式/控制来源进行选择，是最终的控制仲裁器。泊车规划器和控制器是倒车入库基线方案，并非量产级规划器或车辆安全系统。详见 [`parking_module/README.md`](parking_module/README.md)。

@@ -32,6 +32,23 @@ from lightweight_sim.engine.simulator.data_types import ControlCommand
 from lightweight_sim.engine.analysis.evaluation import provenance, archive_sources
 
 
+def test_switching_to_reverse_parking_keeps_reverse_capable_engine():
+    rclpy.init(args=[])
+    node = SimulatorNode()
+    try:
+        result = node.set_parameters([Parameter("scenario", value="reverse_parking")])
+        assert result[0].successful
+
+        state = node.engine.step(
+            ControlCommand(gear=-1, throttle=1.0), dt=node.physics_dt
+        )
+
+        assert state.vx < 0.0
+    finally:
+        node.destroy_node()
+        rclpy.shutdown()
+
+
 def archive_acceptance(name, payload, passed):
     directory = os.environ.get("LIGHTWEIGHT_SIM_ROS_ARCHIVE")
     if not directory:
