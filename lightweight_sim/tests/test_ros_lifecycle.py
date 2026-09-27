@@ -30,6 +30,7 @@ from lightweight_sim.engine.ros_nodes.qos import status_qos, sensor_data_qos, la
 from lightweight_sim.engine.ros_nodes.message_conversions import message_to_state
 from lightweight_sim.engine.simulator.data_types import ControlCommand
 from lightweight_sim.engine.analysis.evaluation import provenance, archive_sources
+from parking_module.ros_node import ParkingControllerNode
 
 
 def test_switching_to_reverse_parking_keeps_reverse_capable_engine():
@@ -44,6 +45,22 @@ def test_switching_to_reverse_parking_keeps_reverse_capable_engine():
         )
 
         assert state.vx < 0.0
+    finally:
+        node.destroy_node()
+        rclpy.shutdown()
+
+
+def test_parking_node_uses_scenario_target_speed():
+    rclpy.init(args=[])
+    node = ParkingControllerNode()
+    try:
+        node._on_context(String(data=json.dumps({
+            "run_id": 1,
+            "maneuver": "reverse_parking",
+            "parking_goal": [46.0, 7.5, -math.pi / 2.0],
+            "target_speed_kmh": 10.2,
+        })))
+        assert node._planner.config.approach_speed == pytest.approx(10.2 / 3.6)
     finally:
         node.destroy_node()
         rclpy.shutdown()

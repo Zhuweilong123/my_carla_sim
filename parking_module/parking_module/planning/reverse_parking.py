@@ -48,44 +48,79 @@ class ReverseParkingPlanner:
 
         points: List[TrajectoryPoint] = []
         approach_distance = math.hypot(staging.x - start.x, staging.y - start.y)
-        approach_scale = max(4.0, min(8.0, approach_distance * 0.75))
-        approach_m0 = (
-            approach_scale * math.cos(start.yaw),
-            approach_scale * math.sin(start.yaw),
-        )
-        approach_m1 = (
-            approach_scale * math.cos(staging.yaw),
-            approach_scale * math.sin(staging.yaw),
-        )
         approach_count = max(2, int(math.ceil(approach_distance / cfg.sample_step)))
+        max_curvature = 0.95 * math.tan(cfg.max_steer) / cfg.wheelbase
+        approach_poses = None
+        approach_curvatures = None
+        # Short endpoint tangents can make an otherwise smooth Hermite curve
+        # demand a turn tighter than the simulated car can execute. Lengthen
+        # both tangents until the sampled curve fits the steering limit.
+        for scale_index in range(1, 26):
+            approach_scale = max(4.0, approach_distance * (0.5 + 0.1 * scale_index))
+            approach_m0 = (
+                approach_scale * math.cos(start.yaw),
+                approach_scale * math.sin(start.yaw),
+            )
+            approach_m1 = (
+                approach_scale * math.cos(staging.yaw),
+                approach_scale * math.sin(staging.yaw),
+            )
+            candidate = []
+            for index in range(approach_count):
+                t = index / (approach_count - 1)
+                x, y = hermite_point(
+                    (start.x, start.y),
+                    (staging.x, staging.y),
+                    approach_m0,
+                    approach_m1,
+                    t,
+                )
+                yaw = derivative_heading(
+                    hermite_derivative(
+                        (start.x, start.y),
+                        (staging.x, staging.y),
+                        approach_m0,
+                        approach_m1,
+                        t,
+                    ),
+                    reverse=False,
+                )
+                candidate.append(Pose2D(x, y, yaw))
+            curvature = [0.0]
+            for previous_pose, pose in zip(candidate[:-1], candidate[1:]):
+                distance = math.hypot(pose.x - previous_pose.x, pose.y - previous_pose.y)
+                curvature.append(
+                    wrap_angle(pose.yaw - previous_pose.yaw) / distance
+                    if distance > 1e-6 else 0.0
+                )
+            if len(curvature) > 1:
+                curvature[0] = curvature[1]
+            if max(abs(value) for value in curvature) <= max_curvature:
+                approach_poses = candidate
+                approach_curvatures = curvature
+                break
+        if approach_poses is None:
+            raise ParkingPlanningError("approach path exceeds vehicle steering limit")
         approach_time = 0.0
-        previous = (start.x, start.y)
-        for index in range(approach_count):
-            t = index / (approach_count - 1)
-            x, y = hermite_point(
-                (start.x, start.y),
-                (staging.x, staging.y),
-                approach_m0,
-                approach_m1,
-                t,
-            )
-            derivative = hermite_derivative(
-                (start.x, start.y),
-                (staging.x, staging.y),
-                approach_m0,
-                approach_m1,
-                t,
-            )
-            yaw = derivative_heading(derivative, reverse=False)
+        previous = start
+        for index, pose in enumerate(approach_poses):
             if index:
-                approach_time += math.hypot(x - previous[0], y - previous[1]) / max(cfg.approach_speed, 1e-3)
-            previous = (x, y)
+                approach_time += math.hypot(pose.x - previous.x, pose.y - previous.y) / cfg.approach_speed
+            previous = pose
             # Keep the approach target moving.  The controller owns the final
             # stop at the staging pose so it can make the gear transition
             # deterministically instead of braking one lookahead distance too
             # early.
             speed = cfg.approach_speed
-            points.append(TrajectoryPoint(Pose2D(x, y, yaw), speed, 1, time_from_start=approach_time))
+            points.append(
+                TrajectoryPoint(
+                    pose,
+                    speed,
+                    1,
+                    curvature=approach_curvatures[index],
+                    time_from_start=approach_time,
+                )
+            )
 
         # The derivatives describe the direction of travel.  At both ends the
         # vehicle moves opposite to its body heading while reversing.

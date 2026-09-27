@@ -143,7 +143,21 @@ class SimulationEngine:
             distance = math.hypot(
                 state.x - self.destination[0], state.y - self.destination[1]
             )
-            if distance < 2.0:
+            heading_ok = (
+                self.config.destination_heading_rad is None
+                or self.config.destination_heading_tolerance_rad is None
+                or abs(
+                    math.atan2(
+                        math.sin(state.phi - self.config.destination_heading_rad),
+                        math.cos(state.phi - self.config.destination_heading_rad),
+                    )
+                ) <= self.config.destination_heading_tolerance_rad
+            )
+            speed_ok = (
+                self.config.destination_speed_tolerance_mps is None
+                or state.speed <= self.config.destination_speed_tolerance_mps
+            )
+            if distance < self.config.destination_tolerance_m and heading_ok and speed_ok:
                 self.reached_destination = True
         else:
             distance = None

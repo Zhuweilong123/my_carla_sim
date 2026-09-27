@@ -28,7 +28,7 @@ class RuntimeConfig:
     curve_speed_limit_kmh: float = 40.0
     intersection_speed_limit_kmh: float = 25.0
     lane_change_speed_limit_kmh: float = 40.0
-    parking_speed_limit_kmh: float = 8.0
+    parking_speed_limit_kmh: float = 12.0
     target_speed_ratio: float = 0.85
     speed_profile_lookahead_m: float = 20.0
     max_lateral_accel_mps2: float = 2.0

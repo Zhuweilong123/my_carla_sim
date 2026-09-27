@@ -52,6 +52,11 @@ then publishes `control_command/parking` and the run-scoped path on
 `planned_path`. It activates only when the context declares
 `maneuver: reverse_parking`.
 
+The approach is planned and tracked at about 10 km/h. The reverse segment uses
+a lower 4.3 km/h cap and slows further near the slot. The approach curve is
+limited by the simulated vehicle's steering geometry, and the scene reports
+completion only after the vehicle is aligned and nearly stopped at the slot.
+
 ## Run the independent tests
 
 ```bash

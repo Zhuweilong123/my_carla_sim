@@ -6,6 +6,7 @@ file is the only integration boundary and can be omitted in non-ROS usage.
 
 import json
 import math
+from dataclasses import replace
 from typing import Optional
 
 import rclpy
@@ -22,7 +23,7 @@ from lightweight_sim_msgs.msg import (
 )
 
 from .control import ParkingController
-from .core.types import BoxObstacle, ParkingSlot, Pose2D, VehicleState
+from .core.types import BoxObstacle, ParkingConfig, ParkingSlot, Pose2D, VehicleState
 from .planning import ParkingPlanningError, ReverseParkingPlanner
 
 
@@ -122,6 +123,19 @@ class ParkingControllerNode(Node):
             self.get_logger().error("reverse-parking goal contains non-finite values")
             return
         self._slot = ParkingSlot(*values)
+        try:
+            target_speed_kmh = float(context.get("target_speed_kmh", ParkingConfig().approach_speed * 3.6))
+        except (TypeError, ValueError):
+            self.get_logger().error("reverse-parking target speed is invalid")
+            self._slot = None
+            return
+        if not math.isfinite(target_speed_kmh) or target_speed_kmh <= 0.0:
+            self.get_logger().error("reverse-parking target speed must be positive")
+            self._slot = None
+            return
+        parking_config = replace(ParkingConfig(), approach_speed=target_speed_kmh / 3.6)
+        self._planner = ReverseParkingPlanner(parking_config)
+        self._controller = ParkingController(parking_config)
 
     def _tick(self) -> None:
         if (
