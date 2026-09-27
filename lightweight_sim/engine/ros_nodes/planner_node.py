@@ -109,6 +109,17 @@ class PlannerNode(Node):
 
     def _on_routing_reference(self, message: RosReferenceLine) -> None:
         run_id = int(message.request_id)
+        # The simulator publishes the new context and route request in the
+        # same callback, but DDS may deliver the derived reference before the
+        # context.  Keep it until the matching context arrives instead of
+        # activating it and then clearing it during context reset.
+        if self.route_context is None:
+            if (
+                self._pending_routing_reference is None
+                or run_id >= int(self._pending_routing_reference.request_id)
+            ):
+                self._pending_routing_reference = message
+            return
         if self.route_context and run_id != self.route_context["run_id"]:
             if run_id > self.route_context["run_id"]:
                 self._pending_routing_reference = message

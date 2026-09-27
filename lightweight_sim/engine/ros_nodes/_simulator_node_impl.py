@@ -13,6 +13,7 @@ from lightweight_sim_msgs.msg import Obstacle as RosObstacle
 from lightweight_sim_msgs.msg import ObstacleArray
 from lightweight_sim_msgs.msg import SimulationStatus
 from lightweight_sim_msgs.msg import VehicleState as RosVehicleState
+from lightweight_sim_msgs.srv import EditScene
 from rclpy.node import Node
 from rosgraph_msgs.msg import Clock
 from std_srvs.srv import Empty, SetBool, Trigger
@@ -148,6 +149,9 @@ class SimulatorNode(Node):
         self.reset_srv = self.create_service(Empty, "sim/reset", self._on_reset)
         self.pause_srv = self.create_service(SetBool, "sim/pause", self._on_pause)
         self.step_srv = self.create_service(Trigger, "sim/step", self._on_step)
+        self.edit_scene_srv = self.create_service(
+            EditScene, "sim/edit_scene", self._on_edit_scene
+        )
         self.timer = self.create_timer(self.physics_dt, self._on_timer)
         self._publish_run_context(sequence=0)
         self._publish_status()
@@ -249,6 +253,10 @@ class SimulatorNode(Node):
     def _on_timer(self) -> None:
         if not self.paused:
             self._advance_once()
+        else:
+            # Context and state use different topics.  A context callback can
+            # clear a state that arrived first, so keep the paused pose visible.
+            self._publish_state()
 
     def _on_step(self, _request, response):
         self._advance_once()
@@ -275,6 +283,74 @@ class SimulatorNode(Node):
 
     def _publish_run_context(self, sequence: int) -> None:
         """Hook for run-scoped routing context in the ROS adapter."""
+
+    def _on_edit_scene(self, request, response):
+        if not self.paused:
+            response.success = False
+            response.message = "pause the simulation before editing the scene"
+            return response
+
+        values = (request.ego_x, request.ego_y, request.ego_yaw)
+        if not all(math.isfinite(float(value)) for value in values):
+            response.success = False
+            response.message = "ego pose must contain only finite values"
+            return response
+
+        obstacles = []
+        seen_ids = set()
+        for obstacle in request.obstacles:
+            fields = (
+                obstacle.x,
+                obstacle.y,
+                obstacle.length,
+                obstacle.width,
+                obstacle.speed,
+                obstacle.heading,
+            )
+            if not all(math.isfinite(float(value)) for value in fields):
+                response.success = False
+                response.message = "obstacle values must be finite"
+                return response
+            if obstacle.id < 0 or obstacle.id in seen_ids:
+                response.success = False
+                response.message = "obstacle IDs must be unique and non-negative"
+                return response
+            if obstacle.length <= 0.0 or obstacle.width <= 0.0:
+                response.success = False
+                response.message = "obstacle dimensions must be positive"
+                return response
+            if obstacle.length > 50.0 or obstacle.width > 50.0:
+                response.success = False
+                response.message = "obstacle dimensions cannot exceed 50 m"
+                return response
+            seen_ids.add(obstacle.id)
+            obstacles.append({
+                "id": int(obstacle.id),
+                "x": float(obstacle.x),
+                "y": float(obstacle.y),
+                "length": float(obstacle.length),
+                "width": float(obstacle.width),
+                "speed": float(obstacle.speed),
+                "heading": float(obstacle.heading),
+                "type": str(obstacle.type),
+            })
+
+        config = self.engine.config
+        config.ego_start_x = float(request.ego_x)
+        config.ego_start_y = float(request.ego_y)
+        config.ego_start_phi = float(request.ego_yaw)
+        config.ego_start_speed = 0.0
+        config.obstacles = obstacles
+        self.engine = SimulationEngine(config)
+        self.command = ControlCommand()
+        self.last_command_time = self.get_clock().now()
+        self.paused = True
+        self._publish_run_context(sequence=0)
+        self._publish_state()
+        self._publish_status()
+        response.success = True
+        response.message = "scene updated; simulation reset and remains paused"
+        return response
 
     def _publish_state(self) -> None:
         stamp = seconds_to_time(self.engine.sim_time)

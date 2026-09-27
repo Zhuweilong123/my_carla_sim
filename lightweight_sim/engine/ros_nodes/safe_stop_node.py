@@ -37,6 +37,7 @@ class SafeStopNode(Node):
         self._context = None
         self._reference_run = None
         self._reference_ready = False
+        self._pending_reference = None
         self._plan_run = None
         self._plan_received_at = None
         self._last_reason = None
@@ -65,6 +66,10 @@ class SafeStopNode(Node):
         if self._context and run_id <= int(self._context["run_id"]):
             return
         self._context = context
+        pending_reference = self._pending_reference
+        if pending_reference is not None and int(pending_reference.request_id) == run_id:
+            self._pending_reference = None
+            self._on_reference(pending_reference)
         if self._reference_run != run_id:
             self._reference_run = None
             self._reference_ready = False
@@ -74,6 +79,13 @@ class SafeStopNode(Node):
 
     def _on_reference(self, message: RosReferenceLine) -> None:
         run_id = int(message.request_id)
+        if self._context is None:
+            if (
+                self._pending_reference is None
+                or run_id >= int(self._pending_reference.request_id)
+            ):
+                self._pending_reference = message
+            return
         if self._context is not None and run_id != int(self._context["run_id"]):
             if run_id < int(self._context["run_id"]):
                 return

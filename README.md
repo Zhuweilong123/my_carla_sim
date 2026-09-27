@@ -54,10 +54,11 @@ Routing is part of the standard simulator launch. The bundled JSON maps are in `
 
 ## GUI controls
 
-- Click `CRUISE`, `PARKING`, or `E-STOP` to select the task; the GUI control-source button or `Q` switches `AUTO`/`MANUAL`.
-- `C`, `K`, and `E` select cruise, parking, and emergency stop. `1`–`7` switch scenes.
+- Click `CRUISE` or `PARKING` to select the task; the GUI control-source button or `Q` switches `AUTO`/`MANUAL`. The `PAUSE`/`RESUME` button toggles simulation playback.
+- `C` and `K` select cruise and parking; `E` pauses or resumes. `1`–`7` switch scenes.
 - In manual mode, `W/S` or the up/down arrows drive, `A/D` or the left/right arrows steer, and `SPACE` brakes.
-- `P` pauses/resumes, `R` resets, the mouse wheel or `+`/`-` zooms, and `ESC` closes the GUI.
+- `P` also pauses/resumes, `R` resets, the mouse wheel or `+`/`-` zooms, and `ESC` closes the GUI.
+- Click `EDIT SCENE` to pause the simulation and edit the initial vehicle pose and obstacles. Choose `EGO` and click the map to move the start position; `[`/`]` rotate it. `ADD` places a rectangular obstacle, `MOVE` selects an obstacle and then its new location, and `DELETE` removes one. Select an obstacle and use `ROT +/-` or `SIZE +/-`; click `APPLY` to reset the scene with the changes. The updated scene stays paused until you press `E` or `P`, or click `RESUME`. `CANCEL` discards the draft.
 
 GUI rendering requires a Linux display (for WSL2, WSLg). Headless simulation, ROS topics, services, and tests do not require the GUI.
 

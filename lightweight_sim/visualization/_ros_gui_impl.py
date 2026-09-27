@@ -104,6 +104,15 @@ class GuiSnapshot:
     control_source: str = "AUTO"
     parking_slots: List[dict] = field(default_factory=list)
     selected_parking_slot_id: Optional[int] = None
+    scene_editing: bool = False
+    scene_edit_tool: str = "ego"
+    scene_edit_message: str = ""
+    draft_ego_pose: Optional[Tuple[float, float, float]] = None
+    draft_obstacles: List[Obstacle] = field(default_factory=list)
+    selected_obstacle_id: Optional[int] = None
+    draft_obstacle_length: float = 4.5
+    draft_obstacle_width: float = 2.0
+    draft_obstacle_heading: float = 0.0
 
 
 @dataclass(frozen=True)
@@ -283,6 +292,7 @@ class RosGuiView:
         self.renderer.draw_obstacles(snapshot.obstacles)
 
         if snapshot.state is None:
+            self._draw_scene_edit_world(snapshot)
             self._draw_text("Waiting for /vehicle/state ...", HUD_WARNING)
         else:
             if snapshot.status.scenario != self._history_scenario:
@@ -292,6 +302,7 @@ class RosGuiView:
             ed, ephi = self._tracking_error(snapshot)
             self.hud.update_history(ed, ephi)
             self.renderer.draw_vehicle(snapshot.state)
+            self._draw_scene_edit_world(snapshot)
             self.hud.render(
                 state=snapshot.state,
                 target_speed=self.target_speed_kmh,
@@ -305,6 +316,7 @@ class RosGuiView:
                 sim_time=snapshot.status.sim_time,
                 real_time=time.monotonic() - self.started_at,
                 collision=snapshot.status.collision,
+                paused=snapshot.status.paused,
                 map_name=f"{snapshot.status.scenario} [ROS 2]",
                 ed=ed,
                 ephi=ephi,
@@ -465,10 +477,10 @@ class RosGuiView:
             text = f"ROS 2: DONE ({status.termination_reason})  [R reset]"
             color = HUD_WARNING
         elif status.paused:
-            text = "ROS 2: PAUSED  [P resume] [N step]"
+            text = "ROS 2: PAUSED  [E/P resume] [N step]"
             color = HUD_WARNING
         elif status.running:
-            text = "ROS 2: RUNNING  [P pause] [R reset]"
+            text = "ROS 2: RUNNING  [E/P pause] [R reset]"
             color = HUD_TEXT
         else:
             text = "ROS 2: waiting for /sim/status"
@@ -477,6 +489,11 @@ class RosGuiView:
 
     def _draw_mode_controls(self, snapshot: GuiSnapshot) -> None:
         """Hook for concrete views to draw mode controls."""
+
+        return None
+
+    def _draw_scene_edit_world(self, snapshot: GuiSnapshot) -> None:
+        """Hook for the editable scene preview beneath the HUD."""
 
         return None
 

@@ -19,6 +19,7 @@ rosidl_generate_interfaces(${PROJECT_NAME}
   "msg/RoutePlan.msg"
   "msg/ReferenceLine.msg"
   "srv/ComputeRoute.srv"
+  "srv/EditScene.srv"
   DEPENDENCIES std_msgs
 )
 

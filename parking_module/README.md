@@ -8,7 +8,7 @@ ROS 2 and `lightweight_sim_msgs` are used only by the optional
 
 The first implementation is a deterministic reverse-parking baseline:
 
-- a straight approach segment;
+- a curvature-constrained Dubins approach segment from the current pose;
 - a collision-checked Hermite reverse maneuver;
 - a gear-aware pure-pursuit controller with safe stop on gear changes.
 
@@ -38,7 +38,7 @@ there is no separate parking launch command:
 ros2 launch lightweight_sim lightweight_sim.launch.py gui:=true
 ```
 
-The GUI provides `CRUISE`, `PARKING`, `E-STOP` and `AUTO`/`MANUAL` controls.
+The GUI provides `CRUISE`, `PARKING`, `PAUSE`/`RESUME` and `AUTO`/`MANUAL` controls.
 `PARKING` selects the `reverse_parking` scene and routes only the parking
 candidate to the simulator; `CRUISE` routes the built-in cruise controller.
 Press `Q` to toggle the control source. In manual mode, `W/S` drive,
@@ -52,7 +52,10 @@ then publishes `control_command/parking` and the run-scoped path on
 `planned_path`. It activates only when the context declares
 `maneuver: reverse_parking`.
 
-The approach is planned and tracked at about 10 km/h. The reverse segment uses
+The approach is planned and tracked at about 10 km/h. The approach accepts an
+arbitrary vehicle position and heading within the drivable parking scene, then
+selects a collision-free left/right/straight combination that respects the
+vehicle steering limit. The reverse segment uses
 a lower 4.3 km/h cap and slows further near the slot. The approach curve is
 limited by the simulated vehicle's steering geometry, and the scene reports
 completion only after the vehicle is aligned and nearly stopped at the slot.

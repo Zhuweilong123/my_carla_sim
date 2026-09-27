@@ -10,7 +10,12 @@ from __future__ import annotations
 import math
 from typing import Iterable, List
 
-from ..core.geometry import collides, derivative_heading, hermite_derivative, hermite_point
+from ..core.geometry import (
+    collides,
+    derivative_heading,
+    hermite_derivative,
+    hermite_point,
+)
 from ..core.types import (
     BoxObstacle,
     ParkingConfig,
@@ -26,8 +31,163 @@ class ParkingPlanningError(RuntimeError):
     """Raised when no collision-free parking trajectory can be produced."""
 
 
+def _mod2pi(angle: float) -> float:
+    return float(angle) % (2.0 * math.pi)
+
+
+def _dubins_candidates(start: Pose2D, goal: Pose2D, curvature: float):
+    """Return forward-only Dubins candidates in increasing path length."""
+
+    if curvature <= 0.0 or not math.isfinite(curvature):
+        return []
+    dx = goal.x - start.x
+    dy = goal.y - start.y
+    distance = math.hypot(dx, dy)
+    # Normalize the goal into a frame whose origin and heading are the start.
+    local_x = math.cos(start.yaw) * dx + math.sin(start.yaw) * dy
+    local_y = -math.sin(start.yaw) * dx + math.cos(start.yaw) * dy
+    theta = math.atan2(local_y, local_x) if distance > 1e-9 else 0.0
+    alpha = _mod2pi(-theta)
+    beta = _mod2pi(goal.yaw - start.yaw - theta)
+    d = distance * curvature
+    candidates = []
+
+    def add(word, values):
+        if values is not None and all(value >= -1e-9 for value in values):
+            values = tuple(max(0.0, float(value)) for value in values)
+            candidates.append((sum(values), word, values))
+
+    # The six standard Dubins words.  Segment lengths are normalized by the
+    # minimum turning radius and converted to metres by the sampler.
+    tmp0 = d + math.sin(alpha) - math.sin(beta)
+    p2 = 2.0 + d * d - 2.0 * math.cos(alpha - beta) + 2.0 * d * (
+        math.sin(alpha) - math.sin(beta)
+    )
+    if p2 >= 0.0:
+        tmp1 = math.atan2(math.cos(beta) - math.cos(alpha), tmp0)
+        add("LSL", (_mod2pi(-alpha + tmp1), math.sqrt(p2), _mod2pi(beta - tmp1)))
+
+    tmp0 = d - math.sin(alpha) + math.sin(beta)
+    p2 = 2.0 + d * d - 2.0 * math.cos(alpha - beta) + 2.0 * d * (
+        -math.sin(alpha) + math.sin(beta)
+    )
+    if p2 >= 0.0:
+        tmp1 = math.atan2(math.cos(alpha) - math.cos(beta), tmp0)
+        add("RSR", (_mod2pi(alpha - tmp1), math.sqrt(p2), _mod2pi(-beta + tmp1)))
+
+    p2 = -2.0 + d * d + 2.0 * math.cos(alpha - beta) + 2.0 * d * (
+        math.sin(alpha) + math.sin(beta)
+    )
+    if p2 >= 0.0:
+        p = math.sqrt(p2)
+        tmp2 = math.atan2(
+            -math.cos(alpha) - math.cos(beta),
+            d + math.sin(alpha) + math.sin(beta),
+        ) - math.atan2(-2.0, p)
+        add("LSR", (_mod2pi(-alpha + tmp2), p, _mod2pi(-beta + tmp2)))
+
+    p2 = d * d - 2.0 + 2.0 * math.cos(alpha - beta) - 2.0 * d * (
+        math.sin(alpha) + math.sin(beta)
+    )
+    if p2 >= 0.0:
+        p = math.sqrt(p2)
+        tmp2 = math.atan2(
+            math.cos(alpha) + math.cos(beta),
+            d - math.sin(alpha) - math.sin(beta),
+        ) - math.atan2(2.0, p)
+        add("RSL", (_mod2pi(alpha - tmp2), p, _mod2pi(beta - tmp2)))
+
+    tmp = (
+        6.0 - d * d + 2.0 * math.cos(alpha - beta)
+        + 2.0 * d * (math.sin(alpha) - math.sin(beta))
+    ) / 8.0
+    if abs(tmp) <= 1.0:
+        p = _mod2pi(2.0 * math.pi - math.acos(tmp))
+        tmp2 = math.atan2(
+            math.cos(alpha) - math.cos(beta),
+            d - math.sin(alpha) + math.sin(beta),
+        )
+        add("RLR", (_mod2pi(alpha - tmp2 + p / 2.0), p,
+                     _mod2pi(alpha - beta - _mod2pi(alpha - tmp2 + p / 2.0) + p)))
+
+    tmp = (
+        6.0 - d * d + 2.0 * math.cos(alpha - beta)
+        + 2.0 * d * (-math.sin(alpha) + math.sin(beta))
+    ) / 8.0
+    if abs(tmp) <= 1.0:
+        p = _mod2pi(2.0 * math.pi - math.acos(tmp))
+        tmp2 = math.atan2(
+            math.cos(alpha) - math.cos(beta),
+            d + math.sin(alpha) - math.sin(beta),
+        )
+        t = _mod2pi(-alpha - tmp2 + p / 2.0)
+        add("LRL", (t, p, _mod2pi(beta - alpha + t + p)))
+
+    candidates.sort(key=lambda item: item[0])
+    return candidates
+
+
+def _sample_dubins(
+    start: Pose2D,
+    goal: Pose2D,
+    word: str,
+    normalized_lengths,
+    curvature: float,
+    step: float,
+):
+    """Sample a Dubins path and return poses with forward travel headings."""
+
+    radius = 1.0 / curvature
+    x = y = yaw = 0.0
+    local = [Pose2D(0.0, 0.0, 0.0)]
+    for mode, normalized_length in zip(word, normalized_lengths):
+        remaining = normalized_length * radius
+        sign = 1.0 if mode == "L" else -1.0 if mode == "R" else 0.0
+        while remaining > 1e-9:
+            distance = min(float(step), remaining)
+            if mode == "S":
+                x += distance * math.cos(yaw)
+                y += distance * math.sin(yaw)
+            else:
+                next_yaw = yaw + sign * curvature * distance
+                x += (math.sin(next_yaw) - math.sin(yaw)) / (sign * curvature)
+                y += (-math.cos(next_yaw) + math.cos(yaw)) / (sign * curvature)
+                yaw = next_yaw
+            local.append(Pose2D(x, y, yaw))
+            remaining -= distance
+
+    cos_yaw = math.cos(start.yaw)
+    sin_yaw = math.sin(start.yaw)
+    poses = [
+        Pose2D(
+            start.x + cos_yaw * pose.x - sin_yaw * pose.y,
+            start.y + sin_yaw * pose.x + cos_yaw * pose.y,
+            pose.yaw + start.yaw,
+        )
+        for pose in local
+    ]
+    if not poses:
+        poses = [start]
+    poses[0] = start
+    poses[-1] = goal
+    return poses
+
+
+def _sampled_curvatures(poses: List[Pose2D]) -> List[float]:
+    curvatures = [0.0]
+    for previous, current in zip(poses[:-1], poses[1:]):
+        distance = math.hypot(current.x - previous.x, current.y - previous.y)
+        curvatures.append(
+            wrap_angle(current.yaw - previous.yaw) / distance
+            if distance > 1e-6 else 0.0
+        )
+    if len(curvatures) > 1:
+        curvatures[0] = curvatures[1]
+    return curvatures
+
+
 class ReverseParkingPlanner:
-    """Generate an approach segment followed by a reverse Hermite maneuver."""
+    """Generate a curvature-feasible approach and reverse parking maneuver."""
 
     def __init__(self, config: ParkingConfig | None = None):
         self.config = config or ParkingConfig()
@@ -45,62 +205,37 @@ class ReverseParkingPlanner:
             slot.center_y + cfg.approach_distance * math.sin(slot.heading),
             slot.heading,
         )
+        approach_distance = math.hypot(staging.x - start.x, staging.y - start.y)
 
         points: List[TrajectoryPoint] = []
-        approach_distance = math.hypot(staging.x - start.x, staging.y - start.y)
-        approach_count = max(2, int(math.ceil(approach_distance / cfg.sample_step)))
         max_curvature = 0.95 * math.tan(cfg.max_steer) / cfg.wheelbase
+        candidates = _dubins_candidates(start, staging, max_curvature)
         approach_poses = None
         approach_curvatures = None
-        # Short endpoint tangents can make an otherwise smooth Hermite curve
-        # demand a turn tighter than the simulated car can execute. Lengthen
-        # both tangents until the sampled curve fits the steering limit.
-        for scale_index in range(1, 26):
-            approach_scale = max(4.0, approach_distance * (0.5 + 0.1 * scale_index))
-            approach_m0 = (
-                approach_scale * math.cos(start.yaw),
-                approach_scale * math.sin(start.yaw),
+        for _length, word, normalized_lengths in candidates:
+            candidate = _sample_dubins(
+                start, staging, word, normalized_lengths, max_curvature, cfg.sample_step
             )
-            approach_m1 = (
-                approach_scale * math.cos(staging.yaw),
-                approach_scale * math.sin(staging.yaw),
-            )
-            candidate = []
-            for index in range(approach_count):
-                t = index / (approach_count - 1)
-                x, y = hermite_point(
-                    (start.x, start.y),
-                    (staging.x, staging.y),
-                    approach_m0,
-                    approach_m1,
-                    t,
+            curvature = _sampled_curvatures(candidate)
+            # Sampling and forcing the exact endpoint introduce a small
+            # numerical curvature error at segment joins.
+            if max(abs(value) for value in curvature) > max_curvature + 1e-4:
+                continue
+            if any(
+                collides(
+                    pose, obstacles, cfg.vehicle_length, cfg.vehicle_width,
+                    cfg.obstacle_clearance,
                 )
-                yaw = derivative_heading(
-                    hermite_derivative(
-                        (start.x, start.y),
-                        (staging.x, staging.y),
-                        approach_m0,
-                        approach_m1,
-                        t,
-                    ),
-                    reverse=False,
-                )
-                candidate.append(Pose2D(x, y, yaw))
-            curvature = [0.0]
-            for previous_pose, pose in zip(candidate[:-1], candidate[1:]):
-                distance = math.hypot(pose.x - previous_pose.x, pose.y - previous_pose.y)
-                curvature.append(
-                    wrap_angle(pose.yaw - previous_pose.yaw) / distance
-                    if distance > 1e-6 else 0.0
-                )
-            if len(curvature) > 1:
-                curvature[0] = curvature[1]
-            if max(abs(value) for value in curvature) <= max_curvature:
-                approach_poses = candidate
-                approach_curvatures = curvature
-                break
+                for pose in candidate
+            ):
+                continue
+            approach_poses = candidate
+            approach_curvatures = curvature
+            break
         if approach_poses is None:
-            raise ParkingPlanningError("approach path exceeds vehicle steering limit")
+            if not candidates:
+                raise ParkingPlanningError("no curvature-feasible approach path")
+            raise ParkingPlanningError("no collision-free approach path")
         approach_time = 0.0
         previous = start
         for index, pose in enumerate(approach_poses):

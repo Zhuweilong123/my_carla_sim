@@ -19,9 +19,17 @@ rclpy = pytest.importorskip("rclpy")
 pytest.importorskip("lightweight_sim_msgs.msg")
 from rclpy.executors import SingleThreadedExecutor
 from rclpy.parameter import Parameter
-from lightweight_sim_msgs.msg import Path, VehicleState as RosState, ControlCommand as RosCommand
+from lightweight_sim_msgs.msg import (
+    Path,
+    PathPoint,
+    ReferenceLine,
+    VehicleState as RosState,
+    ControlCommand as RosCommand,
+)
 from lightweight_sim_msgs.msg import SimulationStatus
+from lightweight_sim_msgs.srv import EditScene
 from std_msgs.msg import String
+from std_srvs.srv import SetBool
 from lightweight_sim.engine.ros_nodes.simulator_node import SimulatorNode
 from lightweight_sim.engine.ros_nodes.planner_node import PlannerNode
 from lightweight_sim.engine.ros_nodes.controller_node import ControllerNode
@@ -45,6 +53,76 @@ def test_switching_to_reverse_parking_keeps_reverse_capable_engine():
         )
 
         assert state.vx < 0.0
+    finally:
+        node.destroy_node()
+        rclpy.shutdown()
+
+
+def test_edited_scene_keeps_publishing_state_while_paused():
+    rclpy.init(args=[])
+    sim = SimulatorNode()
+    observer = rclpy.create_node("paused_scene_observer")
+    executor = SingleThreadedExecutor()
+    received = []
+    try:
+        sim._on_pause(SetBool.Request(data=True), SetBool.Response())
+        request = EditScene.Request()
+        request.ego_x = 12.0
+        request.ego_y = 3.0
+        request.ego_yaw = 0.25
+        response = sim._on_edit_scene(request, EditScene.Response())
+        assert response.success, response.message
+
+        # Subscribe after the one-shot edit response.  Volatile state must
+        # still arrive while simulation time and physics steps are frozen.
+        observer.create_subscription(RosState, "vehicle/state", received.append, sensor_data_qos())
+        executor.add_node(sim)
+        executor.add_node(observer)
+        deadline = time.monotonic() + 3.0
+        while not received and time.monotonic() < deadline:
+            executor.spin_once(timeout_sec=0.05)
+        assert received, "paused scene did not republish vehicle/state"
+        assert received[-1].x == pytest.approx(12.0)
+        assert received[-1].y == pytest.approx(3.0)
+        assert received[-1].yaw == pytest.approx(0.25)
+        assert sim.engine.step_count == 0
+        assert sim.paused
+    finally:
+        executor.shutdown()
+        observer.destroy_node()
+        sim.destroy_node()
+        rclpy.shutdown()
+
+
+def test_planner_replays_reference_received_before_scene_context():
+    rclpy.init(args=[])
+    node = PlannerNode()
+    try:
+        node.plan_timer.cancel()
+        node.poll_timer.cancel()
+        reference = ReferenceLine()
+        reference.request_id = 123
+        reference.success = True
+        reference.reference_lane_index = 0
+        reference.target_lane = 0
+        reference.points = [
+            PathPoint(x=0.0, y=0.0, theta=0.0, kappa=0.0),
+            PathPoint(x=20.0, y=0.0, theta=0.0, kappa=0.0),
+        ]
+
+        # DDS can deliver the reference generated from the edit before the
+        # matching context callback.  It must survive that ordering.
+        node._on_routing_reference(reference)
+        assert node._pending_routing_reference is reference
+        node._on_context(String(data=json.dumps({
+            "schema_version": 1,
+            "run_id": 123,
+            "lane_width": 3.5,
+            "num_lanes": 2,
+        })))
+        assert node.routing_reference_run == 123
+        assert node.active_run == 123
+        assert node.planner is not None
     finally:
         node.destroy_node()
         rclpy.shutdown()

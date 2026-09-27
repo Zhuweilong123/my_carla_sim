@@ -1,8 +1,33 @@
 import math
 
+import pytest
+
 from parking_module.control import ParkingController
 from parking_module.core.types import BoxObstacle, ParkingSlot, Pose2D, VehicleState
 from parking_module.planning import ReverseParkingPlanner
+
+
+@pytest.mark.parametrize(
+    "start",
+    [
+        Pose2D(20.0, -10.0, math.pi),
+        Pose2D(70.0, 10.0, math.pi / 2.0),
+        Pose2D(30.0, 0.0, math.pi / 2.0),
+        Pose2D(60.0, -8.0, 2.5),
+    ],
+)
+def test_planner_accepts_arbitrary_approach_pose(start):
+    slot = ParkingSlot(46.0, 7.5, -math.pi / 2.0)
+    obstacles = (
+        BoxObstacle(43.75, 7.5, 6.0, 0.25, -math.pi / 2.0),
+        BoxObstacle(48.25, 7.5, 6.0, 0.25, -math.pi / 2.0),
+        BoxObstacle(46.0, 10.5, 4.5, 0.25, 0.0),
+    )
+    trajectory = ReverseParkingPlanner().plan(start, slot, obstacles)
+
+    assert trajectory.points[0].pose == start
+    assert trajectory.points[-1].pose == slot.goal
+    assert {point.gear for point in trajectory.points} == {1, -1}
 
 
 def test_planner_is_standalone_and_collision_free_for_demo_slot():

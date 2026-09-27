@@ -66,6 +66,15 @@ class SimulatorNode(_LegacySimulatorNode):
                        steering_parameters=asdict(config.steering),
                        maneuver=getattr(config, "maneuver", "cruise"),
                        parking_goal=getattr(config, "parking_goal", None),
+                       ego_start_pose=(
+                           config.ego_start_x,
+                           config.ego_start_y,
+                           config.ego_start_phi,
+                       ),
+                       scene_obstacles=[
+                           asdict(obstacle)
+                           for obstacle in self.engine.obstacles.get_all()
+                       ],
                        parking_slots=getattr(config, "parking_slots", []),
                        selected_parking_slot_id=getattr(
                            config, "selected_parking_slot_id", None
