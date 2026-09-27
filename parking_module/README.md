@@ -56,6 +56,10 @@ The approach is planned and tracked at about 10 km/h. The reverse segment uses
 a lower 4.3 km/h cap and slows further near the slot. The approach curve is
 limited by the simulated vehicle's steering geometry, and the scene reports
 completion only after the vehicle is aligned and nearly stopped at the slot.
+The reverse-parking scene contains three numbered spaces. Select one with the
+on-screen slot buttons or F1, F2, and F3 before starting the maneuver. Pause
+the simulation before changing spaces after it has started; changing the goal
+restarts the scene from the initial pose.
 
 ## Run the independent tests
 

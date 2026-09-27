@@ -13,7 +13,7 @@ from rcl_interfaces.msg import SetParametersResult
 from ._simulator_node_impl import *  # noqa: F401,F403
 from ..simulator.data_types import ControlCommand
 from ..simulator.reverse_engine import SimulationEngine
-from ..simulator.scenarios import make_scenario
+from ..simulator.scenarios import make_scenario, select_parking_slot
 
 
 _LegacySimulatorNode = SimulatorNode
@@ -66,6 +66,10 @@ class SimulatorNode(_LegacySimulatorNode):
                        steering_parameters=asdict(config.steering),
                        maneuver=getattr(config, "maneuver", "cruise"),
                        parking_goal=getattr(config, "parking_goal", None),
+                       parking_slots=getattr(config, "parking_slots", []),
+                       selected_parking_slot_id=getattr(
+                           config, "selected_parking_slot_id", None
+                       ),
                        routing_map_id=getattr(config, "routing_map_id", None),
                        routing_start_lane=getattr(config, "routing_start_lane", -1),
                        routing_goal_lane=getattr(config, "routing_goal_lane", -1),
@@ -115,6 +119,7 @@ class SimulatorNode(_LegacySimulatorNode):
 
     def _on_parameters(self, parameters):
         requested = None
+        requested_slot_id = None
         for parameter in parameters:
             if parameter.name == "steering_profile":
                 return SetParametersResult(successful=False,
@@ -126,12 +131,38 @@ class SimulatorNode(_LegacySimulatorNode):
                         reason="scenario must be a string",
                     )
                 requested = parameter.value
+            elif parameter.name == "parking_slot_id":
+                if not isinstance(parameter.value, int):
+                    return SetParametersResult(
+                        successful=False,
+                        reason="parking_slot_id must be an integer",
+                    )
+                requested_slot_id = parameter.value
 
-        if requested is None:
+        if requested is None and requested_slot_id is None:
             return SetParametersResult(successful=True)
+        if (
+            requested_slot_id is not None
+            and not self.paused
+            and self.engine.step_count > 0
+        ):
+            return SetParametersResult(
+                successful=False,
+                reason="pause the simulation before changing the parking slot",
+            )
 
         try:
-            config = make_scenario(requested)
+            scenario_name = requested or self.engine.config.name
+            config = make_scenario(scenario_name)
+            if config.maneuver == "reverse_parking":
+                slot_id = (
+                    requested_slot_id
+                    if requested_slot_id is not None
+                    else int(self.get_parameter("parking_slot_id").value)
+                )
+                select_parking_slot(config, slot_id)
+            elif requested_slot_id is not None:
+                raise ValueError("parking_slot_id can only change in reverse_parking")
             attach_map_road_network(config)
             config.physics_dt = self.physics_dt
             self._apply_runtime_parameters(config)

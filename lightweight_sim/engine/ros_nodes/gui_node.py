@@ -73,6 +73,10 @@ class GuiNode(_LegacyGuiNode):
         self.snapshot.road_network_num_lanes = int(
             context.get("road_network_num_lanes", 0)
         )
+        self.snapshot.parking_slots = list(context.get("parking_slots", []))
+        self.snapshot.selected_parking_slot_id = context.get(
+            "selected_parking_slot_id"
+        )
         if self.snapshot.reference_line_request_id != context["run_id"]:
             self.snapshot.reference_line_path = []
             self.snapshot.reference_line_request_id = 0
@@ -155,6 +159,9 @@ class GuiNode(_LegacyGuiNode):
         if action.kind == "switch_scenario":
             self._switch_scenario(str(action.value))
             return
+        if action.kind == "select_parking_slot":
+            self._select_parking_slot(int(action.value))
+            return
         super()._handle_action(action)
 
     def _set_mode(self, mode: str) -> None:
@@ -222,18 +229,45 @@ class GuiNode(_LegacyGuiNode):
         self.manual_pub.publish(message)
 
     def _call_scenario(self, name: str) -> None:
+        self._call_parameter("scenario", name)
+
+    def _select_parking_slot(self, slot_id: int) -> None:
+        if not self.route_context or self.route_context.get("maneuver") != "reverse_parking":
+            return
+        if (
+            self.snapshot.status.running
+            and not self.snapshot.status.paused
+            and self.snapshot.status.step_count > 0
+        ):
+            self.get_logger().warning("pause the simulation before changing the parking slot")
+            return
+        slots = self.route_context.get("parking_slots", [])
+        slot = next(
+            (item for item in slots if int(item.get("id", -1)) == slot_id),
+            None,
+        )
+        if slot is None or slot.get("occupied", False):
+            self.get_logger().warning(f"parking slot {slot_id} is unavailable")
+            return
+        self._call_parameter("parking_slot_id", slot_id)
+
+    def _call_parameter(self, name: str, value) -> None:
         if not self.scenario_client.service_is_ready():
             self.get_logger().warning(
-                "simulator parameter service is not available; cannot switch scenario"
+                "simulator parameter service is not available; cannot update selection"
             )
             return
 
-        value = ParameterValue()
-        value.type = ParameterType.PARAMETER_STRING
-        value.string_value = name
+        parameter_value = ParameterValue()
+        if isinstance(value, str):
+            parameter_value.type = ParameterType.PARAMETER_STRING
+            parameter_value.string_value = value
+        else:
+            parameter_value.type = ParameterType.PARAMETER_INTEGER
+            parameter_value.integer_value = int(value)
         parameter = Parameter()
-        parameter.name = "scenario"
-        parameter.value = value
+        parameter.name = name
+        parameter.value = parameter_value
         request = SetParameters.Request()
         request.parameters = [parameter]
         future = self.scenario_client.call_async(request)

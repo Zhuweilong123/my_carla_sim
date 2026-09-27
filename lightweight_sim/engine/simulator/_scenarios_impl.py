@@ -165,22 +165,39 @@ def reverse_parking() -> ScenarioConfig:
     ``ControlCommand(gear=-1, throttle=..., steer=...)`` to enter it.
     """
 
-    slot_x = 46.0
     slot_y = 7.5
-    # The car faces back toward the aisle after reversing into the slot.
+    # The three perpendicular spaces share one aisle. Slot 2 is selected by
+    # default to preserve the original scene's goal pose.
     slot_heading = -math.pi / 2.0
+    parking_slots = [
+        {"id": 1, "name": "Slot 1", "x": 40.0, "y": slot_y,
+         "heading": slot_heading, "occupied": False},
+        {"id": 2, "name": "Slot 2", "x": 46.0, "y": slot_y,
+         "heading": slot_heading, "occupied": False},
+        {"id": 3, "name": "Slot 3", "x": 52.0, "y": slot_y,
+         "heading": slot_heading, "occupied": False},
+    ]
     road = RoadDef(
         segments=[RoadSegment("straight", {"length": 100, "heading": 0, "start": (0, 0)})],
         lane_width=3.5,
         num_lanes=8,
     )
-    obstacles = [
-        # Slot side walls: 4.2 m clear width, 6 m usable depth.
-        {"id": 101, "x": slot_x - 2.25, "y": slot_y, "length": 6.0, "width": 0.25, "heading": slot_heading},
-        {"id": 102, "x": slot_x + 2.25, "y": slot_y, "length": 6.0, "width": 0.25, "heading": slot_heading},
-        # Rear wall.
-        {"id": 103, "x": slot_x, "y": slot_y + 3.0, "length": 4.5, "width": 0.25, "heading": 0.0},
-    ]
+    # Each space has 4.2 m clear width and 6 m usable depth. The walls make
+    # all spaces visible and keep neighboring stalls out of the target path.
+    obstacles = []
+    for slot in parking_slots:
+        slot_x = slot["x"]
+        slot_id = slot["id"]
+        obstacles.extend([
+            {"id": 100 + slot_id * 10 + 1, "x": slot_x - 2.25, "y": slot_y,
+             "length": 6.0, "width": 0.25, "heading": slot_heading},
+            {"id": 100 + slot_id * 10 + 2, "x": slot_x + 2.25, "y": slot_y,
+             "length": 6.0, "width": 0.25, "heading": slot_heading},
+            {"id": 100 + slot_id * 10 + 3, "x": slot_x, "y": slot_y + 3.0,
+             "length": 4.5, "width": 0.25, "heading": 0.0},
+        ])
+    selected_slot = parking_slots[1]
+    slot_x = selected_slot["x"]
     return ScenarioConfig(
         name="reverse_parking",
         description="Reverse parking into a bounded perpendicular slot",
@@ -200,7 +217,31 @@ def reverse_parking() -> ScenarioConfig:
         vehicle_model="kinematic",
         maneuver="reverse_parking",
         parking_goal=(slot_x, slot_y, slot_heading),
+        parking_slots=parking_slots,
+        selected_parking_slot_id=selected_slot["id"],
     )
+
+
+def select_parking_slot(config: ScenarioConfig, slot_id: int) -> None:
+    """Set the active parking destination and matching completion target."""
+
+    if config.maneuver != "reverse_parking":
+        raise ValueError("parking slots are only available in reverse_parking")
+    slot = next(
+        (item for item in config.parking_slots if int(item["id"]) == int(slot_id)),
+        None,
+    )
+    if slot is None:
+        available = [int(item["id"]) for item in config.parking_slots]
+        raise ValueError(f"unknown parking slot {slot_id}; choose from {available}")
+    if slot.get("occupied", False):
+        raise ValueError(f"parking slot {slot_id} is occupied")
+
+    goal = (float(slot["x"]), float(slot["y"]), float(slot["heading"]))
+    config.selected_parking_slot_id = int(slot["id"])
+    config.parking_goal = goal
+    config.destination = goal[:2]
+    config.destination_heading_rad = goal[2]
 
 
 SCENARIOS = {

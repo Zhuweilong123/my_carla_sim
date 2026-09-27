@@ -27,7 +27,7 @@ class _ScenarioHUD(_LegacyHUD):
         pygame.draw.rect(panel, (12, 18, 27, 215), panel.get_rect(), border_radius=7)
         pygame.draw.rect(panel, self.BORDER, panel.get_rect(), 1, border_radius=7)
         if auto_mode:
-            hint = "1-7 scene   C cruise   K parking   E stop   P pause   R reset"
+            hint = "1-7 scene   F1-F3 slot   C cruise   K parking   E stop   P pause   R reset"
         else:
             hint = "W/S drive   A/D steer   SPACE brake   Q auto   E stop"
         self._text(hint, x + 14, y + 10, self.font_small, self.MUTED)
@@ -48,6 +48,7 @@ class RosGuiView(_LegacyRosGuiView):
         (pygame.K_6, "reverse_parking"),
         (pygame.K_7, "demo_grid"),
     )
+    PARKING_SLOT_KEYS = ((pygame.K_F1, 1), (pygame.K_F2, 2), (pygame.K_F3, 3))
 
     MODE_BUTTONS = (
         # Keep labels ASCII-only: the default Pygame font on WSL often lacks
@@ -113,7 +114,11 @@ class RosGuiView(_LegacyRosGuiView):
         self._scenario_key_state = {
             key: False for key, _name in self.SCENARIO_KEYS
         }
+        self._parking_slot_key_state = {
+            key: False for key, _slot_id in self.PARKING_SLOT_KEYS
+        }
         self._mode_button_rects = {}
+        self._parking_slot_button_rects = {}
         self._control_source_button_rect = None
         self._manual_keys = set()
 
@@ -146,6 +151,17 @@ class RosGuiView(_LegacyRosGuiView):
                 and self._control_source_button_rect.collidepoint(position)
             ):
                 mapped.append(GuiAction("toggle_control_source"))
+            else:
+                slot_id = next(
+                    (
+                        slot_id
+                        for slot_id, rect in self._parking_slot_button_rects.items()
+                        if rect.collidepoint(position)
+                    ),
+                    None,
+                )
+                if slot_id is not None:
+                    mapped.append(GuiAction("select_parking_slot", slot_id))
         actions = mapped
         key_state = pygame.key.get_pressed()
         for key, mode in (
@@ -174,6 +190,11 @@ class RosGuiView(_LegacyRosGuiView):
             if is_down and not self._scenario_key_state[key]:
                 actions.append(GuiAction("switch_scenario", name))
             self._scenario_key_state[key] = is_down
+        for key, slot_id in self.PARKING_SLOT_KEYS:
+            is_down = bool(pressed[key])
+            if is_down and not self._parking_slot_key_state[key]:
+                actions.append(GuiAction("select_parking_slot", slot_id))
+            self._parking_slot_key_state[key] = is_down
         return actions
 
     def render(self, snapshot):
@@ -225,6 +246,34 @@ class RosGuiView(_LegacyRosGuiView):
         )
         text = self.renderer.font_small.render(source, True, (240, 245, 248))
         self.screen.blit(text, text.get_rect(center=self._control_source_button_rect.center))
+
+        self._parking_slot_button_rects = {}
+        if snapshot.status.scenario == "reverse_parking":
+            slot_x = x
+            slot_y = y + button_height + 8
+            for slot in snapshot.parking_slots:
+                slot_id = int(slot["id"])
+                occupied = bool(slot.get("occupied", False))
+                selected = slot_id == snapshot.selected_parking_slot_id
+                rect = pygame.Rect(slot_x, slot_y, 82, 26)
+                self._parking_slot_button_rects[slot_id] = rect
+                if occupied:
+                    color = (75, 58, 58)
+                    label = f"{slot_id}: FULL"
+                else:
+                    color = (39, 111, 85) if selected else (36, 49, 62)
+                    label = f"{slot_id}: SLOT"
+                pygame.draw.rect(self.screen, color, rect, border_radius=4)
+                pygame.draw.rect(
+                    self.screen,
+                    (170, 205, 190) if selected else (120, 140, 158),
+                    rect,
+                    2 if selected else 1,
+                    border_radius=4,
+                )
+                text = self.renderer.font_small.render(label, True, (235, 240, 245))
+                self.screen.blit(text, text.get_rect(center=rect.center))
+                slot_x += rect.width + 6
 
     def _manual_control(self):
         forward = pygame.K_w in self._manual_keys or pygame.K_UP in self._manual_keys

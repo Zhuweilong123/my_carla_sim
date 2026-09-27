@@ -102,6 +102,8 @@ class GuiSnapshot:
     control: GuiControl = field(default_factory=GuiControl)
     mode: str = "CRUISE"
     control_source: str = "AUTO"
+    parking_slots: List[dict] = field(default_factory=list)
+    selected_parking_slot_id: Optional[int] = None
 
 
 @dataclass(frozen=True)

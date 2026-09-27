@@ -154,6 +154,8 @@ class ScenarioConfig:
     vehicle_model: str = "kinematic"
     maneuver: str = "cruise"
     parking_goal: Optional[Tuple[float, float, float]] = None
+    parking_slots: List[dict] = field(default_factory=list)
+    selected_parking_slot_id: Optional[int] = None
     vehicle_params: VehicleParams = field(default_factory=VehicleParams)
     steering: SteeringParams = field(default_factory=SteeringParams)
     physics_dt: float = DEFAULT_RUNTIME_CONFIG.physics_dt

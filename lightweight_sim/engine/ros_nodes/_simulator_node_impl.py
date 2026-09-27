@@ -19,7 +19,7 @@ from std_srvs.srv import Empty, SetBool, Trigger
 
 from ..simulator.data_types import ControlCommand, VehicleParams
 from ..simulator.reverse_engine import SimulationEngine
-from ..simulator.scenarios import make_scenario
+from ..simulator.scenarios import make_scenario, select_parking_slot
 from ..simulator.steering import SteeringParams, steering_profile
 from ..runtime_config import DEFAULT_RUNTIME_CONFIG
 from .qos import clock_qos, command_qos, latched_path_qos, sensor_data_qos, status_qos
@@ -61,6 +61,7 @@ class SimulatorNode(Node):
     def __init__(self) -> None:
         super().__init__("simulator_node")
         self.declare_parameter("scenario", "obstacle")
+        self.declare_parameter("parking_slot_id", 2)
         self.declare_parameter("steering_profile", "ideal")
         self.declare_parameter("physics_dt", DEFAULT_RUNTIME_CONFIG.physics_dt)
         self.declare_parameter(
@@ -116,6 +117,8 @@ class SimulatorNode(Node):
         self.publish_clock_enabled = bool(self.get_parameter("publish_clock").value)
         self.frame_id = str(self.get_parameter("frame_id").value)
         config = make_scenario(scenario_name)
+        if config.maneuver == "reverse_parking":
+            select_parking_slot(config, int(self.get_parameter("parking_slot_id").value))
         attach_map_road_network(config)
         config.physics_dt = self.physics_dt
         config.dynamic_max_substep_s = float(

@@ -10,7 +10,9 @@ def test_reverse_parking_scene_has_slot_geometry():
 
     assert config.maneuver == "reverse_parking"
     assert config.parking_goal == pytest.approx((46.0, 7.5, -1.57079632679))
-    assert len(config.obstacles) == 3
+    assert len(config.parking_slots) == 3
+    assert len(config.obstacles) == 9
+    assert config.selected_parking_slot_id == 2
     assert config.destination == pytest.approx((46.0, 7.5))
 
 
