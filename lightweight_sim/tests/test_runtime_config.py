@@ -41,3 +41,11 @@ def test_shared_runtime_speed_defaults_match_ros_configuration():
         )
         assert matches, f"{name} is missing from config/default.yaml"
         assert float(matches[0]) == pytest.approx(expected), name
+
+
+def test_parking_planner_selection_is_configured_for_ros_node():
+    config_path = Path(__file__).parents[1] / "config" / "default.yaml"
+    yaml_text = config_path.read_text(encoding="utf-8")
+
+    assert "parking_controller_node:" in yaml_text
+    assert re.search(r"(?m)^\s+planner_type:\s*hybrid_astar\s*$", yaml_text)

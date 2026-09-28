@@ -127,6 +127,40 @@ def test_gui_tracking_error_prefers_heading_at_figure_eight_crossing():
     assert ephi == pytest.approx(0.0)
 
 
+def test_gui_reverse_parking_heading_error_is_body_aligned():
+    snapshot = GuiSnapshot(
+        state=VehicleState(x=0.0, y=5.0, phi=-math.pi / 2.0, vx=-1.0),
+        planned_path=[
+            (0.0, 0.0, -math.pi / 2.0, 0.0),
+            (0.0, 10.0, -math.pi / 2.0, 0.0),
+        ],
+    )
+    snapshot.status.scenario = "reverse_parking"
+
+    ed, ephi = RosGuiView._tracking_error(snapshot)
+
+    assert ed == pytest.approx(0.0)
+    assert ephi == pytest.approx(0.0)
+
+
+def test_gui_reverse_parking_corrects_cached_travel_heading_metric():
+    snapshot = GuiSnapshot(
+        state=VehicleState(x=0.0, y=5.0, phi=-math.pi / 2.0, vx=-1.0),
+    )
+    snapshot.tracking_metrics = {
+        "timestamp": 0.0,
+        "ed_m": 0.0,
+        "ephi_deg": 180.0,
+        "reference_heading_rad": math.pi / 2.0,
+    }
+    snapshot.status.scenario = "reverse_parking"
+
+    ed, ephi = RosGuiView._tracking_error(snapshot)
+
+    assert ed == pytest.approx(0.0)
+    assert ephi == pytest.approx(0.0)
+
+
 def test_latest_planner_can_choose_a_free_lane():
     road = RoadDef(num_lanes=3)
     world = World(road)

@@ -323,9 +323,14 @@ class RosGuiView:
             )
         self._draw_status(snapshot.status)
         self._draw_mode_controls(snapshot)
+        if snapshot.scene_edit_message:
+            self._draw_editor_message(snapshot.scene_edit_message)
         self._draw_legend(has_routing_lane, bool(snapshot.reference_line_path), bool(snapshot.planned_path))
         pygame.display.flip()
         self.clock.tick(self.render_fps)
+
+    def _draw_editor_message(self, _message: str) -> None:
+        """Hook for GUI variants that provide scene-edit instructions."""
 
     def _draw_road_network(self, snapshot: GuiSnapshot) -> None:
         lane_count = snapshot.road_network_num_lanes or self.num_lanes

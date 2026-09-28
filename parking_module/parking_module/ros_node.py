@@ -24,7 +24,7 @@ from lightweight_sim_msgs.msg import (
 
 from .control import ParkingController
 from .core.types import BoxObstacle, ParkingConfig, ParkingSlot, Pose2D, VehicleState
-from .planning import ParkingPlanningError, ReverseParkingPlanner
+from .planning import ParkingPlanningError, create_planner
 
 
 _PATH_SEQUENCE_VERSION_BITS = 20
@@ -50,11 +50,18 @@ class ParkingControllerNode(Node):
         self._trajectory = None
         self._run_id: Optional[int] = None
         self._path_version = 0
-        self._planner = ReverseParkingPlanner()
         self._controller = ParkingController()
         self._last_plan_signature = None
         self._last_command_gear = None
         self.declare_parameter("output_topic", "control_command")
+        self.declare_parameter("planner_type", "hybrid_astar")
+        self._planner_type = str(self.get_parameter("planner_type").value)
+        try:
+            self._planner = create_planner(self._planner_type)
+        except ValueError as error:
+            raise ValueError(
+                f"invalid parking_controller_node planner_type={self._planner_type!r}: {error}"
+            ) from error
         self._state_sub = self.create_subscription(RosVehicleState, "vehicle/state", self._on_state, sensor_data_qos())
         self._obstacle_sub = self.create_subscription(ObstacleArray, "obstacles", self._on_obstacles, sensor_data_qos())
         self._context_sub = self.create_subscription(String, "sim/context", self._on_context, latched_path_qos())
@@ -67,7 +74,10 @@ class ParkingControllerNode(Node):
         # contract as they do for local cruise planning.
         self._path_pub = self.create_publisher(RosPath, "planned_path", latched_path_qos())
         self._timer = self.create_timer(0.05, self._tick)
-        self.get_logger().info("parking planner/controller ready; awaiting parking context")
+        self.get_logger().info(
+            "parking planner/controller ready; "
+            f"planner_type={self._planner_type}; awaiting parking context"
+        )
 
     def _on_state(self, message: RosVehicleState) -> None:
         self._state = VehicleState(message.x, message.y, message.yaw, message.vx, message.vy, message.steering_angle)
@@ -134,7 +144,7 @@ class ParkingControllerNode(Node):
             self._slot = None
             return
         parking_config = replace(ParkingConfig(), approach_speed=target_speed_kmh / 3.6)
-        self._planner = ReverseParkingPlanner(parking_config)
+        self._planner = create_planner(self._planner_type, parking_config)
         self._controller = ParkingController(parking_config)
 
     def _tick(self) -> None:

@@ -296,6 +296,23 @@ class SimulatorNode(Node):
             response.message = "ego pose must contain only finite values"
             return response
 
+        # The physics engine terminates as soon as the vehicle footprint is
+        # outside the drivable road.  Reject that edit up front so the GUI
+        # cannot report a successful scene update that immediately becomes a
+        # terminal off-road run before the parking planner gets a chance to
+        # command the vehicle.
+        if not self.engine.world.is_on_road(
+            float(request.ego_x),
+            float(request.ego_y),
+            -self.engine.ego.width / 2.0,
+        ):
+            response.success = False
+            response.message = (
+                "ego pose is outside the drivable road; "
+                "move the vehicle inside the road boundary"
+            )
+            return response
+
         obstacles = []
         seen_ids = set()
         for obstacle in request.obstacles:

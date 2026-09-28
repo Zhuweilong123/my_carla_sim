@@ -64,6 +64,33 @@ on-screen slot buttons or F1, F2, and F3 before starting the maneuver. Pause
 the simulation before changing spaces after it has started; changing the goal
 restarts the scene from the initial pose.
 
+The current baseline remains available as `ReverseParkingPlanner`. The new
+`HybridAStarPlanner` is an independent planner with the same
+`plan(start, slot, obstacles)` interface. Use
+`create_planner("baseline")` or `create_planner("hybrid_astar")` in Python to
+compare them directly.
+
+The ROS 2 adapter selects the planner from
+`lightweight_sim/config/default.yaml`:
+
+```yaml
+parking_controller_node:
+  ros__parameters:
+    planner_type: hybrid_astar  # or baseline
+```
+
+The default is now `hybrid_astar`; set it to `baseline` to compare the legacy
+planner. After editing the configuration, rebuild and
+source the workspace before starting the normal launch. The setting is read
+when `parking_controller_node` starts, so changing it while the simulation is
+running requires restarting the launch. Accepted names are `baseline`,
+`dubins`, `reverse_parking`, `hybrid_astar`, and `hybrid_a_star`.
+
+Hybrid A* motion primitives are sampled at the configured parking trajectory
+spacing, and the controller selects its lookahead by traveled path distance.
+Both transitions between search gears and the final reverse path are checked
+and tracked as explicit, steering-constrained segments.
+
 ## Run the independent tests
 
 ```bash

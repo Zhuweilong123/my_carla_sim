@@ -102,6 +102,7 @@ def generate_launch_description():
                 namespace=namespace,
                 output="screen",
                 parameters=[
+                    config,
                     {"use_sim_time": True, "output_topic": "control_command/parking"}
                 ],
             ),

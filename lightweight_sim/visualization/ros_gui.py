@@ -3,6 +3,7 @@
 import importlib
 import sys
 import time
+from dataclasses import replace
 
 import pygame
 import math
@@ -77,9 +78,22 @@ class RosGuiView(_LegacyRosGuiView):
         state = snapshot.state
         if state is None:
             return 0.0, 0.0
+        reverse_parking = (
+            snapshot.status.scenario == "reverse_parking" and state.vx < -1e-3
+        )
         measured = getattr(snapshot, "tracking_metrics", None)
         if measured and abs(state.timestamp-measured["timestamp"]) <= 0.25:
-            return measured["ed_m"], math.radians(measured["ephi_deg"])
+            reference_heading = measured["reference_heading_rad"]
+            if reverse_parking:
+                # The route projection tangent follows travel direction. During
+                # reverse parking the body faces the opposite way, so compare
+                # body yaw with the body-aligned reference heading.
+                reference_heading += math.pi
+            ephi = math.atan2(
+                math.sin(state.phi - reference_heading),
+                math.cos(state.phi - reference_heading),
+            )
+            return measured["ed_m"], ephi
         source = snapshot.planned_path or snapshot.reference_line_path
         if len(source) < 2:
             return 0.0, 0.0
@@ -98,7 +112,19 @@ class RosGuiView(_LegacyRosGuiView):
         if monitor.last_time is not None and state.timestamp < monitor.last_time:
             monitor = TrackingMonitor([tuple(p) for p in source])
             snapshot._tracking_monitor = monitor
-        measured = monitor.update(state)
+        measurement_state = state
+        if reverse_parking:
+            # Project with the reverse travel heading so a nearby forward
+            # branch cannot win solely because the body yaw is 180 degrees
+            # from the direction of travel.
+            measurement_state = replace(
+                state,
+                phi=math.atan2(
+                    math.sin(state.phi + math.pi),
+                    math.cos(state.phi + math.pi),
+                ),
+            )
+        measured = monitor.update(measurement_state)
         return measured["ed_m"], math.radians(measured["ephi_deg"])
 
     def __init__(self, width=1200, height=800, lane_width=3.5,
@@ -257,9 +283,6 @@ class RosGuiView(_LegacyRosGuiView):
             snapshot.obstacles = snapshot.draft_obstacles
         super().render(snapshot)
         snapshot.obstacles = actual_obstacles
-        if snapshot.scene_edit_message:
-            self._draw_editor_message(snapshot.scene_edit_message)
-            pygame.display.flip()
         return None
 
     def _draw_scene_edit_world(self, snapshot):
