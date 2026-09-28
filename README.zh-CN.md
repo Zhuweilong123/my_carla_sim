@@ -9,7 +9,7 @@ Vehicle Motion 是一个轻量级二维车辆仿真与 ROS 2 规划控制工作�
 - 固定步长仿真，可配置物理周期、车辆尺寸、限速和执行器参数；支持运动学及简化动力学自行车模型。
 - ROS 2 节点覆盖仿真、A* 车道拓扑 Routing、路线参考线生成、局部规划、巡航控制、模式仲裁，以及 Routing/规划数据缺失或过期时的安全停车。
 - 二维 GUI 作为 ROS 图的客户端运行，不会创建第二个仿真实例；可显示道路、Routing/参考线、局部规划路径、车辆状态和控制状态，并支持运行时切换场景和模式。
-- 独立的 `parking_module` ROS 2 包，提供倒车入库基线规划器和控制器适配节点。
+- 独立的 `parking_module` ROS 2 包，默认使用 Hybrid A* 倒车入库规划器，同时保留基线规划器用于对比，并提供控制器适配节点。
 - 回归测试与拆分后的 GitHub Actions：每次 push/PR 运行无 ROS 的 Python 测试；相关改动或手动触发时运行 ROS 构建、集成测试和 launch smoke test。
 
 默认仿真与控制周期为 0.05 秒（20 Hz）。车辆、规划器、Routing、控制器、GUI 和安全相关参数主要配置在 `lightweight_sim/config/default.yaml`；共享时序默认值位于 `lightweight_sim/engine/runtime_config.py`。设计文档统一位于 `lightweight_sim/`：[设计总览](lightweight_sim/design/DESIGN.md)、[算法说明](lightweight_sim/design/ALGORITHMS.md)、[ROS 2 架构](lightweight_sim/design/ROS2.md)、[Routing](lightweight_sim/design/ROUTING.md) 和[参考线](lightweight_sim/design/REFERENCE_LINE.md)。
@@ -47,7 +47,7 @@ GUI 使用数字键 `1`–`7` 切换场景：
 | 3 | `three_lane` | 三车道连续障碍场景。 |
 | 4 | `curve` | 含 90 度弯道的道路。 |
 | 5 | `figure_eight` | 三车道闭环 8 字路线。 |
-| 6 | `reverse_parking` | 垂直车位倒车入库场景；自动泊车需使用泊车模块。 |
+| 6 | `reverse_parking` | 垂直车位倒车入库场景，由集成的泊车模块规划和控制。 |
 | 7 | `demo_grid` | 双向城市路网，每个方向两条车道，包含多个路口。 |
 
 标准仿真 launch 默认启动 Routing。内置 JSON 地图位于 `lightweight_sim/config/maps/`；Routing 节点默认加载该地图目录，各场景会请求对应地图和车道。可以通过 Routing 节点参数 `map_dir` 或 `map_file` 使用自定义地图。地图格式、A* 行为及参考线校验/平滑详见 [Routing 文档](lightweight_sim/design/ROUTING.md) 和[参考线文档](lightweight_sim/design/REFERENCE_LINE.md)。
@@ -58,6 +58,8 @@ GUI 使用数字键 `1`–`7` 切换场景：
 - `C`、`K`、`E` 分别切换巡航、泊车和紧急停车；`1`–`7` 切换场景。
 - 手动模式下，`W/S` 或上下方向键控制前进/倒车，`A/D` 或左右方向键控制转向，`SPACE` 为制动。
 - `P` 暂停/继续，`R` 重置，鼠标滚轮或 `+`/`-` 缩放，`ESC` 关闭 GUI。
+- 点击 `EDIT SCENE` 可暂停仿真并编辑自车初始位置和障碍物。选择 `EGO` 后点击地图设置车辆位置，按 `[`/`]` 调整朝向；`ADD` 添加矩形障碍物，`MOVE` 移动障碍物，`DELETE` 删除障碍物。选中障碍物后可用 `ROT +/-` 或 `SIZE +/-` 调整，点击 `APPLY` 应用并重置场景。场景会保持暂停，按 `E`、`P` 或点击 `RESUME` 后继续；`CANCEL` 放弃本次编辑。
+- 倒车入库场景可通过车位按钮或 `F1`–`F3` 选择三个车位之一。仿真开始后如需换位，请先暂停；选择新车位会从场景初始位置重新开始。
 
 GUI 需要 Linux 图形显示环境（WSL2 下可使用 WSLg）。无头仿真、ROS 话题/服务和测试不依赖 GUI。
 
@@ -76,7 +78,17 @@ ros2 launch lightweight_sim lightweight_sim.launch.py \
   scenario:=reverse_parking gui:=false
 ```
 
-巡航和泊车控制器发布候选控制指令；`controller_manager` 根据当前模式/控制来源进行选择，是最终的控制仲裁器。泊车规划器和控制器是倒车入库基线方案，并非量产级规划器或车辆安全系统。详见 [`parking_module/README.md`](parking_module/README.md)。
+泊车模块默认使用 Hybrid A*，同时保留基线规划器供对比。规划器根据车辆当前位置和朝向规划到所选车位，并受可行驶区域、车辆转向限制和障碍物约束。巡航和泊车控制器发布候选控制指令；`controller_manager` 根据当前模式/控制来源进行选择，是最终的控制仲裁器。这些算法用于仿真，不构成量产车辆安全系统。
+
+在 `lightweight_sim/config/default.yaml` 中切换泊车算法：
+
+```yaml
+parking_controller_node:
+  ros__parameters:
+    planner_type: hybrid_astar  # 或 baseline
+```
+
+修改源配置后，重新构建并加载工作区，再重启 launch。算法详情和对比说明见 [`parking_module/README.md`](parking_module/README.md)。
 
 ## ROS 接口与诊断
 

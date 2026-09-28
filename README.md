@@ -9,7 +9,7 @@ Vehicle Motion is a lightweight 2D vehicle simulation and ROS 2 planning/control
 - Fixed-step simulation with configurable physics period, vehicle dimensions, speed limits, and actuator parameters; supports kinematic and simplified dynamic bicycle models.
 - ROS 2 nodes for simulation, A* lane-topology routing, route-derived reference-line generation, local planning, cruise control, mode arbitration, and safe stopping when required routing/planning data is missing or stale.
 - A 2D GUI client that subscribes to the ROS graph (it does not run a second simulator), visualizes the road, routing/reference paths, local planned path, vehicle state, and control status, and supports runtime scene/mode switching.
-- An independent `parking_module` ROS 2 package with a reverse-parking baseline and controller adapter.
+- An independent `parking_module` ROS 2 package with a Hybrid A* reverse-parking planner, a retained baseline planner for comparison, and a controller adapter.
 - Regression tests with split GitHub Actions: ROS-independent Python tests run on every push/PR; ROS build, integration tests and launch smoke run for relevant changes or manual dispatch.
 
 The default simulation and control periods are 0.05 s (20 Hz). These settings and most vehicle, planner, routing, controller, GUI, and safety parameters are in `lightweight_sim/config/default.yaml`; shared timing defaults are defined in `lightweight_sim/engine/runtime_config.py`. Architecture and algorithm notes: [design overview](lightweight_sim/design/DESIGN.md), [algorithms](lightweight_sim/design/ALGORITHMS.md), [ROS 2](lightweight_sim/design/ROS2.md), [Routing](lightweight_sim/design/ROUTING.md), and [reference line](lightweight_sim/design/REFERENCE_LINE.md).
@@ -59,6 +59,7 @@ Routing is part of the standard simulator launch. The bundled JSON maps are in `
 - In manual mode, `W/S` or the up/down arrows drive, `A/D` or the left/right arrows steer, and `SPACE` brakes.
 - `P` also pauses/resumes, `R` resets, the mouse wheel or `+`/`-` zooms, and `ESC` closes the GUI.
 - Click `EDIT SCENE` to pause the simulation and edit the initial vehicle pose and obstacles. Choose `EGO` and click the map to move the start position; `[`/`]` rotate it. `ADD` places a rectangular obstacle, `MOVE` selects an obstacle and then its new location, and `DELETE` removes one. Select an obstacle and use `ROT +/-` or `SIZE +/-`; click `APPLY` to reset the scene with the changes. The updated scene stays paused until you press `E` or `P`, or click `RESUME`. `CANCEL` discards the draft.
+- In the reverse-parking scene, choose one of three slots with the slot buttons or `F1`–`F3`. Pause before changing the slot after a run has started; selecting a new slot restarts the scene from its initial pose.
 
 GUI rendering requires a Linux display (for WSL2, WSLg). Headless simulation, ROS topics, services, and tests do not require the GUI.
 
@@ -72,11 +73,26 @@ arbiter. Use the same GUI entrypoint for every scene:
 ros2 launch lightweight_sim lightweight_sim.launch.py gui:=true
 ```
 
-Press `6` or select `PARKING` to switch to reverse parking. The cruise and
-parking controllers publish candidate commands; `controller_manager` selects
-the active source/mode and is the final command arbiter. The parking planner
-is a baseline maneuver planner, not a production-grade planner or safety
-system. More details are in [`parking_module/README.md`](parking_module/README.md).
+Press `6` or select `PARKING` to switch to reverse parking. The parking module
+uses Hybrid A* by default and retains the baseline planner for comparison. It
+plans from the current vehicle position and heading to the selected slot,
+subject to the scene's drivable area, vehicle steering limits, and obstacles.
+The cruise and parking controllers publish candidate commands;
+`controller_manager` selects the active source/mode and is the final command
+arbiter. These planners are simulation components, not a production vehicle
+safety system.
+
+Choose the parking algorithm in `lightweight_sim/config/default.yaml`:
+
+```yaml
+parking_controller_node:
+  ros__parameters:
+    planner_type: hybrid_astar  # or baseline
+```
+
+After changing the source configuration, rebuild and source the workspace,
+then restart the launch. See [`parking_module/README.md`](parking_module/README.md)
+for planner details and comparison notes.
 
 ## ROS interfaces and diagnostics
 
