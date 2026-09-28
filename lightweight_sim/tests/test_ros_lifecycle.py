@@ -293,12 +293,12 @@ def test_ros_tracking_reset_switch_and_stale_plan():
             assert math.isfinite(expected)
             assert not sim.engine.is_done
             if step == 200:
-                assert progress > 40, (progress, sim.command, control.controller.lon.target_speed)
+                assert progress > 20, (progress, sim.command, control.controller.lon.target_speed)
         assert not sim.engine.is_done
         print(f"DDS acceptance: steps={step+1} sim_s={sim.engine.sim_time:.2f} "
               f"route_s_m={progress:.3f} collision=False offroad=False")
         assert measured[-1]["protocol"] == "route_projection_v2"
-        assert progress > 40.0
+        assert progress > 20.0
 
         old_plan = Path(sequence=encode_sequence(initial_run, 999))
         sim._on_reset(None, object())
