@@ -11,3 +11,4 @@ int32 start_lane
 int32 goal_lane
 string route_policy
 bool allow_u_turn
+bool closed_loop

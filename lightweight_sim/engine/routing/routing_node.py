@@ -123,6 +123,7 @@ class RoutingNode(Node):
             goal_lane=int(request.goal_lane),
             route_policy=str(request.route_policy or "fastest"),
             allow_u_turn=bool(request.allow_u_turn),
+            closed_loop=bool(request.closed_loop),
         )
 
     def _publish_plan(self, plan):

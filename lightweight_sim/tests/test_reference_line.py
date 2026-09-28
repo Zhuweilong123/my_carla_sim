@@ -70,14 +70,22 @@ def test_reference_line_stitches_and_smooths_curve_route():
 
 def test_reference_line_rejects_non_topological_edge_sequence():
     road_map = load_map(MAP_DIR / "demo_grid.json")
+    first, unrelated = list(road_map.edges.values())[:2]
     bad_route = RoutePlan(
         route_id=1,
         request_id=2,
         map_id=road_map.map_id,
         success=True,
         segments=(
-            RouteSegment("r0_main", "r0", "r0_l0", 0, "straight", 100.0, 40.0),
-            RouteSegment("r2_left", "r2", "r2_l1", 1, "straight", 100.0, 40.0),
+            RouteSegment(
+                first.edge_id, first.road_id, first.lane_id, first.lane_index,
+                first.maneuver, first.length, first.speed_limit_kmh,
+            ),
+            RouteSegment(
+                unrelated.edge_id, unrelated.road_id, unrelated.lane_id,
+                unrelated.lane_index, unrelated.maneuver, unrelated.length,
+                unrelated.speed_limit_kmh,
+            ),
         ),
     )
 
@@ -98,6 +106,7 @@ def test_route_aware_local_planner_returns_to_routing_lane_after_detour():
         drivable_left_boundary=[(float(x), 5.25) for x in range(0, 201)],
         drivable_right_boundary=[(float(x), -5.25) for x in range(0, 201)],
     )
+    assert planner.transition_distance_m == pytest.approx(12.0)
 
     detour = planner._plan(
         pred_loc=(20.0, -3.5),

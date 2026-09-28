@@ -14,9 +14,10 @@ from .pygame_compat import configure_display_driver, patch_sysfont_for_python314
 from .renderer import Camera, Renderer
 
 
-REFERENCE_PATH = (120, 155, 175)
-REFERENCE_LINE_PATH = (255, 210, 0)
-ROUTING_PATH = (255, 165, 0)
+REFERENCE_LINE_PATH = (35, 195, 255)
+ROUTING_PATH = (220, 90, 255)
+ROUTING_LANE_FILL = (165, 60, 220, 48)
+ROUTING_LANE_EDGE = (220, 120, 255)
 LOCAL_PLANNED_PATH = (0, 220, 100)
 LANE_BOUNDARY = (190, 190, 190)
 DRIVABLE_BOUNDARY = (245, 245, 245)
@@ -84,9 +85,11 @@ class GuiControl:
 @dataclass
 class GuiSnapshot:
     state: Optional[VehicleState] = None
+    road_network: List[List[Tuple[float, float]]] = field(default_factory=list)
+    road_network_num_lanes: int = 0
     obstacles: List[Obstacle] = field(default_factory=list)
-    reference_path: List[PathPoint] = field(default_factory=list)
     reference_line_path: List[PathPoint] = field(default_factory=list)
+    reference_line_request_id: int = 0
     reference_lane_index: int = -1
     routing_path: List[PathPoint] = field(default_factory=list)
     routing_request_id: int = 0
@@ -99,6 +102,17 @@ class GuiSnapshot:
     control: GuiControl = field(default_factory=GuiControl)
     mode: str = "CRUISE"
     control_source: str = "AUTO"
+    parking_slots: List[dict] = field(default_factory=list)
+    selected_parking_slot_id: Optional[int] = None
+    scene_editing: bool = False
+    scene_edit_tool: str = "ego"
+    scene_edit_message: str = ""
+    draft_ego_pose: Optional[Tuple[float, float, float]] = None
+    draft_obstacles: List[Obstacle] = field(default_factory=list)
+    selected_obstacle_id: Optional[int] = None
+    draft_obstacle_length: float = 4.5
+    draft_obstacle_width: float = 2.0
+    draft_obstacle_heading: float = 0.0
 
 
 @dataclass(frozen=True)
@@ -124,6 +138,7 @@ class RosGuiView:
         pygame.init()
         pygame.font.init()
         self.screen = pygame.display.set_mode((width, height))
+        self._routing_overlay = pygame.Surface(self.screen.get_size(), pygame.SRCALPHA)
         pygame.display.set_caption("Lightweight ROS 2 Simulator")
         self.clock = pygame.time.Clock()
         self.camera = Camera(width, height)
@@ -135,6 +150,7 @@ class RosGuiView:
         self.render_fps = int(render_fps)
         self.started_at = time.monotonic()
         self._history_scenario = ""
+        self._camera_scenario = ""
 
     @staticmethod
     def _tracking_error(snapshot: GuiSnapshot) -> Tuple[float, float]:
@@ -145,7 +161,7 @@ class RosGuiView:
         heading so the error does not jump to the opposite branch.
         """
         state = snapshot.state
-        path = snapshot.reference_line_path or snapshot.reference_path
+        path = snapshot.reference_line_path
         if state is None or not path:
             return 0.0, 0.0
 
@@ -206,11 +222,22 @@ class RosGuiView:
 
     def render(self, snapshot: GuiSnapshot) -> None:
         if snapshot.state is not None:
-            self.camera.follow(snapshot.state.x, snapshot.state.y, smooth=0.2)
+            if snapshot.status.scenario != self._camera_scenario:
+                self.camera.cx = snapshot.state.x
+                self.camera.cy = snapshot.state.y
+                self._camera_scenario = snapshot.status.scenario
+            else:
+                self.camera.follow(snapshot.state.x, snapshot.state.y, smooth=0.2)
 
         self.renderer.clear()
         self.renderer.draw_grid()
-        active_reference = snapshot.reference_line_path or snapshot.reference_path
+        if snapshot.road_network:
+            self._draw_road_network(snapshot)
+        active_reference = snapshot.reference_line_path
+        has_routing_lane = (
+            len(snapshot.routing_left_boundary) >= 2
+            and len(snapshot.routing_right_boundary) >= 2
+        )
         if active_reference:
             world = _WorldView(
                 active_reference,
@@ -218,16 +245,14 @@ class RosGuiView:
                 self.num_lanes,
                 snapshot.reference_lane_index,
             )
-            self._draw_road(world)
+            if not snapshot.road_network:
+                self._draw_road(world)
+            if has_routing_lane:
+                self._draw_routing_lane(snapshot)
             self.renderer.draw_path(
                 [(p.x, p.y, p.theta, p.kappa) for p in active_reference],
-                color=(
-                    REFERENCE_LINE_PATH
-                    if snapshot.reference_line_path
-                    else REFERENCE_PATH
-                ),
-                width=3 if snapshot.reference_line_path else 1,
-                dashed=not snapshot.reference_line_path,
+                color=REFERENCE_LINE_PATH,
+                width=3,
             )
         if snapshot.routing_path or snapshot.reference_line_path:
             for boundary in (
@@ -245,16 +270,19 @@ class RosGuiView:
             ):
                 self.renderer.draw_path(
                     [(p.x, p.y, p.theta, p.kappa) for p in boundary],
-                    color=LANE_BOUNDARY,
-                    width=1,
+                    color=ROUTING_LANE_EDGE if has_routing_lane else LANE_BOUNDARY,
+                    width=2 if has_routing_lane else 1,
                     dashed=True,
                 )
-            self.renderer.draw_path(
-                [(p.x, p.y, p.theta, p.kappa) for p in snapshot.routing_path],
-                color=ROUTING_PATH,
-                width=1,
-                dashed=True,
-            )
+            if has_routing_lane:
+                self._draw_routing_directions(snapshot.routing_path)
+            else:
+                self.renderer.draw_path(
+                    [(p.x, p.y, p.theta, p.kappa) for p in snapshot.routing_path],
+                    color=ROUTING_PATH,
+                    width=2,
+                    dashed=True,
+                )
         if snapshot.planned_path:
             self.renderer.draw_path(
                 snapshot.planned_path,
@@ -264,6 +292,7 @@ class RosGuiView:
         self.renderer.draw_obstacles(snapshot.obstacles)
 
         if snapshot.state is None:
+            self._draw_scene_edit_world(snapshot)
             self._draw_text("Waiting for /vehicle/state ...", HUD_WARNING)
         else:
             if snapshot.status.scenario != self._history_scenario:
@@ -273,6 +302,7 @@ class RosGuiView:
             ed, ephi = self._tracking_error(snapshot)
             self.hud.update_history(ed, ephi)
             self.renderer.draw_vehicle(snapshot.state)
+            self._draw_scene_edit_world(snapshot)
             self.hud.render(
                 state=snapshot.state,
                 target_speed=self.target_speed_kmh,
@@ -286,14 +316,125 @@ class RosGuiView:
                 sim_time=snapshot.status.sim_time,
                 real_time=time.monotonic() - self.started_at,
                 collision=snapshot.status.collision,
+                paused=snapshot.status.paused,
                 map_name=f"{snapshot.status.scenario} [ROS 2]",
                 ed=ed,
                 ephi=ephi,
             )
         self._draw_status(snapshot.status)
         self._draw_mode_controls(snapshot)
+        if snapshot.scene_edit_message:
+            self._draw_editor_message(snapshot.scene_edit_message)
+        self._draw_legend(has_routing_lane, bool(snapshot.reference_line_path), bool(snapshot.planned_path))
         pygame.display.flip()
         self.clock.tick(self.render_fps)
+
+    def _draw_editor_message(self, _message: str) -> None:
+        """Hook for GUI variants that provide scene-edit instructions."""
+
+    def _draw_road_network(self, snapshot: GuiSnapshot) -> None:
+        lane_count = snapshot.road_network_num_lanes or self.num_lanes
+        lane_width = self.lane_width
+        road_paths = []
+        for polyline in snapshot.road_network:
+            if len(polyline) < 2:
+                continue
+            path = []
+            for index, (x, y) in enumerate(polyline):
+                previous = polyline[max(0, index - 1)]
+                following = polyline[min(len(polyline) - 1, index + 1)]
+                theta = math.atan2(following[1] - previous[1], following[0] - previous[0])
+                path.append(PathPoint(float(x), float(y), theta, 0.0))
+            road_paths.append(path)
+
+        for path in road_paths:
+            for strip in road_strip_polygons(path, lane_width, lane_count):
+                pygame.draw.polygon(
+                    self.screen,
+                    ROAD_SURFACE,
+                    [self.camera.world_to_screen(x, y) for x, y in strip],
+                )
+
+        for path in road_paths:
+            screen_path = [self.camera.world_to_screen(point.x, point.y) for point in path]
+            half_width = lane_count * lane_width / 2.0
+            for lane_index in range(lane_count + 1):
+                offset = -half_width + lane_index * lane_width
+                if lane_index in (0, lane_count):
+                    self.renderer._draw_offset_line(screen_path, path, offset, ROAD_EDGE, 2)
+                elif abs(offset) > 0.05:
+                    self.renderer._draw_offset_line(screen_path, path, offset, LANE_DASH, 1, dashed=True)
+            if lane_count % 2 == 0:
+                self.renderer._draw_offset_line(screen_path, path, -0.12, (238, 190, 60), 2)
+                self.renderer._draw_offset_line(screen_path, path, 0.12, (238, 190, 60), 2)
+
+    def _draw_routing_lane(self, snapshot: GuiSnapshot) -> None:
+        """Tint the selected routing lane using its map-derived boundaries."""
+        left = snapshot.routing_left_boundary
+        right = snapshot.routing_right_boundary
+        if len(left) < 2 or len(left) != len(right):
+            return
+        camera = self.renderer.camera
+        polygon = [camera.world_to_screen(point.x, point.y) for point in left]
+        polygon.extend(
+            camera.world_to_screen(point.x, point.y) for point in reversed(right)
+        )
+        if (
+            not hasattr(self, "_routing_overlay")
+            or self._routing_overlay.get_size() != self.screen.get_size()
+        ):
+            self._routing_overlay = pygame.Surface(
+                self.screen.get_size(), pygame.SRCALPHA
+            )
+        self._routing_overlay.fill((0, 0, 0, 0))
+        pygame.draw.polygon(self._routing_overlay, ROUTING_LANE_FILL, polygon)
+        self.screen.blit(self._routing_overlay, (0, 0))
+
+    def _draw_routing_directions(self, path: List[PathPoint]) -> None:
+        """Mark route direction sparsely without drawing a second centerline."""
+        next_marker_distance = 24.0
+        travelled = 0.0
+        previous = None
+        for point in path:
+            if previous is not None:
+                travelled += math.hypot(point.x - previous.x, point.y - previous.y)
+            if travelled >= next_marker_distance:
+                center = self.renderer.camera.world_to_screen(point.x, point.y)
+                tangent = (math.cos(point.theta), -math.sin(point.theta))
+                normal = (-tangent[1], tangent[0])
+                tip = (center[0] + 7 * tangent[0], center[1] + 7 * tangent[1])
+                rear = (center[0] - 5 * tangent[0], center[1] - 5 * tangent[1])
+                arrow = [
+                    tip,
+                    (rear[0] + 4 * normal[0], rear[1] + 4 * normal[1]),
+                    (rear[0] - 4 * normal[0], rear[1] - 4 * normal[1]),
+                ]
+                pygame.draw.polygon(self.screen, ROUTING_PATH, arrow)
+                next_marker_distance += 24.0
+            previous = point
+
+    def _draw_legend(self, has_routing_lane, has_reference_line, has_local_plan) -> None:
+        if not (has_routing_lane or has_reference_line or has_local_plan):
+            return
+        width, height = 190, 72
+        legend = pygame.Surface((width, height), pygame.SRCALPHA)
+        pygame.draw.rect(legend, (8, 13, 20, 220), (0, 0, width, height), border_radius=6)
+        pygame.draw.rect(legend, (85, 100, 118, 220), (0, 0, width, height), 1, border_radius=6)
+        rows = (
+            (ROUTING_PATH, "ROUTING LANE", has_routing_lane, True),
+            (REFERENCE_LINE_PATH, "REFERENCE LINE", has_reference_line, False),
+            (LOCAL_PLANNED_PATH, "LOCAL PLAN", has_local_plan, False),
+        )
+        for row, (color, label, visible, filled) in enumerate(rows):
+            y = 14 + row * 21
+            if filled:
+                pygame.draw.rect(legend, (*color, 100), (10, y - 4, 20, 9), border_radius=2)
+                pygame.draw.rect(legend, color, (10, y - 4, 20, 9), 1, border_radius=2)
+            else:
+                pygame.draw.line(legend, color, (10, y), (30, y), 3 if visible else 1)
+            text_color = HUD_TEXT if visible else (105, 115, 128)
+            legend.blit(self.renderer.font_small.render(label, True, text_color), (38, y - 8))
+        self.screen.blit(legend, (12, self.screen.get_height() - height - 12))
 
     def _draw_road(self, world: "_WorldView") -> None:
         """Draw a road as local strips; whole-path polygons fail at crossings."""
@@ -341,10 +482,10 @@ class RosGuiView:
             text = f"ROS 2: DONE ({status.termination_reason})  [R reset]"
             color = HUD_WARNING
         elif status.paused:
-            text = "ROS 2: PAUSED  [P resume] [N step]"
+            text = "ROS 2: PAUSED  [E/P resume] [N step]"
             color = HUD_WARNING
         elif status.running:
-            text = "ROS 2: RUNNING  [P pause] [R reset]"
+            text = "ROS 2: RUNNING  [E/P pause] [R reset]"
             color = HUD_TEXT
         else:
             text = "ROS 2: waiting for /sim/status"
@@ -353,6 +494,11 @@ class RosGuiView:
 
     def _draw_mode_controls(self, snapshot: GuiSnapshot) -> None:
         """Hook for concrete views to draw mode controls."""
+
+        return None
+
+    def _draw_scene_edit_world(self, snapshot: GuiSnapshot) -> None:
+        """Hook for the editable scene preview beneath the HUD."""
 
         return None
 

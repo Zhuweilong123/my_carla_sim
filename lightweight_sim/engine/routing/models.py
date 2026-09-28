@@ -30,6 +30,7 @@ class RouteRequest:
     goal_lane: int = -1
     route_policy: str = "fastest"
     allow_u_turn: bool = False
+    closed_loop: bool = False
 
 
 @dataclass(frozen=True)

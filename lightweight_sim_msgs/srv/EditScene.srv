@@ -1,0 +1,7 @@
+float64 ego_x
+float64 ego_y
+float64 ego_yaw
+lightweight_sim_msgs/Obstacle[] obstacles
+---
+bool success
+string message

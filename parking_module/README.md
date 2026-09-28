@@ -8,7 +8,7 @@ ROS 2 and `lightweight_sim_msgs` are used only by the optional
 
 The first implementation is a deterministic reverse-parking baseline:
 
-- a straight approach segment;
+- a curvature-constrained Dubins approach segment from the current pose;
 - a collision-checked Hermite reverse maneuver;
 - a gear-aware pure-pursuit controller with safe stop on gear changes.
 
@@ -31,47 +31,65 @@ Windows-mounted filesystem can make colcon's symlink cleanup fail.
 
 ## Run with the simulator
 
-For the unified GUI workflow, start all controllers and the single command
-arbiter with one launch command:
+The parking planner/controller is part of the standard simulator GUI launch;
+there is no separate parking launch command:
 
 ```bash
-ros2 launch parking_module unified_vehicle.launch.py gui:=true
+ros2 launch lightweight_sim lightweight_sim.launch.py gui:=true
 ```
 
-The GUI provides `CRUISE`, `PARKING`, `E-STOP` and `AUTO`/`MANUAL` controls.
+The GUI provides `CRUISE`, `PARKING`, `PAUSE`/`RESUME` and `AUTO`/`MANUAL` controls.
 `PARKING` selects the `reverse_parking` scene and routes only the parking
 candidate to the simulator; `CRUISE` routes the built-in cruise controller.
 Press `Q` to toggle the control source. In manual mode, `W/S` drive,
 `A/D` steer, and `SPACE` brakes. The final actuator topic is written only by
-`controller_manager`.
-
-To start directly in parking mode:
-
-```bash
-ros2 launch parking_module unified_vehicle.launch.py \
-  scenario:=reverse_parking mode:=PARKING gui:=false
-```
-
-The standalone workflow below is still supported for testing the adapter in
-isolation.
-
-Start the simulator with its built-in controller disabled:
-
-```bash
-ros2 launch lightweight_sim lightweight_sim.launch.py \
-  scenario:=reverse_parking controller_enabled:=false gui:=true
-```
-
-In a second terminal, after sourcing the same workspaces, start the standalone
-controller:
-
-```bash
-ros2 run parking_module parking_controller_node
-```
+`controller_manager`. The parking planner publishes its run-scoped trajectory
+on `/planned_path` for GUI visualization and safety-readiness monitoring;
+`safe_stop_node` brakes until that plan is available and fresh.
 
 The node consumes `vehicle/state`, `obstacles`, and the latched `sim/context`,
-then publishes `control_command`. It activates only when the context declares
+then publishes `control_command/parking` and the run-scoped path on
+`planned_path`. It activates only when the context declares
 `maneuver: reverse_parking`.
+
+The approach is planned and tracked at about 10 km/h. The approach accepts an
+arbitrary vehicle position and heading within the drivable parking scene, then
+selects a collision-free left/right/straight combination that respects the
+vehicle steering limit. The reverse segment uses
+a lower 4.3 km/h cap and slows further near the slot. The approach curve is
+limited by the simulated vehicle's steering geometry, and the scene reports
+completion only after the vehicle is aligned and nearly stopped at the slot.
+The reverse-parking scene contains three numbered spaces. Select one with the
+on-screen slot buttons or F1, F2, and F3 before starting the maneuver. Pause
+the simulation before changing spaces after it has started; changing the goal
+restarts the scene from the initial pose.
+
+The current baseline remains available as `ReverseParkingPlanner`. The new
+`HybridAStarPlanner` is an independent planner with the same
+`plan(start, slot, obstacles)` interface. Use
+`create_planner("baseline")` or `create_planner("hybrid_astar")` in Python to
+compare them directly.
+
+The ROS 2 adapter selects the planner from
+`lightweight_sim/config/default.yaml`:
+
+```yaml
+parking_controller_node:
+  ros__parameters:
+    planner_type: hybrid_astar  # or baseline
+```
+
+The default is now `hybrid_astar`; set it to `baseline` to compare the legacy
+planner. After editing the configuration, rebuild and
+source the workspace before starting the normal launch. The setting is read
+when `parking_controller_node` starts, so changing it while the simulation is
+running requires restarting the launch. Accepted names are `baseline`,
+`dubins`, `reverse_parking`, `hybrid_astar`, and `hybrid_a_star`.
+
+Hybrid A* motion primitives are sampled at the configured parking trajectory
+spacing, and the controller selects its lookahead by traveled path distance.
+Both transitions between search gears and the final reverse path are checked
+and tracked as explicit, steering-constrained segments.
 
 ## Run the independent tests
 

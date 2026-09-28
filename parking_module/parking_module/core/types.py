@@ -81,13 +81,33 @@ class ParkingConfig:
     # Leave enough aisle distance to complete the forward 90-degree
     # alignment before changing to reverse.
     approach_distance: float = 16.0
-    approach_speed: float = 0.8
-    reverse_speed: float = 0.6
+    approach_speed: float = 10.0 / 3.6
+    approach_deceleration: float = 1.0
+    reverse_speed: float = 1.2
     sample_step: float = 0.2
     max_steer: float = 0.5
-    position_tolerance: float = 0.6
+    position_tolerance: float = 0.3
+    staging_tolerance: float = 0.4
     heading_tolerance: float = math.radians(15.0)
     speed_tolerance: float = 0.15
+
+    def __post_init__(self) -> None:
+        positive = (
+            self.wheelbase,
+            self.vehicle_length,
+            self.vehicle_width,
+            self.approach_distance,
+            self.approach_speed,
+            self.approach_deceleration,
+            self.reverse_speed,
+            self.sample_step,
+            self.position_tolerance,
+            self.staging_tolerance,
+            self.heading_tolerance,
+            self.speed_tolerance,
+        )
+        if not all(math.isfinite(value) and value > 0.0 for value in positive):
+            raise ValueError("parking configuration values must be positive and finite")
 
 
 @dataclass(frozen=True)

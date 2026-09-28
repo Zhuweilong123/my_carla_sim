@@ -53,31 +53,37 @@ class HUD:
                control_info: dict, auto_mode: bool,
                fps: float, sim_time: float, real_time: float,
                collision: bool = False,
+               paused: bool = False,
                map_name: str = "Default",
                ed: float = 0.0, ephi: float = 0.0):
         """Render the top bar, telemetry cards, graph, and controls."""
         speed_kmh = state.speed_kmh
         steer_deg = math.degrees(state.steer)
         steer_cmd_deg = math.degrees(control_info.get("steer", 0.0))
-        status_text = "COLLISION" if collision else "RUNNING"
-        status_color = self.WARNING if collision else self.SUCCESS
+        if collision:
+            status_text, status_color = "COLLISION", self.WARNING
+        elif paused:
+            status_text, status_color = "PAUSED", (255, 190, 70)
+        else:
+            status_text, status_color = "RUNNING", self.SUCCESS
 
         self._draw_top_bar(map_name, auto_mode, status_text, status_color,
                            fps, sim_time, real_time)
 
-        left_x, top_y, card_w = 18, 76, min(326, int(self.w * 0.27))
-        self._draw_vehicle_card(
-            left_x, top_y, card_w, 282, state, speed_kmh, target_speed,
-            steer_deg,
-        )
+        if not getattr(self, "compact_editor", False):
+            left_x, top_y, card_w = 18, 76, min(326, int(self.w * 0.27))
+            self._draw_vehicle_card(
+                left_x, top_y, card_w, 282, state, speed_kmh, target_speed,
+                steer_deg, paused,
+            )
 
-        right_w = min(310, int(self.w * 0.255))
-        right_x = self.w - right_w - 18
-        self._draw_control_card(
-            right_x, top_y, right_w, 220, control_info, auto_mode,
-            steer_cmd_deg,
-        )
-        self._draw_error_graph(right_x, self.h - 182, right_w, 154, ed, ephi)
+            right_w = min(310, int(self.w * 0.255))
+            right_x = self.w - right_w - 18
+            self._draw_control_card(
+                right_x, top_y, right_w, 220, control_info, auto_mode,
+                steer_cmd_deg,
+            )
+            self._draw_error_graph(right_x, self.h - 182, right_w, 154, ed, ephi)
         self._draw_controls_hint(18, self.h - 54, 410, 34, auto_mode)
 
         if collision:
@@ -108,20 +114,24 @@ class HUD:
             f"SIM {datetime.timedelta(seconds=int(sim_time))}   "
             f"REAL {datetime.timedelta(seconds=int(real_time))}   "
             f"{fps:02.0f} FPS"
+            if self.w >= 1000 else
+            f"SIM {datetime.timedelta(seconds=int(sim_time))}   {fps:02.0f} FPS"
         )
         time_right = self.w - 30 - status_w - mode_w - 18
         surface = self.font_small.render(time_text, True, self.MUTED)
-        self.screen.blit(surface, (max(430, time_right - surface.get_width()), 23))
+        self.screen.blit(surface, (max(300, time_right - surface.get_width()), 23))
 
     def _draw_vehicle_card(self, x: int, y: int, w: int, h: int,
                            state: VehicleState, speed: float,
-                           target_speed: float, steer_deg: float):
+                           target_speed: float, steer_deg: float,
+                           paused: bool = False):
         self._panel(x, y, w, h, "VEHICLE STATE", self.ACCENT)
         speed_text = f"{speed:5.1f}"
         self._text(speed_text, x + 18, y + 32, self.font_speed, HUD_TEXT)
         speed_x = x + 18 + self.font_speed.size(speed_text)[0] + 8
         self._text("km/h", speed_x, y + 47, self.font, self.MUTED)
-        self._text(f"TARGET  {target_speed:.0f} km/h", x + w - 128, y + 48,
+        target_x, target_y = (x + 18, y + 77) if w < 260 else (x + w - 128, y + 48)
+        self._text(f"TARGET  {target_speed:.0f} km/h", target_x, target_y,
                    self.font_small, self.MUTED)
 
         self._metric_row(x + 18, y + 98, w - 36, "LOCATION",
@@ -131,7 +141,8 @@ class HUD:
         self._metric_row(x + 18, y + 176, w - 36, "STEERING",
                          f"{steer_deg:+5.1f}°")
         self._metric_row(x + 18, y + 215, w - 36, "SIMULATION",
-                         "ACTIVE", self.SUCCESS)
+                         "PAUSED" if paused else "ACTIVE",
+                         (255, 190, 70) if paused else self.SUCCESS)
 
     def _draw_control_card(self, x: int, y: int, w: int, h: int,
                            control_info: dict, auto_mode: bool,

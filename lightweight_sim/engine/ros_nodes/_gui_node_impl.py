@@ -12,7 +12,7 @@ from std_srvs.srv import Empty, SetBool, Trigger
 from ..simulator.data_types import Obstacle, PathPoint
 from ..runtime_config import DEFAULT_RUNTIME_CONFIG
 from ..visualization.ros_gui import GuiAction, GuiControl, GuiSnapshot, GuiStatus, RosGuiView
-from .planner_node import message_to_state, path_to_tuples
+from .message_conversions import message_to_state, path_to_tuples
 from .qos import command_qos, latched_path_qos, sensor_data_qos, status_qos
 from .route_session import parse_context
 
@@ -47,9 +47,6 @@ class GuiNode(Node):
         )
         self.create_subscription(
             ObstacleArray, "obstacles", self._on_obstacles, sensor_qos
-        )
-        self.create_subscription(
-            RosPath, "reference_path", self._on_reference, latched_path_qos()
         )
         self.create_subscription(
             RosPath, "planned_path", self._on_planned, latched_path_qos()
@@ -96,12 +93,6 @@ class GuiNode(Node):
             for item in message.obstacles
         ]
 
-    def _on_reference(self, message: RosPath) -> None:
-        self.snapshot.reference_path = [
-            PathPoint(x=p[0], y=p[1], theta=p[2], kappa=p[3])
-            for p in path_to_tuples(message)
-        ]
-
     def _on_planned(self, message: RosPath) -> None:
         self.snapshot.planned_path = path_to_tuples(message)
 
@@ -143,6 +134,7 @@ class GuiNode(Node):
             and int(message.request_id) != int(self.route_context["run_id"])
         ):
             return
+        self.snapshot.reference_line_request_id = int(message.request_id)
         if not message.success:
             self.snapshot.reference_line_path = []
             self.snapshot.reference_lane_index = -1

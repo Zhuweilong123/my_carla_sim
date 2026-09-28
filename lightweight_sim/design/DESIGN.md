@@ -4,7 +4,7 @@
 
 ## 范围与定位
 
-`lightweight_sim/` 是独立于 CARLA 的 ROS 2 轻量级车辆运动仿真包，覆盖道路/车辆仿真、Routing、参考线生成、局部规划、控制、GUI 和测试。ROS 2 消息定义位于配套包 `lightweight_sim_msgs/`；独立泊车规划模块位于 `parking_module/`，通过消息接口与仿真集成，而非仿真器内核依赖。
+`lightweight_sim/` 是独立于 CARLA 的 ROS 2 轻量级车辆运动仿真包，覆盖道路/车辆仿真、Routing、参考线生成、局部规划、控制、GUI 和测试。ROS 2 launch 是唯一的仿真运行入口；无 ROS 的仿真核心调用仅用于算法测试和离线评估。ROS 2 消息定义位于配套包 `lightweight_sim_msgs/`；独立泊车规划模块位于 `parking_module/`，通过消息接口与仿真集成，而非仿真器内核依赖。
 
 仿真面向算法快速开发与回归验证，不是高保真轮胎/交通仿真，也不构成实车安全或部署证明。
 

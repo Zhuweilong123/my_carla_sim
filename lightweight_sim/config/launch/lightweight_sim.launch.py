@@ -96,6 +96,33 @@ def generate_launch_description():
                 parameters=[config, {"use_sim_time": True}],
             ),
             Node(
+                package="parking_module",
+                executable="parking_controller_node",
+                name="parking_controller_node",
+                namespace=namespace,
+                output="screen",
+                parameters=[
+                    config,
+                    {"use_sim_time": True, "output_topic": "control_command/parking"}
+                ],
+            ),
+            Node(
+                package="lightweight_sim",
+                executable="controller_manager_node",
+                name="controller_manager",
+                namespace=namespace,
+                output="screen",
+                parameters=[config, {"use_sim_time": True}],
+            ),
+            Node(
+                package="lightweight_sim",
+                executable="safe_stop_node",
+                name="safe_stop_node",
+                namespace=namespace,
+                output="screen",
+                parameters=[config, {"use_sim_time": False}],
+            ),
+            Node(
                 package="lightweight_sim",
                 executable="gui_node",
                 name="simulator_gui",

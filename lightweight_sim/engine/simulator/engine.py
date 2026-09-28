@@ -37,6 +37,9 @@ class SimulationEngine:
         self.step_count = 0
         self.physics_dt = 0.05
         self.vehicle_model = getattr(config, "vehicle_model", "kinematic")
+        self.dynamic_max_substep_s = float(config.dynamic_max_substep_s)
+        if not math.isfinite(self.dynamic_max_substep_s) or self.dynamic_max_substep_s <= 0.0:
+            raise ValueError("dynamic_max_substep_s must be positive and finite")
         self.target_speed = config.target_speed
         self.destination = config.destination
         self.collision_occurred = False
@@ -101,6 +104,11 @@ class SimulationEngine:
         accel = throttle * params.max_accel - brake * params.max_decel
         self.steering.begin_period(raw_steer, dt)
         substeps = max(1, int(math.ceil(self.ego.get_state().speed * dt / 0.5)))
+        if self.vehicle_model == "dynamic":
+            substeps = max(
+                substeps,
+                int(math.ceil(dt / self.dynamic_max_substep_s)),
+            )
         subdt = dt / substeps
         state = self.ego.get_state()
 
@@ -135,7 +143,21 @@ class SimulationEngine:
             distance = math.hypot(
                 state.x - self.destination[0], state.y - self.destination[1]
             )
-            if distance < 2.0:
+            heading_ok = (
+                self.config.destination_heading_rad is None
+                or self.config.destination_heading_tolerance_rad is None
+                or abs(
+                    math.atan2(
+                        math.sin(state.phi - self.config.destination_heading_rad),
+                        math.cos(state.phi - self.config.destination_heading_rad),
+                    )
+                ) <= self.config.destination_heading_tolerance_rad
+            )
+            speed_ok = (
+                self.config.destination_speed_tolerance_mps is None
+                or state.speed <= self.config.destination_speed_tolerance_mps
+            )
+            if distance < self.config.destination_tolerance_m and heading_ok and speed_ok:
                 self.reached_destination = True
         else:
             distance = None
