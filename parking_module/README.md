@@ -6,15 +6,10 @@ library and its own data contracts; it does not import `lightweight_sim`.
 ROS 2 and `lightweight_sim_msgs` are used only by the optional
 `parking_controller_node` adapter.
 
-The first implementation is a deterministic reverse-parking baseline:
-
-- a curvature-constrained Dubins approach segment from the current pose;
-- a collision-checked Hermite reverse maneuver;
-- a gear-aware pure-pursuit controller with safe stop on gear changes.
-
-This provides a stable module boundary for later replacing the planner with
-Hybrid A* or adding a model-predictive controller without changing simulator
-code.
+The package provides two interchangeable planners behind the same interface:
+`HybridAStarPlanner` is the default, and `ReverseParkingPlanner` retains the
+original Dubins/Hermite baseline for comparison. The controller and ROS adapter
+remain independent of the selected planning algorithm.
 
 ## Build
 
