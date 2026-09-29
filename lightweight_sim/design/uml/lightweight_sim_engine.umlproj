@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "revision": 37,
+  "revision": 68,
   "name": "LightweightSimEngine",
   "diagrams": [
     {
@@ -17,24 +17,45 @@
         {
           "id": "comp_simcore",
           "name": "Simulator Core",
-          "x": 780.0,
-          "y": 460.0,
+          "x": 3064.0,
+          "y": 359.0,
           "width": 522.0,
-          "height": 300.0,
+          "height": 440.0,
           "parent_id": "",
           "provided_interfaces": [
             "VehicleState",
-            "ReferencePath"
+            "ObstacleArray",
+            "SimContext"
           ],
-          "required_interfaces": [
-            "FrenetGeometry"
-          ]
+          "required_interfaces": []
         },
         {
           "id": "comp_engine",
           "name": "SimulationEngine",
-          "x": 802.0,
-          "y": 612.0,
+          "x": 3416.0,
+          "y": 679.0,
+          "width": 150.0,
+          "height": 100.0,
+          "parent_id": "comp_simcore",
+          "provided_interfaces": [],
+          "required_interfaces": []
+        },
+        {
+          "id": "comp_reverse",
+          "name": "reverse_engine.SimulationEngine",
+          "x": 3084.0,
+          "y": 679.0,
+          "width": 150.0,
+          "height": 100.0,
+          "parent_id": "comp_simcore",
+          "provided_interfaces": [],
+          "required_interfaces": []
+        },
+        {
+          "id": "comp_steeringact",
+          "name": "SteeringActuator",
+          "x": 3250.0,
+          "y": 679.0,
           "width": 150.0,
           "height": 100.0,
           "parent_id": "comp_simcore",
@@ -44,8 +65,8 @@
         {
           "id": "comp_world",
           "name": "World",
-          "x": 1134.0,
-          "y": 494.0,
+          "x": 3416.0,
+          "y": 561.0,
           "width": 150.0,
           "height": 100.0,
           "parent_id": "comp_simcore",
@@ -55,8 +76,8 @@
         {
           "id": "comp_ego",
           "name": "EgoVehicle",
-          "x": 802.0,
-          "y": 494.0,
+          "x": 3084.0,
+          "y": 561.0,
           "width": 150.0,
           "height": 100.0,
           "parent_id": "comp_simcore",
@@ -66,8 +87,8 @@
         {
           "id": "comp_obsmgr",
           "name": "ObstacleManager",
-          "x": 968.0,
-          "y": 494.0,
+          "x": 3250.0,
+          "y": 561.0,
           "width": 150.0,
           "height": 100.0,
           "parent_id": "comp_simcore",
@@ -77,25 +98,24 @@
         {
           "id": "comp_planning",
           "name": "Planning Module",
-          "x": 782.0,
-          "y": 80.0,
+          "x": 2382.0,
+          "y": 406.0,
           "width": 522.0,
-          "height": 300.0,
+          "height": 346.0,
           "parent_id": "",
           "provided_interfaces": [
             "PlannedPath"
           ],
           "required_interfaces": [
             "VehicleState",
-            "ReferencePath",
-            "FrenetGeometry"
+            "ReferenceLine"
           ]
         },
         {
           "id": "comp_motionplanner",
           "name": "MotionPlanner",
-          "x": 1134.0,
-          "y": 124.0,
+          "x": 2734.0,
+          "y": 632.0,
           "width": 150.0,
           "height": 100.0,
           "parent_id": "comp_planning",
@@ -104,9 +124,9 @@
         },
         {
           "id": "comp_dpplanner",
-          "name": "DPPathPlanner",
-          "x": 802.0,
-          "y": 124.0,
+          "name": "dp_path_plan (module)",
+          "x": 2402.0,
+          "y": 632.0,
           "width": 150.0,
           "height": 100.0,
           "parent_id": "comp_planning",
@@ -115,9 +135,9 @@
         },
         {
           "id": "comp_qpplanner",
-          "name": "QPPathPlanner",
-          "x": 968.0,
-          "y": 124.0,
+          "name": "qp_path_plan (module)",
+          "x": 2568.0,
+          "y": 632.0,
           "width": 150.0,
           "height": 100.0,
           "parent_id": "comp_planning",
@@ -127,25 +147,25 @@
         {
           "id": "comp_control",
           "name": "Control Module",
-          "x": 782.0,
-          "y": 820.0,
+          "x": 1700.0,
+          "y": 592.0,
           "width": 522.0,
-          "height": 300.0,
+          "height": 486.0,
           "parent_id": "",
           "provided_interfaces": [
             "ControlCommand"
           ],
           "required_interfaces": [
             "PlannedPath",
-            "VehicleState",
-            "FrenetGeometry"
+            "ReferenceLine",
+            "VehicleState"
           ]
         },
         {
           "id": "comp_vehctrl",
           "name": "VehicleController",
-          "x": 802.0,
-          "y": 864.0,
+          "x": 1720.0,
+          "y": 840.0,
           "width": 150.0,
           "height": 100.0,
           "parent_id": "comp_control",
@@ -153,10 +173,10 @@
           "required_interfaces": []
         },
         {
-          "id": "comp_latctrl",
-          "name": "LateralController",
-          "x": 968.0,
-          "y": 864.0,
+          "id": "comp_latlqr",
+          "name": "LateralLQRController",
+          "x": 1886.0,
+          "y": 840.0,
           "width": 150.0,
           "height": 100.0,
           "parent_id": "comp_control",
@@ -164,10 +184,21 @@
           "required_interfaces": []
         },
         {
-          "id": "comp_lonctrl",
-          "name": "LongitudinalPID",
-          "x": 1134.0,
-          "y": 864.0,
+          "id": "comp_lonpid",
+          "name": "LongitudinalPIDController",
+          "x": 2052.0,
+          "y": 840.0,
+          "width": 150.0,
+          "height": 100.0,
+          "parent_id": "comp_control",
+          "provided_interfaces": [],
+          "required_interfaces": []
+        },
+        {
+          "id": "comp_latmpc",
+          "name": "LateralMPCController",
+          "x": 1720.0,
+          "y": 958.0,
           "width": 150.0,
           "height": 100.0,
           "parent_id": "comp_control",
@@ -178,23 +209,26 @@
           "id": "comp_ros",
           "name": "ROS 2 Adapter",
           "x": 100.0,
-          "y": 450.0,
-          "width": 522.0,
-          "height": 300.0,
+          "y": 314.0,
+          "width": 640.0,
+          "height": 530.0,
           "parent_id": "",
-          "provided_interfaces": [],
+          "provided_interfaces": [
+            "RouteRequest"
+          ],
           "required_interfaces": [
             "VehicleState",
-            "ReferencePath",
+            "ControlCommand",
+            "ReferenceLine",
             "PlannedPath",
-            "ControlCommand"
+            "TrackingMetrics"
           ]
         },
         {
           "id": "comp_simnode",
           "name": "SimulatorNode",
           "x": 452.0,
-          "y": 494.0,
+          "y": 606.0,
           "width": 150.0,
           "height": 100.0,
           "parent_id": "comp_ros",
@@ -205,7 +239,7 @@
           "id": "comp_plannernode",
           "name": "PlannerNode",
           "x": 120.0,
-          "y": 494.0,
+          "y": 606.0,
           "width": 150.0,
           "height": 100.0,
           "parent_id": "comp_ros",
@@ -216,7 +250,40 @@
           "id": "comp_controllernode",
           "name": "ControllerNode",
           "x": 286.0,
-          "y": 494.0,
+          "y": 606.0,
+          "width": 150.0,
+          "height": 100.0,
+          "parent_id": "comp_ros",
+          "provided_interfaces": [],
+          "required_interfaces": []
+        },
+        {
+          "id": "comp_managernode",
+          "name": "ControllerManager",
+          "x": 452.0,
+          "y": 724.0,
+          "width": 150.0,
+          "height": 100.0,
+          "parent_id": "comp_ros",
+          "provided_interfaces": [],
+          "required_interfaces": []
+        },
+        {
+          "id": "comp_safestop",
+          "name": "SafeStopNode",
+          "x": 120.0,
+          "y": 724.0,
+          "width": 150.0,
+          "height": 100.0,
+          "parent_id": "comp_ros",
+          "provided_interfaces": [],
+          "required_interfaces": []
+        },
+        {
+          "id": "comp_guinode",
+          "name": "GuiNode",
+          "x": 286.0,
+          "y": 724.0,
           "width": 150.0,
           "height": 100.0,
           "parent_id": "comp_ros",
@@ -226,10 +293,10 @@
         {
           "id": "comp_utils",
           "name": "Algorithm Utilities",
-          "x": 1464.0,
-          "y": 450.0,
+          "x": 3746.0,
+          "y": 381.0,
           "width": 522.0,
-          "height": 300.0,
+          "height": 396.0,
           "parent_id": "",
           "provided_interfaces": [
             "FrenetGeometry"
@@ -238,9 +305,9 @@
         },
         {
           "id": "comp_frenet",
-          "name": "FrenetUtils",
-          "x": 1816.0,
-          "y": 494.0,
+          "name": "frenet (module)",
+          "x": 4098.0,
+          "y": 539.0,
           "width": 150.0,
           "height": 100.0,
           "parent_id": "comp_utils",
@@ -249,9 +316,9 @@
         },
         {
           "id": "comp_geom",
-          "name": "GeometryUtils",
-          "x": 1484.0,
-          "y": 494.0,
+          "name": "geometry (module)",
+          "x": 3766.0,
+          "y": 539.0,
           "width": 150.0,
           "height": 100.0,
           "parent_id": "comp_utils",
@@ -260,9 +327,9 @@
         },
         {
           "id": "comp_quintic",
-          "name": "QuinticUtils",
-          "x": 1650.0,
-          "y": 494.0,
+          "name": "quintic (module)",
+          "x": 3932.0,
+          "y": 539.0,
           "width": 150.0,
           "height": 100.0,
           "parent_id": "comp_utils",
@@ -271,12 +338,190 @@
         },
         {
           "id": "comp_refline",
-          "name": "ReferenceLineUtils",
-          "x": 1484.0,
-          "y": 612.0,
+          "name": "reference_line (module)",
+          "x": 3766.0,
+          "y": 657.0,
           "width": 150.0,
           "height": 100.0,
           "parent_id": "comp_utils",
+          "provided_interfaces": [],
+          "required_interfaces": []
+        },
+        {
+          "id": "comp_routeutils",
+          "name": "route (module)",
+          "x": 3932.0,
+          "y": 657.0,
+          "width": 150.0,
+          "height": 100.0,
+          "parent_id": "comp_utils",
+          "provided_interfaces": [],
+          "required_interfaces": []
+        },
+        {
+          "id": "comp_routing",
+          "name": "Routing",
+          "x": 1700.0,
+          "y": 80.0,
+          "width": 522.0,
+          "height": 442.0,
+          "parent_id": "",
+          "provided_interfaces": [
+            "RoutePlan"
+          ],
+          "required_interfaces": [
+            "RouteRequest"
+          ]
+        },
+        {
+          "id": "comp_routingcore",
+          "name": "RoutingCore",
+          "x": 1886.0,
+          "y": 284.0,
+          "width": 150.0,
+          "height": 100.0,
+          "parent_id": "comp_routing",
+          "provided_interfaces": [],
+          "required_interfaces": []
+        },
+        {
+          "id": "comp_astar",
+          "name": "AStarRouter",
+          "x": 1720.0,
+          "y": 402.0,
+          "width": 150.0,
+          "height": 100.0,
+          "parent_id": "comp_routing",
+          "provided_interfaces": [],
+          "required_interfaces": []
+        },
+        {
+          "id": "comp_maploader",
+          "name": "map_loader (module)",
+          "x": 2052.0,
+          "y": 284.0,
+          "width": 150.0,
+          "height": 100.0,
+          "parent_id": "comp_routing",
+          "provided_interfaces": [],
+          "required_interfaces": []
+        },
+        {
+          "id": "comp_routingnode",
+          "name": "RoutingNode",
+          "x": 1720.0,
+          "y": 284.0,
+          "width": 150.0,
+          "height": 100.0,
+          "parent_id": "comp_routing",
+          "provided_interfaces": [],
+          "required_interfaces": []
+        },
+        {
+          "id": "comp_reflinepkg",
+          "name": "Reference Line",
+          "x": 900.0,
+          "y": 150.0,
+          "width": 640.0,
+          "height": 442.0,
+          "parent_id": "",
+          "provided_interfaces": [
+            "ReferenceLine"
+          ],
+          "required_interfaces": [
+            "RoutePlan"
+          ]
+        },
+        {
+          "id": "comp_reflinecore",
+          "name": "ReferenceLineCore",
+          "x": 920.0,
+          "y": 354.0,
+          "width": 150.0,
+          "height": 100.0,
+          "parent_id": "comp_reflinepkg",
+          "provided_interfaces": [],
+          "required_interfaces": []
+        },
+        {
+          "id": "comp_reflineplan",
+          "name": "ReferenceLinePlan",
+          "x": 1086.0,
+          "y": 354.0,
+          "width": 150.0,
+          "height": 100.0,
+          "parent_id": "comp_reflinepkg",
+          "provided_interfaces": [],
+          "required_interfaces": []
+        },
+        {
+          "id": "comp_routeaware",
+          "name": "RouteAwareMotionPlanner",
+          "x": 1252.0,
+          "y": 354.0,
+          "width": 150.0,
+          "height": 100.0,
+          "parent_id": "comp_reflinepkg",
+          "provided_interfaces": [],
+          "required_interfaces": []
+        },
+        {
+          "id": "comp_reflinenode",
+          "name": "ReferenceLineNode",
+          "x": 920.0,
+          "y": 472.0,
+          "width": 150.0,
+          "height": 100.0,
+          "parent_id": "comp_reflinepkg",
+          "provided_interfaces": [],
+          "required_interfaces": []
+        },
+        {
+          "id": "comp_analysis",
+          "name": "Analysis",
+          "x": 900.0,
+          "y": 662.0,
+          "width": 522.0,
+          "height": 346.0,
+          "parent_id": "",
+          "provided_interfaces": [
+            "TrackingMetrics"
+          ],
+          "required_interfaces": [
+            "ReferenceLine",
+            "VehicleState"
+          ]
+        },
+        {
+          "id": "comp_tracking",
+          "name": "TrackingMonitor",
+          "x": 920.0,
+          "y": 888.0,
+          "width": 150.0,
+          "height": 100.0,
+          "parent_id": "comp_analysis",
+          "provided_interfaces": [],
+          "required_interfaces": []
+        },
+        {
+          "id": "comp_oracle",
+          "name": "FigureEightOracle",
+          "x": 1086.0,
+          "y": 888.0,
+          "width": 150.0,
+          "height": 100.0,
+          "parent_id": "comp_analysis",
+          "provided_interfaces": [],
+          "required_interfaces": []
+        },
+        {
+          "id": "comp_eval",
+          "name": "evaluation (module)",
+          "x": 1252.0,
+          "y": 888.0,
+          "width": 150.0,
+          "height": 100.0,
+          "parent_id": "comp_analysis",
           "provided_interfaces": [],
           "required_interfaces": []
         }
@@ -287,16 +532,7 @@
           "source": "comp_planning",
           "target": "comp_simcore",
           "type": "dependency",
-          "vertices": [
-            {
-              "x": 960.0,
-              "y": 0.0
-            },
-            {
-              "x": 660.0,
-              "y": 0.0
-            }
-          ]
+          "vertices": null
         },
         {
           "id": "crel_control_planning",
@@ -310,52 +546,21 @@
           "source": "comp_control",
           "target": "comp_simcore",
           "type": "dependency",
-          "vertices": [
-            {
-              "x": 1360.0,
-              "y": 780.0
-            },
-            {
-              "x": 1360.0,
-              "y": 760.0
-            }
-          ]
+          "vertices": null
         },
         {
           "id": "crel_ros_simcore",
           "source": "comp_ros",
           "target": "comp_simcore",
           "type": "dependency",
-          "vertices": [
-            {
-              "x": 421.0,
-              "y": 400.0
-            },
-            {
-              "x": 1440.0,
-              "y": 400.0
-            },
-            {
-              "x": 1440.0,
-              "y": 460.0
-            }
-          ]
+          "vertices": null
         },
         {
           "id": "crel_ros_planning",
           "source": "comp_ros",
           "target": "comp_planning",
           "type": "dependency",
-          "vertices": [
-            {
-              "x": 700.0,
-              "y": 420.0
-            },
-            {
-              "x": 700.0,
-              "y": 230.0
-            }
-          ]
+          "vertices": null
         },
         {
           "id": "crel_ros_control",
@@ -365,24 +570,32 @@
           "vertices": null
         },
         {
+          "id": "crel_ros_routing",
+          "source": "comp_ros",
+          "target": "comp_routing",
+          "type": "dependency",
+          "vertices": null
+        },
+        {
+          "id": "crel_ros_refline",
+          "source": "comp_ros",
+          "target": "comp_reflinepkg",
+          "type": "dependency",
+          "vertices": null
+        },
+        {
+          "id": "crel_ros_analysis",
+          "source": "comp_ros",
+          "target": "comp_analysis",
+          "type": "dependency",
+          "vertices": null
+        },
+        {
           "id": "crel_simcore_utils",
           "source": "comp_simcore",
           "target": "comp_utils",
           "type": "dependency",
-          "vertices": [
-            {
-              "x": 740.0,
-              "y": 460.0
-            },
-            {
-              "x": 1420.0,
-              "y": 460.0
-            },
-            {
-              "x": 1420.0,
-              "y": 520.0
-            }
-          ]
+          "vertices": null
         },
         {
           "id": "crel_planning_utils",
@@ -396,84 +609,105 @@
           "source": "comp_control",
           "target": "comp_utils",
           "type": "dependency",
-          "vertices": [
-            {
-              "x": 1043.0,
-              "y": 780.0
-            },
-            {
-              "x": 1725.0,
-              "y": 780.0
-            }
-          ]
+          "vertices": null
+        },
+        {
+          "id": "crel_routing_utils",
+          "source": "comp_routing",
+          "target": "comp_utils",
+          "type": "dependency",
+          "vertices": null
+        },
+        {
+          "id": "crel_reflinepkg_routing",
+          "source": "comp_reflinepkg",
+          "target": "comp_routing",
+          "type": "dependency",
+          "vertices": null
+        },
+        {
+          "id": "crel_reflinepkg_utils",
+          "source": "comp_reflinepkg",
+          "target": "comp_utils",
+          "type": "dependency",
+          "vertices": null
+        },
+        {
+          "id": "crel_reflinepkg_planning",
+          "source": "comp_reflinepkg",
+          "target": "comp_planning",
+          "type": "dependency",
+          "vertices": null
+        },
+        {
+          "id": "crel_analysis_control",
+          "source": "comp_analysis",
+          "target": "comp_control",
+          "type": "dependency",
+          "vertices": null
+        },
+        {
+          "id": "crel_analysis_simcore",
+          "source": "comp_analysis",
+          "target": "comp_simcore",
+          "type": "dependency",
+          "vertices": null
         },
         {
           "id": "crel_simcore_engine",
           "source": "comp_simcore",
           "target": "comp_engine",
           "type": "delegation",
-          "vertices": [
-            {
-              "x": 1340.0,
-              "y": 670.0
-            }
-          ]
+          "vertices": null
         },
         {
           "id": "crel_planning_motion",
           "source": "comp_planning",
           "target": "comp_motionplanner",
           "type": "delegation",
-          "vertices": [
-            {
-              "x": 740.0,
-              "y": 290.0
-            }
-          ]
+          "vertices": null
         },
         {
           "id": "crel_control_vehctrl",
           "source": "comp_control",
           "target": "comp_vehctrl",
           "type": "delegation",
-          "vertices": [
-            {
-              "x": 700.0,
-              "y": 970.0
-            },
-            {
-              "x": 700.0,
-              "y": 1050.0
-            }
-          ]
+          "vertices": null
         },
         {
           "id": "crel_ros_simnode",
           "source": "comp_ros",
           "target": "comp_simnode",
           "type": "delegation",
-          "vertices": [
-            {
-              "x": 60.0,
-              "y": 690.0
-            }
-          ]
+          "vertices": null
         },
         {
           "id": "crel_utils_frenet",
           "source": "comp_utils",
           "target": "comp_frenet",
           "type": "delegation",
-          "vertices": [
-            {
-              "x": 1460.0,
-              "y": 700.0
-            },
-            {
-              "x": 1760.0,
-              "y": 640.0
-            }
-          ]
+          "vertices": null
+        },
+        {
+          "id": "crel_routing_core",
+          "source": "comp_routing",
+          "target": "comp_routingcore",
+          "type": "delegation",
+          "vertices": null
+        },
+        {
+          "id": "crel_reflinepkg_core",
+          "source": "comp_reflinepkg",
+          "target": "comp_reflinecore",
+          "type": "delegation",
+          "vertices": null
+        },
+        {
+          "id": "crel_analysis_tracking",
+          "source": "comp_analysis",
+          "target": "comp_tracking",
+          "type": "delegation",
+          "vertices": null
         }
       ],
       "grid_visible": true,
@@ -481,9 +715,9 @@
       "grid_color": "#e0e0e0",
       "grid_thickness": 1,
       "snap_to_grid": true,
-      "zoom": 0.8333333333333334,
-      "pan_x": -301.0,
-      "pan_y": -255.16666666666674
+      "zoom": 0.85,
+      "pan_x": -121.89999999999986,
+      "pan_y": -155.45
     },
     {
       "version": "1.0",
@@ -532,6 +766,13 @@
               "is_static": false
             },
             {
+              "name": "steering",
+              "type": "SteeringActuator",
+              "visibility": "-",
+              "default_value": "",
+              "is_static": false
+            },
+            {
               "name": "sim_time",
               "type": "float",
               "visibility": "+",
@@ -553,10 +794,17 @@
               "is_static": false
             },
             {
+              "name": "dynamic_max_substep_s",
+              "type": "float",
+              "visibility": "+",
+              "default_value": "",
+              "is_static": false
+            },
+            {
               "name": "vehicle_model",
               "type": "str",
               "visibility": "+",
-              "default_value": "",
+              "default_value": "kinematic",
               "is_static": false
             },
             {
@@ -564,6 +812,13 @@
               "type": "float",
               "visibility": "+",
               "default_value": "",
+              "is_static": false
+            },
+            {
+              "name": "destination",
+              "type": "Optional[Tuple[float, float]]",
+              "visibility": "+",
+              "default_value": "None",
               "is_static": false
             },
             {
@@ -585,13 +840,6 @@
               "type": "bool",
               "visibility": "+",
               "default_value": "False",
-              "is_static": false
-            },
-            {
-              "name": "is_done",
-              "type": "bool",
-              "visibility": "+",
-              "default_value": "",
               "is_static": false
             }
           ],
@@ -615,7 +863,7 @@
             {
               "name": "step",
               "return_type": "VehicleState",
-              "params": "control: ControlCommand, dt: float",
+              "params": "control: ControlCommand | None = None, dt: float | None = None",
               "visibility": "+",
               "is_static": false,
               "is_abstract": false
@@ -631,21 +879,72 @@
             {
               "name": "get_error_state",
               "return_type": "ndarray",
-              "params": "ts: float",
+              "params": "ts: float = 0.1",
+              "visibility": "+",
+              "is_static": false,
+              "is_abstract": false
+            },
+            {
+              "name": "is_done",
+              "return_type": "bool",
+              "params": "",
               "visibility": "+",
               "is_static": false,
               "is_abstract": false
             }
           ],
           "position": {
-            "x": 560.0,
+            "x": 792.0,
             "y": 100.0
           },
           "size": {
             "width": 240.0,
-            "height": 190.0
+            "height": 210.0
           },
-          "note": "固定步长物理引擎；拥有 World/EgoVehicle/ObstacleManager，按子步细化步进并做碰撞、越界与到点判定。",
+          "note": "固定步长物理引擎；拥有 World/EgoVehicle/ObstacleManager/SteeringActuator，按子步细化步进并做碰撞、越界与到点判定。is_done 为只读 property（碰撞或到点或离路）。",
+          "provided_interfaces": [],
+          "required_interfaces": []
+        },
+        {
+          "id": "class_reverseengine",
+          "name": "ReverseSimulationEngine",
+          "stereotype": "class",
+          "attributes": [
+            {
+              "name": "physics_dt",
+              "type": "float",
+              "visibility": "+",
+              "default_value": "",
+              "is_static": false
+            }
+          ],
+          "methods": [
+            {
+              "name": "__init__",
+              "return_type": "void",
+              "params": "config: ScenarioConfig",
+              "visibility": "+",
+              "is_static": false,
+              "is_abstract": false
+            },
+            {
+              "name": "step",
+              "return_type": "VehicleState",
+              "params": "control: ControlCommand | None = None, dt: float | None = None",
+              "visibility": "+",
+              "is_static": false,
+              "is_abstract": false
+            }
+          ],
+          "position": {
+            "x": 792.0,
+            "y": 973.0
+          },
+          "size": {
+            "width": 240.0,
+            "height": 150.0
+          },
+          "note": "simulator/reverse_engine.SimulationEngine：继承基础引擎，支持带符号倒车（泊车）。ROS 仿真节点实际实例化的就是这个子类。",
           "provided_interfaces": [],
           "required_interfaces": []
         },
@@ -676,6 +975,13 @@
               "is_static": false
             },
             {
+              "name": "reference_lane_index",
+              "type": "int",
+              "visibility": "+",
+              "default_value": "-1",
+              "is_static": false
+            },
+            {
               "name": "ref_path",
               "type": "List[PathPoint]",
               "visibility": "+",
@@ -694,7 +1000,7 @@
             {
               "name": "__init__",
               "return_type": "void",
-              "params": "road_def: RoadDef",
+              "params": "road_def: RoadDef | None = None",
               "visibility": "+",
               "is_static": false,
               "is_abstract": false
@@ -726,21 +1032,37 @@
             {
               "name": "is_on_road",
               "return_type": "bool",
-              "params": "x: float, y: float, margin: float",
+              "params": "x: float, y: float, margin: float = 0.0",
+              "visibility": "+",
+              "is_static": false,
+              "is_abstract": false
+            },
+            {
+              "name": "ref_path_as_tuples",
+              "return_type": "List[Tuple[float, float, float, float]]",
+              "params": "",
+              "visibility": "+",
+              "is_static": false,
+              "is_abstract": false
+            },
+            {
+              "name": "total_length",
+              "return_type": "float",
+              "params": "",
               "visibility": "+",
               "is_static": false,
               "is_abstract": false
             }
           ],
           "position": {
-            "x": 224.0,
-            "y": 845.0
+            "x": 120.0,
+            "y": 973.0
           },
           "size": {
             "width": 240.0,
             "height": 190.0
           },
-          "note": "由 RoadDef 生成道路参考线(ref_path)与弧长映射(s_map)，提供车道中心/边界与离路判定。",
+          "note": "由 RoadDef 生成道路参考线(ref_path)与弧长映射(s_map)；提供车道中心/边界、离路判定与带参考车道索引的横向边界。_world_impl 为遗留实现，world.py 覆盖拼接与参考车道语义。",
           "provided_interfaces": [],
           "required_interfaces": []
         },
@@ -769,13 +1091,20 @@
               "visibility": "+",
               "default_value": "2.0",
               "is_static": false
+            },
+            {
+              "name": "allow_reverse",
+              "type": "bool",
+              "visibility": "+",
+              "default_value": "False",
+              "is_static": false
             }
           ],
           "methods": [
             {
               "name": "__init__",
               "return_type": "void",
-              "params": "state: VehicleState, params: VehicleParams",
+              "params": "state: VehicleState, params: VehicleParams | None = None",
               "visibility": "+",
               "is_static": false,
               "is_abstract": false
@@ -799,7 +1128,7 @@
             {
               "name": "step",
               "return_type": "VehicleState",
-              "params": "steer: float, accel: float, dt: float, model: str",
+              "params": "steer: float, accel: float, dt: float, model: str = \"kinematic\"",
               "visibility": "+",
               "is_static": false,
               "is_abstract": false
@@ -813,9 +1142,17 @@
               "is_abstract": false
             },
             {
+              "name": "set_state",
+              "return_type": "void",
+              "params": "state: VehicleState",
+              "visibility": "+",
+              "is_static": false,
+              "is_abstract": false
+            },
+            {
               "name": "get_error_state",
               "return_type": "ndarray",
-              "params": "ref_path: list, ts: float",
+              "params": "ref_path: List[Tuple[float, float, float, float]], ts: float = 0.1",
               "visibility": "+",
               "is_static": false,
               "is_abstract": false
@@ -830,14 +1167,14 @@
             }
           ],
           "position": {
-            "x": 560.0,
-            "y": 845.0
+            "x": 456.0,
+            "y": 973.0
           },
           "size": {
             "width": 240.0,
             "height": 190.0
           },
-          "note": "自车运动学/动力学自行车模型，输出世界系误差状态与四角点。",
+          "note": "自车运动学/动力学自行车模型，输出世界系误差状态与四角点。length = wheelbase + body_overhang。",
           "provided_interfaces": [],
           "required_interfaces": []
         },
@@ -913,14 +1250,107 @@
             }
           ],
           "position": {
-            "x": 896.0,
-            "y": 845.0
+            "x": 1128.0,
+            "y": 973.0
           },
           "size": {
             "width": 240.0,
             "height": 190.0
           },
           "note": "障碍物集合管理；采用 AABB 预筛 + 旋转矩形 SAT 精确碰撞检测。",
+          "provided_interfaces": [],
+          "required_interfaces": []
+        },
+        {
+          "id": "class_steeringact",
+          "name": "SteeringActuator",
+          "stereotype": "class",
+          "attributes": [
+            {
+              "name": "params",
+              "type": "SteeringParams",
+              "visibility": "+",
+              "default_value": "",
+              "is_static": false
+            },
+            {
+              "name": "max_angle",
+              "type": "float",
+              "visibility": "+",
+              "default_value": "",
+              "is_static": false
+            },
+            {
+              "name": "angle",
+              "type": "float",
+              "visibility": "+",
+              "default_value": "0.0",
+              "is_static": false
+            },
+            {
+              "name": "requested",
+              "type": "float",
+              "visibility": "+",
+              "default_value": "",
+              "is_static": false
+            },
+            {
+              "name": "delayed",
+              "type": "float",
+              "visibility": "+",
+              "default_value": "",
+              "is_static": false
+            },
+            {
+              "name": "rate_limited",
+              "type": "bool",
+              "visibility": "+",
+              "default_value": "False",
+              "is_static": false
+            },
+            {
+              "name": "peak_rate_rad_s",
+              "type": "float",
+              "visibility": "+",
+              "default_value": "0.0",
+              "is_static": false
+            }
+          ],
+          "methods": [
+            {
+              "name": "__init__",
+              "return_type": "void",
+              "params": "params: SteeringParams, max_angle: float, initial_angle: float = 0.0",
+              "visibility": "+",
+              "is_static": false,
+              "is_abstract": false
+            },
+            {
+              "name": "begin_period",
+              "return_type": "void",
+              "params": "command: float, dt: float",
+              "visibility": "+",
+              "is_static": false,
+              "is_abstract": false
+            },
+            {
+              "name": "advance",
+              "return_type": "float",
+              "params": "dt: float",
+              "visibility": "+",
+              "is_static": false,
+              "is_abstract": false
+            }
+          ],
+          "position": {
+            "x": 1464.0,
+            "y": 973.0
+          },
+          "size": {
+            "width": 240.0,
+            "height": 190.0
+          },
+          "note": "物理前轮执行器：整数周期传输延迟 + 一阶滞后与速率限制。参数为工程假设而非实车标定。",
           "provided_interfaces": [],
           "required_interfaces": []
         }
@@ -958,6 +1388,28 @@
           "multiplicity_target": "1",
           "role_name": "obstacles",
           "note": "引擎拥有障碍物管理"
+        },
+        {
+          "id": "rel_engine_steering",
+          "source": "class_simengine",
+          "target": "class_steeringact",
+          "type": "composition",
+          "vertices": null,
+          "multiplicity_source": "1",
+          "multiplicity_target": "1",
+          "role_name": "steering",
+          "note": "引擎拥有前轮执行器"
+        },
+        {
+          "id": "rel_reverse_engine",
+          "source": "class_reverseengine",
+          "target": "class_simengine",
+          "type": "inheritance",
+          "vertices": null,
+          "multiplicity_source": "",
+          "multiplicity_target": "",
+          "role_name": "",
+          "note": "倒车引擎继承基础引擎"
         }
       ],
       "lifelines": [],
@@ -967,12 +1419,12 @@
       "comp_relations": [],
       "grid_visible": true,
       "grid_size": 20,
-      "grid_color": "#e0e0e0",
-      "grid_thickness": 1,
+      "grid_color": "#833a3a",
+      "grid_thickness": 2,
       "snap_to_grid": true,
-      "zoom": 0.3,
-      "pan_x": 351.5,
-      "pan_y": 96.65
+      "zoom": 0.7000000000000001,
+      "pan_x": -105.90000000000009,
+      "pan_y": -484.6500000000001
     },
     {
       "version": "1.0",
@@ -1061,11 +1513,25 @@
               "visibility": "+",
               "default_value": "",
               "is_static": false
+            },
+            {
+              "name": "world_velocity",
+              "type": "Tuple[float, float]",
+              "visibility": "+",
+              "default_value": "",
+              "is_static": false
+            },
+            {
+              "name": "position",
+              "type": "Tuple[float, float]",
+              "visibility": "+",
+              "default_value": "",
+              "is_static": false
             }
           ],
           "methods": [],
           "position": {
-            "x": 792.0,
+            "x": 812.0,
             "y": 100.0
           },
           "size": {
@@ -1145,23 +1611,53 @@
               "is_static": false
             },
             {
+              "name": "width",
+              "type": "float",
+              "visibility": "+",
+              "default_value": "2.0",
+              "is_static": false
+            },
+            {
+              "name": "body_overhang",
+              "type": "float",
+              "visibility": "+",
+              "default_value": "1.0",
+              "is_static": false
+            },
+            {
               "name": "wheelbase",
               "type": "float",
               "visibility": "+",
               "default_value": "",
               "is_static": false
+            },
+            {
+              "name": "lateral_tuple",
+              "type": "tuple",
+              "visibility": "+",
+              "default_value": "",
+              "is_static": false
             }
           ],
-          "methods": [],
+          "methods": [
+            {
+              "name": "__post_init__",
+              "return_type": "void",
+              "params": "",
+              "visibility": "+",
+              "is_static": false,
+              "is_abstract": false
+            }
+          ],
           "position": {
-            "x": 1128.0,
-            "y": 100.0
+            "x": 1306.0,
+            "y": 1116.0
           },
           "size": {
             "width": 240.0,
             "height": 190.0
           },
-          "note": "车辆物理参数；wheelbase = a + b 为只读 property。",
+          "note": "车辆物理参数；wheelbase=a+b 与 lateral_tuple=(a,b,m,Cf,Cr,Iz) 为只读 property。__post_init__ 校验正参数与负侧偏刚度约定。",
           "provided_interfaces": [],
           "required_interfaces": []
         },
@@ -1210,7 +1706,7 @@
             }
           ],
           "position": {
-            "x": 1464.0,
+            "x": 1484.0,
             "y": 100.0
           },
           "size": {
@@ -1257,14 +1753,14 @@
           ],
           "methods": [],
           "position": {
-            "x": 1800.0,
+            "x": 1820.0,
             "y": 100.0
           },
           "size": {
             "width": 240.0,
             "height": 190.0
           },
-          "note": "物理前轮转角(rad) + 归一化油门/刹车。",
+          "note": "物理前轮转角(rad) + 归一化油门/刹车；gear<0 表示倒车。",
           "provided_interfaces": [],
           "required_interfaces": []
         },
@@ -1316,6 +1812,90 @@
           "required_interfaces": []
         },
         {
+          "id": "class_obstacle",
+          "name": "Obstacle",
+          "stereotype": "class",
+          "attributes": [
+            {
+              "name": "id",
+              "type": "int",
+              "visibility": "+",
+              "default_value": "",
+              "is_static": false
+            },
+            {
+              "name": "x",
+              "type": "float",
+              "visibility": "+",
+              "default_value": "",
+              "is_static": false
+            },
+            {
+              "name": "y",
+              "type": "float",
+              "visibility": "+",
+              "default_value": "",
+              "is_static": false
+            },
+            {
+              "name": "length",
+              "type": "float",
+              "visibility": "+",
+              "default_value": "4.5",
+              "is_static": false
+            },
+            {
+              "name": "width",
+              "type": "float",
+              "visibility": "+",
+              "default_value": "2.0",
+              "is_static": false
+            },
+            {
+              "name": "speed",
+              "type": "float",
+              "visibility": "+",
+              "default_value": "0.0",
+              "is_static": false
+            },
+            {
+              "name": "heading",
+              "type": "float",
+              "visibility": "+",
+              "default_value": "0.0",
+              "is_static": false
+            },
+            {
+              "name": "type",
+              "type": "str",
+              "visibility": "+",
+              "default_value": "vehicle",
+              "is_static": false
+            }
+          ],
+          "methods": [
+            {
+              "name": "step",
+              "return_type": "void",
+              "params": "dt: float",
+              "visibility": "+",
+              "is_static": false,
+              "is_abstract": false
+            }
+          ],
+          "position": {
+            "x": 2492.0,
+            "y": 100.0
+          },
+          "size": {
+            "width": 240.0,
+            "height": 190.0
+          },
+          "note": "障碍物 dataclass；step 按 heading/speed 平移。",
+          "provided_interfaces": [],
+          "required_interfaces": []
+        },
+        {
           "id": "class_logentry",
           "name": "LogEntry",
           "stereotype": "class",
@@ -1336,6 +1916,27 @@
             },
             {
               "name": "y",
+              "type": "float",
+              "visibility": "+",
+              "default_value": "",
+              "is_static": false
+            },
+            {
+              "name": "phi",
+              "type": "float",
+              "visibility": "+",
+              "default_value": "",
+              "is_static": false
+            },
+            {
+              "name": "vx",
+              "type": "float",
+              "visibility": "+",
+              "default_value": "",
+              "is_static": false
+            },
+            {
+              "name": "vy",
               "type": "float",
               "visibility": "+",
               "default_value": "",
@@ -1393,14 +1994,77 @@
           ],
           "methods": [],
           "position": {
-            "x": 2136.0,
+            "x": 2156.0,
             "y": 100.0
           },
           "size": {
             "width": 240.0,
             "height": 190.0
           },
-          "note": "单步诊断日志记录（含横向误差 ed、航向误差 ephi）。",
+          "note": "单步诊断日志记录（含 phi/vx/vy 与横向误差 ed、航向误差 ephi）。",
+          "provided_interfaces": [],
+          "required_interfaces": []
+        },
+        {
+          "id": "class_steeringparams",
+          "name": "SteeringParams",
+          "stereotype": "class",
+          "attributes": [
+            {
+              "name": "mode",
+              "type": "str",
+              "visibility": "+",
+              "default_value": "ideal",
+              "is_static": false
+            },
+            {
+              "name": "time_constant_s",
+              "type": "float",
+              "visibility": "+",
+              "default_value": "0.15",
+              "is_static": false
+            },
+            {
+              "name": "delay_s",
+              "type": "float",
+              "visibility": "+",
+              "default_value": "0.05",
+              "is_static": false
+            },
+            {
+              "name": "rate_limit_rad_s",
+              "type": "float",
+              "visibility": "+",
+              "default_value": "0.6",
+              "is_static": false
+            },
+            {
+              "name": "source",
+              "type": "str",
+              "visibility": "+",
+              "default_value": "engineering_assumption_not_vehicle_calibrated",
+              "is_static": false
+            }
+          ],
+          "methods": [
+            {
+              "name": "delay_steps",
+              "return_type": "int",
+              "params": "dt: float",
+              "visibility": "+",
+              "is_static": false,
+              "is_abstract": false
+            }
+          ],
+          "position": {
+            "x": 1642.0,
+            "y": 1116.0
+          },
+          "size": {
+            "width": 240.0,
+            "height": 190.0
+          },
+          "note": "frozen dataclass；mode ∈ {ideal, dynamic}，delay_steps 要求 delay_s 为 dt 的整数倍。",
           "provided_interfaces": [],
           "required_interfaces": []
         },
@@ -1466,6 +2130,41 @@
               "is_static": false
             },
             {
+              "name": "speed_limit_type",
+              "type": "str",
+              "visibility": "+",
+              "default_value": "straight",
+              "is_static": false
+            },
+            {
+              "name": "speed_limit_kmh",
+              "type": "float",
+              "visibility": "+",
+              "default_value": "40.0",
+              "is_static": false
+            },
+            {
+              "name": "target_speed_ratio",
+              "type": "float",
+              "visibility": "+",
+              "default_value": "0.85",
+              "is_static": false
+            },
+            {
+              "name": "speed_limits",
+              "type": "dict",
+              "visibility": "+",
+              "default_value": "",
+              "is_static": false
+            },
+            {
+              "name": "max_lateral_accel_mps2",
+              "type": "float",
+              "visibility": "+",
+              "default_value": "2.0",
+              "is_static": false
+            },
+            {
               "name": "obstacles",
               "type": "List[dict]",
               "visibility": "+",
@@ -1490,7 +2189,49 @@
               "name": "destination",
               "type": "Optional[Tuple[float, float]]",
               "visibility": "+",
-              "default_value": "",
+              "default_value": "None",
+              "is_static": false
+            },
+            {
+              "name": "destination_tolerance_m",
+              "type": "float",
+              "visibility": "+",
+              "default_value": "2.0",
+              "is_static": false
+            },
+            {
+              "name": "destination_heading_rad",
+              "type": "Optional[float]",
+              "visibility": "+",
+              "default_value": "None",
+              "is_static": false
+            },
+            {
+              "name": "routing_map_id",
+              "type": "Optional[str]",
+              "visibility": "+",
+              "default_value": "None",
+              "is_static": false
+            },
+            {
+              "name": "routing_start_lane",
+              "type": "int",
+              "visibility": "+",
+              "default_value": "-1",
+              "is_static": false
+            },
+            {
+              "name": "routing_goal_lane",
+              "type": "int",
+              "visibility": "+",
+              "default_value": "-1",
+              "is_static": false
+            },
+            {
+              "name": "routing_closed_loop",
+              "type": "bool",
+              "visibility": "+",
+              "default_value": "False",
               "is_static": false
             },
             {
@@ -1498,6 +2239,55 @@
               "type": "str",
               "visibility": "+",
               "default_value": "kinematic",
+              "is_static": false
+            },
+            {
+              "name": "maneuver",
+              "type": "str",
+              "visibility": "+",
+              "default_value": "cruise",
+              "is_static": false
+            },
+            {
+              "name": "parking_goal",
+              "type": "Optional[Tuple[float, float, float]]",
+              "visibility": "+",
+              "default_value": "None",
+              "is_static": false
+            },
+            {
+              "name": "parking_slots",
+              "type": "List[dict]",
+              "visibility": "+",
+              "default_value": "",
+              "is_static": false
+            },
+            {
+              "name": "vehicle_params",
+              "type": "VehicleParams",
+              "visibility": "+",
+              "default_value": "",
+              "is_static": false
+            },
+            {
+              "name": "steering",
+              "type": "SteeringParams",
+              "visibility": "+",
+              "default_value": "",
+              "is_static": false
+            },
+            {
+              "name": "physics_dt",
+              "type": "float",
+              "visibility": "+",
+              "default_value": "0.05",
+              "is_static": false
+            },
+            {
+              "name": "dynamic_max_substep_s",
+              "type": "float",
+              "visibility": "+",
+              "default_value": "0.0025",
               "is_static": false
             }
           ],
@@ -1507,10 +2297,10 @@
             "y": 100.0
           },
           "size": {
-            "width": 240.0,
-            "height": 190.0
+            "width": 260.0,
+            "height": 210.0
           },
-          "note": "场景配置聚合体，描述道路、初始位姿与控制器/规划器选择。",
+          "note": "场景配置聚合体：道路、初始位姿、速度剖面、路由/泊车/执行器与控制器选择。",
           "provided_interfaces": [],
           "required_interfaces": []
         },
@@ -1527,6 +2317,20 @@
               "is_static": false
             },
             {
+              "name": "road_network",
+              "type": "List[List[Tuple[float, float]]]",
+              "visibility": "+",
+              "default_value": "",
+              "is_static": false
+            },
+            {
+              "name": "road_network_num_lanes",
+              "type": "int",
+              "visibility": "+",
+              "default_value": "0",
+              "is_static": false
+            },
+            {
               "name": "lane_width",
               "type": "float",
               "visibility": "+",
@@ -1539,18 +2343,39 @@
               "visibility": "+",
               "default_value": "2",
               "is_static": false
+            },
+            {
+              "name": "reference_lane_index",
+              "type": "int",
+              "visibility": "+",
+              "default_value": "-1",
+              "is_static": false
+            },
+            {
+              "name": "max_reference_curvature_1pm",
+              "type": "float",
+              "visibility": "+",
+              "default_value": "0.15",
+              "is_static": false
+            },
+            {
+              "name": "junction_angle_threshold_rad",
+              "type": "float",
+              "visibility": "+",
+              "default_value": "0.7",
+              "is_static": false
             }
           ],
           "methods": [],
           "position": {
-            "x": 1128.0,
-            "y": 665.0
+            "x": 970.0,
+            "y": 1116.0
           },
           "size": {
             "width": 240.0,
             "height": 190.0
           },
-          "note": "道路定义：一组线段 + 车道数与车道宽。",
+          "note": "道路定义：线段集合 + 可选整图可行驶路网 + 车道数/车道宽/参考车道索引与曲率、路口阈值。",
           "provided_interfaces": [],
           "required_interfaces": []
         },
@@ -1590,14 +2415,112 @@
           ],
           "methods": [],
           "position": {
-            "x": 1128.0,
-            "y": 983.0
+            "x": 1306.0,
+            "y": 1666.0
           },
           "size": {
             "width": 240.0,
             "height": 190.0
           },
           "note": "道路片段：straight / arc / waypoints。",
+          "provided_interfaces": [],
+          "required_interfaces": []
+        },
+        {
+          "id": "class_runtimeconfig",
+          "name": "RuntimeConfig",
+          "stereotype": "class",
+          "attributes": [
+            {
+              "name": "physics_dt",
+              "type": "float",
+              "visibility": "+",
+              "default_value": "0.05",
+              "is_static": false
+            },
+            {
+              "name": "dynamic_max_substep_s",
+              "type": "float",
+              "visibility": "+",
+              "default_value": "0.0025",
+              "is_static": false
+            },
+            {
+              "name": "control_period",
+              "type": "float",
+              "visibility": "+",
+              "default_value": "0.05",
+              "is_static": false
+            },
+            {
+              "name": "plan_period",
+              "type": "float",
+              "visibility": "+",
+              "default_value": "0.05",
+              "is_static": false
+            },
+            {
+              "name": "command_timeout",
+              "type": "float",
+              "visibility": "+",
+              "default_value": "0.25",
+              "is_static": false
+            },
+            {
+              "name": "controller",
+              "type": "str",
+              "visibility": "+",
+              "default_value": "LQR_controller",
+              "is_static": false
+            },
+            {
+              "name": "target_speed_kmh",
+              "type": "float",
+              "visibility": "+",
+              "default_value": "40.0",
+              "is_static": false
+            },
+            {
+              "name": "lane_width",
+              "type": "float",
+              "visibility": "+",
+              "default_value": "3.5",
+              "is_static": false
+            },
+            {
+              "name": "num_lanes",
+              "type": "int",
+              "visibility": "+",
+              "default_value": "2",
+              "is_static": false
+            },
+            {
+              "name": "steering_profile",
+              "type": "str",
+              "visibility": "+",
+              "default_value": "ideal",
+              "is_static": false
+            }
+          ],
+          "methods": [
+            {
+              "name": "target_speed_for_limit",
+              "return_type": "float",
+              "params": "speed_limit_kmh: float",
+              "visibility": "+",
+              "is_static": false,
+              "is_abstract": false
+            }
+          ],
+          "position": {
+            "x": 1148.0,
+            "y": 100.0
+          },
+          "size": {
+            "width": 240.0,
+            "height": 190.0
+          },
+          "note": "runtime_config.py 的 frozen dataclass，集中 ROS 节点与仿真核心共享的默认值；DEFAULT_RUNTIME_CONFIG 为单例。",
           "provided_interfaces": [],
           "required_interfaces": []
         }
@@ -1624,6 +2547,28 @@
           "multiplicity_target": "1..*",
           "role_name": "segments",
           "note": "道路由若干连续片段构成"
+        },
+        {
+          "id": "rel_scenariocfg_vehparams",
+          "source": "class_scenariocfg",
+          "target": "class_vehparams",
+          "type": "composition",
+          "vertices": null,
+          "multiplicity_source": "1",
+          "multiplicity_target": "1",
+          "role_name": "vehicle_params",
+          "note": "场景配置内含车辆参数"
+        },
+        {
+          "id": "rel_scenariocfg_steering",
+          "source": "class_scenariocfg",
+          "target": "class_steeringparams",
+          "type": "composition",
+          "vertices": null,
+          "multiplicity_source": "1",
+          "multiplicity_target": "1",
+          "role_name": "steering",
+          "note": "场景配置内含执行器参数"
         }
       ],
       "lifelines": [],
@@ -1636,9 +2581,9 @@
       "grid_color": "#e0e0e0",
       "grid_thickness": 1,
       "snap_to_grid": true,
-      "zoom": 1.0,
-      "pan_x": -832.5,
-      "pan_y": -268.5
+      "zoom": 0.6,
+      "pan_x": 30.899999999999977,
+      "pan_y": -238.60000000000002
     },
     {
       "version": "1.0",
@@ -1673,6 +2618,27 @@
               "is_static": false
             },
             {
+              "name": "horizon_points",
+              "type": "int",
+              "visibility": "+",
+              "default_value": "80",
+              "is_static": false
+            },
+            {
+              "name": "corridor_margin_m",
+              "type": "float",
+              "visibility": "+",
+              "default_value": "1.1",
+              "is_static": false
+            },
+            {
+              "name": "transition_distance_m",
+              "type": "float",
+              "visibility": "+",
+              "default_value": "12.0",
+              "is_static": false
+            },
+            {
               "name": "logger",
               "type": "Logger",
               "visibility": "-",
@@ -1681,6 +2647,14 @@
             }
           ],
           "methods": [
+            {
+              "name": "__init__",
+              "return_type": "void",
+              "params": "global_frenet_path: list, lane_width: float = 3.5, num_lanes: int = 2, *, horizon_points: int = 80, corridor_margin_m: float = 1.1, transition_distance_m: float = 12.0, ...",
+              "visibility": "+",
+              "is_static": false,
+              "is_abstract": false
+            },
             {
               "name": "start",
               "return_type": "void",
@@ -1700,7 +2674,7 @@
             {
               "name": "plan",
               "return_type": "bool",
-              "params": "ego_state: VehicleState, obstacles: list, pred_loc: tuple, vehicle_loc: tuple",
+              "params": "ego_state: VehicleState, obstacles: list, vehicle_v: tuple = (0, 0), vehicle_a: tuple = (0, 0), pred_loc: tuple | None = None, vehicle_loc: tuple | None = None",
               "visibility": "+",
               "is_static": false,
               "is_abstract": false
@@ -1739,12 +2713,12 @@
             }
           ],
           "position": {
-            "x": 224.0,
+            "x": 194.0,
             "y": 100.0
           },
           "size": {
-            "width": 240.0,
-            "height": 190.0
+            "width": 260.0,
+            "height": 210.0
           },
           "note": "异步“最新优先”避障换道规划器：独立 worker 线程 + 单元素请求/响应队列，S 型平滑换道。",
           "provided_interfaces": [],
@@ -1752,14 +2726,14 @@
         },
         {
           "id": "class_dpplanner",
-          "name": "DPPathPlanner",
+          "name": "dp_path_plan",
           "stereotype": "class",
           "attributes": [],
           "methods": [
             {
               "name": "DP_algorithm",
               "return_type": "Tuple[list, list]",
-              "params": "obs_s_list: list, obs_l_list: list, plan_start_s: float, plan_start_l: float, plan_start_dl: float, plan_start_ddl: float",
+              "params": "obs_s_list: list, obs_l_list: list, plan_start_s: float, plan_start_l: float, plan_start_dl: float, plan_start_ddl: float, sampling_res: float = 2.0, ...",
               "visibility": "+",
               "is_static": true,
               "is_abstract": false
@@ -1767,7 +2741,7 @@
             {
               "name": "enrich_DP_s_l",
               "return_type": "Tuple[list, list]",
-              "params": "DP_s_list: list, DP_l_list: list, plan_start_s: float, plan_start_l: float, plan_start_dl: float, plan_start_ddl: float, resolution: float",
+              "params": "DP_s_list: list, DP_l_list: list, plan_start_s: float, plan_start_l: float, plan_start_dl: float, plan_start_ddl: float, resolution: float = 1.0",
               "visibility": "+",
               "is_static": true,
               "is_abstract": false
@@ -1775,7 +2749,7 @@
             {
               "name": "cal_start_cost",
               "return_type": "float",
-              "params": "obs_s_list: list, obs_l_list: list, begin_s: float, begin_l: float, begin_dl: float, begin_ddl: float",
+              "params": "obs_s_list, obs_l_list, begin_s, begin_l, begin_dl, begin_ddl, cur_node_row, row, sample_s, sample_l, w_cost_collision, w_cost_smooth, w_cost_ref",
               "visibility": "+",
               "is_static": true,
               "is_abstract": false
@@ -1783,34 +2757,42 @@
             {
               "name": "cal_neighbor_cost",
               "return_type": "float",
-              "params": "obs_s_list: list, obs_l_list: list, pre_node_s: float, pre_node_l: float, cur_node_s: float, cur_node_l: float",
+              "params": "obs_s_list, obs_l_list, pre_node_s, pre_node_l, cur_node_s, cur_node_l, sample_s, w_cost_collision, w_cost_smooth, w_cost_ref",
               "visibility": "+",
+              "is_static": true,
+              "is_abstract": false
+            },
+            {
+              "name": "_calc_collision",
+              "return_type": "float",
+              "params": "obs_s_list: list, obs_l_list: list, s: ndarray, l: ndarray, w_cost_collision: float, danger_dis: float = 4.0, safe_dis: float = 6.0",
+              "visibility": "-",
               "is_static": true,
               "is_abstract": false
             }
           ],
           "position": {
-            "x": 560.0,
+            "x": 550.0,
             "y": 100.0
           },
           "size": {
-            "width": 240.0,
+            "width": 260.0,
             "height": 190.0
           },
-          "note": "S-L 图动态规划避障（纯 numpy），并用五次多项式增密；无障碍时退化为直线 l=0。",
+          "note": "Python 模块 dp_path_plan.py（自由函数集合，非类）。S-L 图动态规划避障（纯 numpy）+ 五次多项式增密。",
           "provided_interfaces": [],
           "required_interfaces": []
         },
         {
           "id": "class_qpplanner",
-          "name": "QPPathPlanner",
+          "name": "qp_path_plan",
           "stereotype": "class",
           "attributes": [],
           "methods": [
             {
               "name": "Quadratic_planning",
               "return_type": "Tuple[list, list, list]",
-              "params": "l_min: list, l_max: list, plan_start_l: float, plan_start_dl: float, plan_start_ddl: float, target_end_l: float",
+              "params": "l_min: list, l_max: list, plan_start_l: float, plan_start_dl: float, plan_start_ddl: float, dp_sampling_res: float = 2.0, ..., target_end_l: float | None = None",
               "visibility": "+",
               "is_static": true,
               "is_abstract": false
@@ -1818,21 +2800,29 @@
             {
               "name": "cal_lmin_lmax",
               "return_type": "Tuple[list, list]",
-              "params": "dp_path_s: list, dp_path_l: list, obs_s_list: list, obs_l_list: list",
+              "params": "dp_path_s: list, dp_path_l: list, obs_s_list: list, obs_l_list: list, obs_length: float = 5, obs_width: float = 5",
+              "visibility": "+",
+              "is_static": true,
+              "is_abstract": false
+            },
+            {
+              "name": "frenet_2_x_y_theta_kappa",
+              "return_type": "List[Tuple[float, float, float, float]]",
+              "params": "plan_start_s: float, plan_start_l: float, enriched_s_list: list, enriched_l_list: list, frenet_path_opt: list, s_map: list",
               "visibility": "+",
               "is_static": true,
               "is_abstract": false
             }
           ],
           "position": {
-            "x": 896.0,
+            "x": 906.0,
             "y": 100.0
           },
           "size": {
-            "width": 240.0,
+            "width": 260.0,
             "height": 190.0
           },
-          "note": "S-L 二次规划平滑 + 车辆矩形形状约束；无 cvxopt 时回退到凸空间中心线。",
+          "note": "Python 模块 qp_path_plan.py（自由函数集合，非类）。S-L 二次规划平滑 + 车辆矩形形状约束；无 cvxopt 时回退到凸空间中心线。",
           "provided_interfaces": [],
           "required_interfaces": []
         }
@@ -1849,8 +2839,8 @@
       "grid_thickness": 1,
       "snap_to_grid": true,
       "zoom": 1.0,
-      "pan_x": 0.0,
-      "pan_y": 0.0
+      "pan_x": -134.5,
+      "pan_y": -129.5
     },
     {
       "version": "1.0",
@@ -1863,6 +2853,13 @@
           "name": "VehicleController",
           "stereotype": "class",
           "attributes": [
+            {
+              "name": "params",
+              "type": "VehicleParams",
+              "visibility": "+",
+              "default_value": "",
+              "is_static": false
+            },
             {
               "name": "controller_type",
               "type": "str",
@@ -1903,7 +2900,7 @@
             {
               "name": "__init__",
               "return_type": "void",
-              "params": "vehicle_para: tuple, controller_type: str, target_speed_kmh: float",
+              "params": "vehicle_para: tuple | None = None, controller_type: str = \"LQR_controller\", target_speed_kmh: float = 50.0, *, vehicle_params: VehicleParams | None = None, steering_params: SteeringParams | None = None, dt: float = 0.05, actuator_compensation: bool = True, lateral_q=None, lateral_r: float = 100.0, dynamic_lateral_r: float = 300.0, feedback_horizon_s: float = 0.0, smooth_reference_heading: bool = True, discretization: str = \"plant\", longitudinal_params=None",
               "visibility": "+",
               "is_static": false,
               "is_abstract": false
@@ -1911,7 +2908,7 @@
             {
               "name": "update_ref_path",
               "return_type": "void",
-              "params": "ref_path: list",
+              "params": "ref_path: list, *, reset: bool = True",
               "visibility": "+",
               "is_static": false,
               "is_abstract": false
@@ -1927,21 +2924,21 @@
             {
               "name": "step",
               "return_type": "Tuple[float, float, float]",
-              "params": "x: float, y: float, phi: float, vx: float, vy: float, r: float",
+              "params": "x: float, y: float, phi: float, vx: float, vy: float, r: float, *, actual_steer: float | None = None",
               "visibility": "+",
               "is_static": false,
               "is_abstract": false
             }
           ],
           "position": {
-            "x": 224.0,
+            "x": 550.0,
             "y": 100.0
           },
           "size": {
-            "width": 240.0,
-            "height": 190.0
+            "width": 260.0,
+            "height": 210.0
           },
-          "note": "横纵向统一控制器：横向输出前轮转角，纵向加速度换算为油门/刹车归一值。",
+          "note": "横纵向统一控制器：横向输出前轮转角，纵向加速度换算为归一化油门/刹车。按 controller_type 选择 LQR 或 MPC 横向控制器。",
           "provided_interfaces": [],
           "required_interfaces": []
         },
@@ -1965,6 +2962,34 @@
               "is_static": false
             },
             {
+              "name": "m",
+              "type": "float",
+              "visibility": "+",
+              "default_value": "",
+              "is_static": false
+            },
+            {
+              "name": "Cf",
+              "type": "float",
+              "visibility": "+",
+              "default_value": "",
+              "is_static": false
+            },
+            {
+              "name": "Cr",
+              "type": "float",
+              "visibility": "+",
+              "default_value": "",
+              "is_static": false
+            },
+            {
+              "name": "Iz",
+              "type": "float",
+              "visibility": "+",
+              "default_value": "",
+              "is_static": false
+            },
+            {
               "name": "ts",
               "type": "float",
               "visibility": "+",
@@ -1979,24 +3004,94 @@
               "is_static": false
             },
             {
-              "name": "k_lat",
-              "type": "float",
+              "name": "Q",
+              "type": "ndarray",
               "visibility": "+",
-              "default_value": "2.0",
+              "default_value": "diag([200,1,50,1])",
               "is_static": false
             },
             {
-              "name": "k_heading",
-              "type": "float",
+              "name": "R",
+              "type": "ndarray",
               "visibility": "+",
-              "default_value": "0.6",
+              "default_value": "[[100.0]]",
               "is_static": false
             },
             {
-              "name": "min_index",
+              "name": "A",
+              "type": "ndarray",
+              "visibility": "+",
+              "default_value": "",
+              "is_static": false
+            },
+            {
+              "name": "B",
+              "type": "ndarray",
+              "visibility": "+",
+              "default_value": "",
+              "is_static": false
+            },
+            {
+              "name": "P",
+              "type": "ndarray",
+              "visibility": "+",
+              "default_value": "",
+              "is_static": false
+            },
+            {
+              "name": "K",
+              "type": "ndarray",
+              "visibility": "+",
+              "default_value": "",
+              "is_static": false
+            },
+            {
+              "name": "riccati_iterations",
               "type": "int",
               "visibility": "+",
               "default_value": "0",
+              "is_static": false
+            },
+            {
+              "name": "riccati_converged",
+              "type": "bool",
+              "visibility": "+",
+              "default_value": "False",
+              "is_static": false
+            },
+            {
+              "name": "discretization",
+              "type": "str",
+              "visibility": "+",
+              "default_value": "plant",
+              "is_static": false
+            },
+            {
+              "name": "actuator_params",
+              "type": "SteeringParams",
+              "visibility": "+",
+              "default_value": "",
+              "is_static": false
+            },
+            {
+              "name": "tracker",
+              "type": "RouteTracker",
+              "visibility": "+",
+              "default_value": "None",
+              "is_static": false
+            },
+            {
+              "name": "feedback_horizon_s",
+              "type": "float",
+              "visibility": "+",
+              "default_value": "0.0",
+              "is_static": false
+            },
+            {
+              "name": "smooth_reference_heading",
+              "type": "bool",
+              "visibility": "+",
+              "default_value": "True",
               "is_static": false
             }
           ],
@@ -2004,7 +3099,55 @@
             {
               "name": "__init__",
               "return_type": "void",
-              "params": "vehicle_para: tuple, Q: object, R: float, ts: float",
+              "params": "vehicle_para: tuple, Q=None, R: float = 100.0, ts: float = 0.05",
+              "visibility": "+",
+              "is_static": false,
+              "is_abstract": false
+            },
+            {
+              "name": "update_lqr_gain",
+              "return_type": "ndarray",
+              "params": "vx: float",
+              "visibility": "+",
+              "is_static": false,
+              "is_abstract": false
+            },
+            {
+              "name": "control_from_error",
+              "return_type": "float",
+              "params": "error_state: ndarray, kappa: float, vx: float",
+              "visibility": "+",
+              "is_static": false,
+              "is_abstract": false
+            },
+            {
+              "name": "configure_actuator",
+              "return_type": "void",
+              "params": "params: SteeringParams",
+              "visibility": "+",
+              "is_static": false,
+              "is_abstract": false
+            },
+            {
+              "name": "reset_actuator_history",
+              "return_type": "void",
+              "params": "",
+              "visibility": "+",
+              "is_static": false,
+              "is_abstract": false
+            },
+            {
+              "name": "set_path",
+              "return_type": "void",
+              "params": "path: list, *, preserve: bool = False",
+              "visibility": "+",
+              "is_static": false,
+              "is_abstract": false
+            },
+            {
+              "name": "reset_tracking",
+              "return_type": "void",
+              "params": "",
               "visibility": "+",
               "is_static": false,
               "is_abstract": false
@@ -2019,14 +3162,14 @@
             }
           ],
           "position": {
-            "x": 560.0,
-            "y": 100.0
+            "x": 372.0,
+            "y": 921.0
           },
           "size": {
-            "width": 240.0,
-            "height": 190.0
+            "width": 260.0,
+            "height": 210.0
           },
-          "note": "有界几何横向控制器：预瞄点匹配参考线，曲率 + 航向/横向误差反馈，输出前轮转角。",
+          "note": "速度相关自行车模型 DARE 的投影动态 Riccati LQR：Euler 预瞄投影匹配参考线，曲率前馈 + 状态反馈；支持执行器（延迟/滞后）增广。活跃实现链 lat_lqr→_lat_lqr_opt2→_lat_lqr_impl。",
           "provided_interfaces": [],
           "required_interfaces": []
         },
@@ -2034,41 +3177,26 @@
           "id": "class_latmpc",
           "name": "LateralMPCController",
           "stereotype": "class",
-          "attributes": [
-            {
-              "name": "N",
-              "type": "int",
-              "visibility": "+",
-              "default_value": "6",
-              "is_static": false
-            },
-            {
-              "name": "P",
-              "type": "int",
-              "visibility": "+",
-              "default_value": "2",
-              "is_static": false
-            }
-          ],
+          "attributes": [],
           "methods": [
             {
               "name": "__init__",
               "return_type": "void",
-              "params": "vehicle_para: tuple, Q: object, F: object, R: float, N: int, P: int, ts: float",
+              "params": "vehicle_para: tuple, Q=None, F=None, R: float = 1.0, N: int = 6, P: int = 2, ts: float = 0.05",
               "visibility": "+",
               "is_static": false,
               "is_abstract": false
             }
           ],
           "position": {
-            "x": 560.0,
-            "y": 679.0
+            "x": 550.0,
+            "y": 1946.0
           },
           "size": {
-            "width": 240.0,
-            "height": 190.0
+            "width": 260.0,
+            "height": 150.0
           },
-          "note": "MPC 兼容横向控制器；当前复用 LQR 反馈，保持接口稳定以待数值 QP 后端。",
+          "note": "兼容 MPC 的横向控制器：继承 LateralLQRController，暂复用 LQR 反馈（构造参数 N/P/F 不保存），保持接口以待数值 QP 后端。",
           "provided_interfaces": [],
           "required_interfaces": []
         },
@@ -2095,7 +3223,7 @@
               "name": "K_D",
               "type": "float",
               "visibility": "+",
-              "default_value": "0.0",
+              "default_value": "0.55",
               "is_static": false
             },
             {
@@ -2113,18 +3241,61 @@
               "is_static": false
             },
             {
+              "name": "max_accel",
+              "type": "float",
+              "visibility": "+",
+              "default_value": "3.0",
+              "is_static": false
+            },
+            {
+              "name": "max_decel",
+              "type": "float",
+              "visibility": "+",
+              "default_value": "6.0",
+              "is_static": false
+            },
+            {
+              "name": "max_jerk",
+              "type": "float",
+              "visibility": "+",
+              "default_value": "40.0",
+              "is_static": false
+            },
+            {
+              "name": "coupling_gain",
+              "type": "float",
+              "visibility": "+",
+              "default_value": "0.5",
+              "is_static": false
+            },
+            {
               "name": "target_speed",
               "type": "float",
               "visibility": "+",
               "default_value": "50.0",
               "is_static": false
+            },
+            {
+              "name": "error_buffer",
+              "type": "deque",
+              "visibility": "+",
+              "default_value": "maxlen=60",
+              "is_static": false
             }
           ],
           "methods": [
             {
+              "name": "__init__",
+              "return_type": "void",
+              "params": "K_P: float = 1.15, K_I: float = 0.0, K_D: float = 0.55, dt: float = 0.05, error_threshold: float = 1.0, max_accel: float = 3.0, max_decel: float = 6.0, max_jerk: float = 40.0, coupling_gain: float = 0.5",
+              "visibility": "+",
+              "is_static": false,
+              "is_abstract": false
+            },
+            {
               "name": "control",
               "return_type": "float",
-              "params": "current_speed_ms: float",
+              "params": "current_speed_ms: float, coupling_accel: float = 0.0",
               "visibility": "+",
               "is_static": false,
               "is_abstract": false
@@ -2147,14 +3318,14 @@
             }
           ],
           "position": {
-            "x": 896.0,
-            "y": 100.0
+            "x": 728.0,
+            "y": 921.0
           },
           "size": {
-            "width": 240.0,
+            "width": 260.0,
             "height": 190.0
           },
-          "note": "纵向 PID：误差超阈值时清积分抗饱和；输出限幅 [-6, 3] m/s²。",
+          "note": "纵向 PID：带微分低通与侧向耦合前馈，误差超阈值清积分抗饱和，加加速度限幅，输出加速度限幅 [-max_decel, max_accel]。",
           "provided_interfaces": [],
           "required_interfaces": []
         }
@@ -2191,7 +3362,7 @@
           "multiplicity_source": "",
           "multiplicity_target": "",
           "role_name": "",
-          "note": "MPC 控制器继承有界几何横向控制器"
+          "note": "MPC 兼容控制器继承动态 LQR 控制器"
         }
       ],
       "lifelines": [],
@@ -2216,14 +3387,14 @@
       "classes": [
         {
           "id": "class_frenet",
-          "name": "FrenetUtils",
+          "name": "frenet",
           "stereotype": "class",
           "attributes": [],
           "methods": [
             {
               "name": "find_match_points",
               "return_type": "Tuple[list, list]",
-              "params": "xy_list: list, path: list, is_first_run: bool, pre_match_index: int",
+              "params": "xy_list: list, path: list, is_first_run: bool = True, pre_match_index: int = 0",
               "visibility": "+",
               "is_static": true,
               "is_abstract": false
@@ -2254,7 +3425,7 @@
             },
             {
               "name": "cal_s_l_deri_fun",
-              "return_type": "Tuple[list, ...]",
+              "return_type": "tuple",
               "params": "xy_list: list, V_xy_list: list, a_xy_list: list, local_path_xy_opt: list, origin_xy: tuple",
               "visibility": "+",
               "is_static": true,
@@ -2262,20 +3433,20 @@
             }
           ],
           "position": {
-            "x": 224.0,
+            "x": 120.0,
             "y": 100.0
           },
           "size": {
-            "width": 240.0,
+            "width": 260.0,
             "height": 190.0
           },
-          "note": "折线投影与 Frenet 变换工具：匹配点、弧长映射、s/l 及导数。",
+          "note": "Python 模块 frenet.py（自由函数集合）。折线投影与 Frenet 变换：匹配点、弧长映射、s/l 及导数。",
           "provided_interfaces": [],
           "required_interfaces": []
         },
         {
           "id": "class_geometry",
-          "name": "GeometryUtils",
+          "name": "geometry",
           "stereotype": "class",
           "attributes": [],
           "methods": [
@@ -2289,20 +3460,20 @@
             }
           ],
           "position": {
-            "x": 560.0,
-            "y": 698.0
+            "x": 476.0,
+            "y": 679.0
           },
           "size": {
-            "width": 240.0,
+            "width": 260.0,
             "height": 190.0
           },
-          "note": "折线航向角与曲率计算。",
+          "note": "Python 模块 geometry.py（自由函数集合）。折线航向角与曲率计算。",
           "provided_interfaces": [],
           "required_interfaces": []
         },
         {
           "id": "class_quintic",
-          "name": "QuinticUtils",
+          "name": "quintic",
           "stereotype": "class",
           "attributes": [],
           "methods": [
@@ -2324,41 +3495,254 @@
             }
           ],
           "position": {
-            "x": 560.0,
+            "x": 476.0,
             "y": 100.0
           },
           "size": {
-            "width": 240.0,
+            "width": 260.0,
             "height": 190.0
           },
-          "note": "五次多项式插值与求导。",
+          "note": "Python 模块 quintic.py（自由函数集合）。五次多项式插值与求导。",
           "provided_interfaces": [],
           "required_interfaces": []
         },
         {
-          "id": "class_refline",
-          "name": "ReferenceLineUtils",
+          "id": "class_reflineutil",
+          "name": "reference_line",
           "stereotype": "class",
           "attributes": [],
           "methods": [
             {
               "name": "smooth_reference_line",
               "return_type": "list",
-              "params": "points: list, w_cost_smooth: float, w_cost_length: float, w_cost_ref: float, x_thre: float, y_thre: float",
+              "params": "points: list, w_cost_smooth: float = 0.4, w_cost_length: float = 0.3, w_cost_ref: float = 0.3, x_thre: float = 0.2, y_thre: float = 0.2",
               "visibility": "+",
               "is_static": true,
               "is_abstract": false
             }
           ],
           "position": {
-            "x": 896.0,
+            "x": 832.0,
             "y": 100.0
           },
           "size": {
-            "width": 240.0,
+            "width": 260.0,
             "height": 190.0
           },
-          "note": "参考线平滑（可选 cvxopt QP），输出 (x, y, theta, kappa)。",
+          "note": "Python 模块 algorithms/utils/reference_line.py（自由函数集合）。参考线平滑（可选 cvxopt QP），输出 (x, y, theta, kappa)。",
+          "provided_interfaces": [],
+          "required_interfaces": []
+        },
+        {
+          "id": "class_projection",
+          "name": "Projection",
+          "stereotype": "class",
+          "attributes": [
+            {
+              "name": "index",
+              "type": "int",
+              "visibility": "+",
+              "default_value": "",
+              "is_static": false
+            },
+            {
+              "name": "ratio",
+              "type": "float",
+              "visibility": "+",
+              "default_value": "",
+              "is_static": false
+            },
+            {
+              "name": "s",
+              "type": "float",
+              "visibility": "+",
+              "default_value": "",
+              "is_static": false
+            },
+            {
+              "name": "x",
+              "type": "float",
+              "visibility": "+",
+              "default_value": "",
+              "is_static": false
+            },
+            {
+              "name": "y",
+              "type": "float",
+              "visibility": "+",
+              "default_value": "",
+              "is_static": false
+            },
+            {
+              "name": "theta",
+              "type": "float",
+              "visibility": "+",
+              "default_value": "",
+              "is_static": false
+            },
+            {
+              "name": "kappa",
+              "type": "float",
+              "visibility": "+",
+              "default_value": "",
+              "is_static": false
+            },
+            {
+              "name": "distance",
+              "type": "float",
+              "visibility": "+",
+              "default_value": "",
+              "is_static": false
+            }
+          ],
+          "methods": [
+            {
+              "name": "errors",
+              "return_type": "Tuple[float, float]",
+              "params": "x: float, y: float, heading: float",
+              "visibility": "+",
+              "is_static": false,
+              "is_abstract": false
+            }
+          ],
+          "position": {
+            "x": 654.0,
+            "y": 1144.0
+          },
+          "size": {
+            "width": 260.0,
+            "height": 190.0
+          },
+          "note": "frozen dataclass，表示参考线投影结果 (index, ratio, s, x, y, theta, kappa, distance)。",
+          "provided_interfaces": [],
+          "required_interfaces": []
+        },
+        {
+          "id": "class_routegeometry",
+          "name": "RouteGeometry",
+          "stereotype": "class",
+          "attributes": [
+            {
+              "name": "path",
+              "type": "tuple",
+              "visibility": "+",
+              "default_value": "",
+              "is_static": false
+            },
+            {
+              "name": "s",
+              "type": "List[float]",
+              "visibility": "+",
+              "default_value": "",
+              "is_static": false
+            },
+            {
+              "name": "length",
+              "type": "float",
+              "visibility": "+",
+              "default_value": "",
+              "is_static": false
+            },
+            {
+              "name": "closed",
+              "type": "bool",
+              "visibility": "+",
+              "default_value": "False",
+              "is_static": false
+            }
+          ],
+          "methods": [
+            {
+              "name": "__init__",
+              "return_type": "void",
+              "params": "path: list",
+              "visibility": "+",
+              "is_static": false,
+              "is_abstract": false
+            },
+            {
+              "name": "project",
+              "return_type": "Projection",
+              "params": "x: float, y: float, heading: float, *, near_s: float | None = None, back: float = 2.0, ahead: float = 5.0",
+              "visibility": "+",
+              "is_static": false,
+              "is_abstract": false
+            },
+            {
+              "name": "segment_progress",
+              "return_type": "float",
+              "params": "s: float",
+              "visibility": "+",
+              "is_static": false,
+              "is_abstract": false
+            }
+          ],
+          "position": {
+            "x": 832.0,
+            "y": 679.0
+          },
+          "size": {
+            "width": 260.0,
+            "height": 190.0
+          },
+          "note": "Metric 路线几何：累积弧长、闭合判定与分支连续投影（仅初始化/重规划可全局搜索）。",
+          "provided_interfaces": [],
+          "required_interfaces": []
+        },
+        {
+          "id": "class_routetracker",
+          "name": "RouteTracker",
+          "stereotype": "class",
+          "attributes": [
+            {
+              "name": "geometry",
+              "type": "RouteGeometry",
+              "visibility": "+",
+              "default_value": "",
+              "is_static": false
+            },
+            {
+              "name": "s",
+              "type": "float",
+              "visibility": "+",
+              "default_value": "",
+              "is_static": false
+            },
+            {
+              "name": "projection",
+              "type": "Projection",
+              "visibility": "+",
+              "default_value": "None",
+              "is_static": false
+            }
+          ],
+          "methods": [
+            {
+              "name": "__init__",
+              "return_type": "void",
+              "params": "path: list, start_s: float | None = None",
+              "visibility": "+",
+              "is_static": false,
+              "is_abstract": false
+            },
+            {
+              "name": "update",
+              "return_type": "Projection",
+              "params": "x: float, y: float, heading: float, speed: float = 0.0, dt: float = 0.05",
+              "visibility": "+",
+              "is_static": false,
+              "is_abstract": false
+            }
+          ],
+          "position": {
+            "x": 1188.0,
+            "y": 100.0
+          },
+          "size": {
+            "width": 260.0,
+            "height": 190.0
+          },
+          "note": "有状态路线跟踪：按行进距离约束搜索窗口，输出连续（不跳分支）投影。wrap_angle 为模块级函数。",
           "provided_interfaces": [],
           "required_interfaces": []
         }
@@ -2366,7 +3750,7 @@
       "relations": [
         {
           "id": "rel_refline_geometry",
-          "source": "class_refline",
+          "source": "class_reflineutil",
           "target": "class_geometry",
           "type": "dependency",
           "vertices": null,
@@ -2374,6 +3758,28 @@
           "multiplicity_target": "",
           "role_name": "",
           "note": "平滑后计算航向/曲率"
+        },
+        {
+          "id": "rel_routetracker_geometry",
+          "source": "class_routetracker",
+          "target": "class_routegeometry",
+          "type": "composition",
+          "vertices": null,
+          "multiplicity_source": "1",
+          "multiplicity_target": "1",
+          "role_name": "geometry",
+          "note": "跟踪器拥有路线几何"
+        },
+        {
+          "id": "rel_routegeometry_projection",
+          "source": "class_routegeometry",
+          "target": "class_projection",
+          "type": "dependency",
+          "vertices": null,
+          "multiplicity_source": "",
+          "multiplicity_target": "",
+          "role_name": "",
+          "note": "投影返回 Projection"
         }
       ],
       "lifelines": [],
@@ -2387,8 +3793,1557 @@
       "grid_thickness": 1,
       "snap_to_grid": true,
       "zoom": 1.0,
-      "pan_x": 0.0,
-      "pan_y": 0.0
+      "pan_x": -578.5,
+      "pan_y": 54.5
+    },
+    {
+      "version": "1.0",
+      "name": "Routing Module Classes",
+      "diagram_type": "class",
+      "component_id": "comp_routing",
+      "classes": [
+        {
+          "id": "class_routingcore",
+          "name": "RoutingCore",
+          "stereotype": "class",
+          "attributes": [
+            {
+              "name": "_maps",
+              "type": "Dict[str, RoadMap]",
+              "visibility": "-",
+              "default_value": "",
+              "is_static": false
+            },
+            {
+              "name": "_routers",
+              "type": "Dict[str, AStarRouter]",
+              "visibility": "-",
+              "default_value": "",
+              "is_static": false
+            },
+            {
+              "name": "_lock",
+              "type": "RLock",
+              "visibility": "-",
+              "default_value": "",
+              "is_static": false
+            }
+          ],
+          "methods": [
+            {
+              "name": "__init__",
+              "return_type": "void",
+              "params": "maps=None, *, turn_penalty_s: float = 2.0, lane_change_penalty_s: float = 1.0, u_turn_penalty_s: float = 30.0, sample_spacing_m: float = 1.0",
+              "visibility": "+",
+              "is_static": false,
+              "is_abstract": false
+            },
+            {
+              "name": "from_paths",
+              "return_type": "RoutingCore",
+              "params": "paths, **router_options",
+              "visibility": "+",
+              "is_static": true,
+              "is_abstract": false
+            },
+            {
+              "name": "register_map",
+              "return_type": "void",
+              "params": "road_map: RoadMap",
+              "visibility": "+",
+              "is_static": false,
+              "is_abstract": false
+            },
+            {
+              "name": "map_ids",
+              "return_type": "tuple",
+              "params": "",
+              "visibility": "+",
+              "is_static": false,
+              "is_abstract": false
+            },
+            {
+              "name": "route",
+              "return_type": "RoutePlan",
+              "params": "request: RouteRequest, request_id: int | None = None",
+              "visibility": "+",
+              "is_static": false,
+              "is_abstract": false
+            },
+            {
+              "name": "route_from_values",
+              "return_type": "RoutePlan",
+              "params": "map_id: str, start_x: float, start_y: float, start_yaw: float, goal_x: float, goal_y: float, goal_yaw: float = 0.0, *, start_lane: int = -1, goal_lane: int = -1, route_policy: str = \"fastest\", allow_u_turn: bool = False, closed_loop: bool = False",
+              "visibility": "+",
+              "is_static": false,
+              "is_abstract": false
+            }
+          ],
+          "position": {
+            "x": 782.0,
+            "y": 622.0
+          },
+          "size": {
+            "width": 280.0,
+            "height": 200.0
+          },
+          "note": "与传输无关的路由服务：管理多张地图版本并对外提供确定性的 A* 路由请求。",
+          "provided_interfaces": [],
+          "required_interfaces": []
+        },
+        {
+          "id": "class_astarrouter",
+          "name": "AStarRouter",
+          "stereotype": "class",
+          "attributes": [
+            {
+              "name": "road_map",
+              "type": "RoadMap",
+              "visibility": "+",
+              "default_value": "",
+              "is_static": false
+            },
+            {
+              "name": "turn_penalty_s",
+              "type": "float",
+              "visibility": "+",
+              "default_value": "2.0",
+              "is_static": false
+            },
+            {
+              "name": "lane_change_penalty_s",
+              "type": "float",
+              "visibility": "+",
+              "default_value": "1.0",
+              "is_static": false
+            },
+            {
+              "name": "u_turn_penalty_s",
+              "type": "float",
+              "visibility": "+",
+              "default_value": "30.0",
+              "is_static": false
+            },
+            {
+              "name": "sample_spacing_m",
+              "type": "float",
+              "visibility": "+",
+              "default_value": "1.0",
+              "is_static": false
+            }
+          ],
+          "methods": [
+            {
+              "name": "__init__",
+              "return_type": "void",
+              "params": "road_map: RoadMap, *, turn_penalty_s: float = 2.0, lane_change_penalty_s: float = 1.0, u_turn_penalty_s: float = 30.0, sample_spacing_m: float = 1.0",
+              "visibility": "+",
+              "is_static": false,
+              "is_abstract": false
+            },
+            {
+              "name": "search",
+              "return_type": "RoutePlan",
+              "params": "request: RouteRequest, *, route_id: int, request_id: int",
+              "visibility": "+",
+              "is_static": false,
+              "is_abstract": false
+            }
+          ],
+          "position": {
+            "x": 792.0,
+            "y": 1301.0
+          },
+          "size": {
+            "width": 260.0,
+            "height": 190.0
+          },
+          "note": "在有向车道图上的 A* 搜索：边长度为主代价，fastest 用限速，各策略叠加转向/换道代价；支持闭合环与掉头策略。",
+          "provided_interfaces": [],
+          "required_interfaces": []
+        },
+        {
+          "id": "class_maploader",
+          "name": "map_loader",
+          "stereotype": "class",
+          "attributes": [],
+          "methods": [
+            {
+              "name": "map_from_dict",
+              "return_type": "RoadMap",
+              "params": "data: Mapping[str, Any]",
+              "visibility": "+",
+              "is_static": true,
+              "is_abstract": false
+            },
+            {
+              "name": "validate_map",
+              "return_type": "void",
+              "params": "road_map: RoadMap",
+              "visibility": "+",
+              "is_static": true,
+              "is_abstract": false
+            },
+            {
+              "name": "load_map",
+              "return_type": "RoadMap",
+              "params": "path: str | Path",
+              "visibility": "+",
+              "is_static": true,
+              "is_abstract": false
+            },
+            {
+              "name": "_offset_polyline",
+              "return_type": "tuple",
+              "params": "centerline: tuple, offset_m: float",
+              "visibility": "-",
+              "is_static": true,
+              "is_abstract": false
+            }
+          ],
+          "position": {
+            "x": 812.0,
+            "y": 100.0
+          },
+          "size": {
+            "width": 260.0,
+            "height": 190.0
+          },
+          "note": "Python 模块 map_loader.py（自由函数集合）。加载/校验 JSON 道路地图，补全后继并按拓扑 validate_map。",
+          "provided_interfaces": [],
+          "required_interfaces": []
+        },
+        {
+          "id": "class_routingnode",
+          "name": "RoutingNode",
+          "stereotype": "class",
+          "attributes": [
+            {
+              "name": "core",
+              "type": "RoutingCore",
+              "visibility": "-",
+              "default_value": "",
+              "is_static": false
+            },
+            {
+              "name": "route_pub",
+              "type": "Publisher",
+              "visibility": "-",
+              "default_value": "",
+              "is_static": false
+            }
+          ],
+          "methods": [
+            {
+              "name": "__init__",
+              "return_type": "void",
+              "params": "",
+              "visibility": "+",
+              "is_static": false,
+              "is_abstract": false
+            },
+            {
+              "name": "_on_route_request",
+              "return_type": "void",
+              "params": "request: RosRouteRequest",
+              "visibility": "-",
+              "is_static": false,
+              "is_abstract": false
+            },
+            {
+              "name": "_on_compute_route",
+              "return_type": "ComputeRoute.Response",
+              "params": "request, response",
+              "visibility": "-",
+              "is_static": false,
+              "is_abstract": false
+            },
+            {
+              "name": "_publish_plan",
+              "return_type": "void",
+              "params": "plan: RoutePlan",
+              "visibility": "-",
+              "is_static": false,
+              "is_abstract": false
+            }
+          ],
+          "position": {
+            "x": 456.0,
+            "y": 100.0
+          },
+          "size": {
+            "width": 260.0,
+            "height": 190.0
+          },
+          "note": "ROS 2 节点：加载一张或多张地图，通过 topic 与 service 提供确定性路由。",
+          "provided_interfaces": [],
+          "required_interfaces": []
+        },
+        {
+          "id": "class_pose2d",
+          "name": "Pose2D",
+          "stereotype": "class",
+          "attributes": [
+            {
+              "name": "x",
+              "type": "float",
+              "visibility": "+",
+              "default_value": "",
+              "is_static": false
+            },
+            {
+              "name": "y",
+              "type": "float",
+              "visibility": "+",
+              "default_value": "",
+              "is_static": false
+            },
+            {
+              "name": "yaw",
+              "type": "float",
+              "visibility": "+",
+              "default_value": "0.0",
+              "is_static": false
+            }
+          ],
+          "methods": [],
+          "position": {
+            "x": 1494.0,
+            "y": 622.0
+          },
+          "size": {
+            "width": 220.0,
+            "height": 150.0
+          },
+          "note": "frozen dataclass：二维位姿。",
+          "provided_interfaces": [],
+          "required_interfaces": []
+        },
+        {
+          "id": "class_routerequest",
+          "name": "RouteRequest",
+          "stereotype": "class",
+          "attributes": [
+            {
+              "name": "map_id",
+              "type": "str",
+              "visibility": "+",
+              "default_value": "",
+              "is_static": false
+            },
+            {
+              "name": "start",
+              "type": "Pose2D",
+              "visibility": "+",
+              "default_value": "",
+              "is_static": false
+            },
+            {
+              "name": "goal",
+              "type": "Pose2D",
+              "visibility": "+",
+              "default_value": "",
+              "is_static": false
+            },
+            {
+              "name": "start_lane",
+              "type": "int",
+              "visibility": "+",
+              "default_value": "-1",
+              "is_static": false
+            },
+            {
+              "name": "goal_lane",
+              "type": "int",
+              "visibility": "+",
+              "default_value": "-1",
+              "is_static": false
+            },
+            {
+              "name": "route_policy",
+              "type": "str",
+              "visibility": "+",
+              "default_value": "fastest",
+              "is_static": false
+            },
+            {
+              "name": "allow_u_turn",
+              "type": "bool",
+              "visibility": "+",
+              "default_value": "False",
+              "is_static": false
+            },
+            {
+              "name": "closed_loop",
+              "type": "bool",
+              "visibility": "+",
+              "default_value": "False",
+              "is_static": false
+            }
+          ],
+          "methods": [],
+          "position": {
+            "x": 1504.0,
+            "y": 100.0
+          },
+          "size": {
+            "width": 220.0,
+            "height": 150.0
+          },
+          "note": "frozen dataclass：一次路由请求（起终位姿、车道与策略）。",
+          "provided_interfaces": [],
+          "required_interfaces": []
+        },
+        {
+          "id": "class_mapnode",
+          "name": "MapNode",
+          "stereotype": "class",
+          "attributes": [
+            {
+              "name": "node_id",
+              "type": "str",
+              "visibility": "+",
+              "default_value": "",
+              "is_static": false
+            },
+            {
+              "name": "x",
+              "type": "float",
+              "visibility": "+",
+              "default_value": "",
+              "is_static": false
+            },
+            {
+              "name": "y",
+              "type": "float",
+              "visibility": "+",
+              "default_value": "",
+              "is_static": false
+            }
+          ],
+          "methods": [],
+          "position": {
+            "x": 466.0,
+            "y": 622.0
+          },
+          "size": {
+            "width": 220.0,
+            "height": 150.0
+          },
+          "note": "frozen dataclass：地图拓扑节点。",
+          "provided_interfaces": [],
+          "required_interfaces": []
+        },
+        {
+          "id": "class_laneedge",
+          "name": "LaneEdge",
+          "stereotype": "class",
+          "attributes": [
+            {
+              "name": "edge_id",
+              "type": "str",
+              "visibility": "+",
+              "default_value": "",
+              "is_static": false
+            },
+            {
+              "name": "road_id",
+              "type": "str",
+              "visibility": "+",
+              "default_value": "",
+              "is_static": false
+            },
+            {
+              "name": "lane_id",
+              "type": "str",
+              "visibility": "+",
+              "default_value": "",
+              "is_static": false
+            },
+            {
+              "name": "from_node",
+              "type": "str",
+              "visibility": "+",
+              "default_value": "",
+              "is_static": false
+            },
+            {
+              "name": "to_node",
+              "type": "str",
+              "visibility": "+",
+              "default_value": "",
+              "is_static": false
+            },
+            {
+              "name": "lane_index",
+              "type": "int",
+              "visibility": "+",
+              "default_value": "",
+              "is_static": false
+            },
+            {
+              "name": "centerline",
+              "type": "Tuple[Point2D, ...]",
+              "visibility": "+",
+              "default_value": "",
+              "is_static": false
+            },
+            {
+              "name": "left_boundary",
+              "type": "Tuple[Point2D, ...]",
+              "visibility": "+",
+              "default_value": "",
+              "is_static": false
+            },
+            {
+              "name": "right_boundary",
+              "type": "Tuple[Point2D, ...]",
+              "visibility": "+",
+              "default_value": "",
+              "is_static": false
+            },
+            {
+              "name": "speed_limit_kmh",
+              "type": "float",
+              "visibility": "+",
+              "default_value": "40.0",
+              "is_static": false
+            },
+            {
+              "name": "successors",
+              "type": "Tuple[str, ...]",
+              "visibility": "+",
+              "default_value": "",
+              "is_static": false
+            },
+            {
+              "name": "maneuver",
+              "type": "str",
+              "visibility": "+",
+              "default_value": "straight",
+              "is_static": false
+            },
+            {
+              "name": "bidirectional",
+              "type": "bool",
+              "visibility": "+",
+              "default_value": "False",
+              "is_static": false
+            },
+            {
+              "name": "length",
+              "type": "float",
+              "visibility": "+",
+              "default_value": "",
+              "is_static": false
+            }
+          ],
+          "methods": [],
+          "position": {
+            "x": 130.0,
+            "y": 622.0
+          },
+          "size": {
+            "width": 240.0,
+            "height": 190.0
+          },
+          "note": "frozen dataclass：车道级有向边（几何 + 拓扑 + 限速）。length 为只读 property。",
+          "provided_interfaces": [],
+          "required_interfaces": []
+        },
+        {
+          "id": "class_roadmap",
+          "name": "RoadMap",
+          "stereotype": "class",
+          "attributes": [
+            {
+              "name": "map_id",
+              "type": "str",
+              "visibility": "+",
+              "default_value": "",
+              "is_static": false
+            },
+            {
+              "name": "nodes",
+              "type": "Dict[str, MapNode]",
+              "visibility": "+",
+              "default_value": "",
+              "is_static": false
+            },
+            {
+              "name": "edges",
+              "type": "Dict[str, LaneEdge]",
+              "visibility": "+",
+              "default_value": "",
+              "is_static": false
+            },
+            {
+              "name": "lane_width",
+              "type": "float",
+              "visibility": "+",
+              "default_value": "3.5",
+              "is_static": false
+            },
+            {
+              "name": "num_lanes",
+              "type": "int",
+              "visibility": "+",
+              "default_value": "1",
+              "is_static": false
+            }
+          ],
+          "methods": [
+            {
+              "name": "outgoing",
+              "return_type": "Tuple[LaneEdge, ...]",
+              "params": "edge_id: str",
+              "visibility": "+",
+              "is_static": false,
+              "is_abstract": false
+            },
+            {
+              "name": "edges_for_lane",
+              "return_type": "Iterable[LaneEdge]",
+              "params": "lane_index: int",
+              "visibility": "+",
+              "is_static": false,
+              "is_abstract": false
+            },
+            {
+              "name": "nearest_edge",
+              "return_type": "LaneEdge",
+              "params": "pose: Pose2D, lane_index: int = -1",
+              "visibility": "+",
+              "is_static": false,
+              "is_abstract": false
+            }
+          ],
+          "position": {
+            "x": 120.0,
+            "y": 100.0
+          },
+          "size": {
+            "width": 240.0,
+            "height": 190.0
+          },
+          "note": "frozen dataclass：一张道路地图（节点 + 车道边 + 车道宽/数量）。",
+          "provided_interfaces": [],
+          "required_interfaces": []
+        },
+        {
+          "id": "class_routesegment",
+          "name": "RouteSegment",
+          "stereotype": "class",
+          "attributes": [
+            {
+              "name": "edge_id",
+              "type": "str",
+              "visibility": "+",
+              "default_value": "",
+              "is_static": false
+            },
+            {
+              "name": "road_id",
+              "type": "str",
+              "visibility": "+",
+              "default_value": "",
+              "is_static": false
+            },
+            {
+              "name": "lane_id",
+              "type": "str",
+              "visibility": "+",
+              "default_value": "",
+              "is_static": false
+            },
+            {
+              "name": "lane_index",
+              "type": "int",
+              "visibility": "+",
+              "default_value": "",
+              "is_static": false
+            },
+            {
+              "name": "maneuver",
+              "type": "str",
+              "visibility": "+",
+              "default_value": "",
+              "is_static": false
+            },
+            {
+              "name": "length_m",
+              "type": "float",
+              "visibility": "+",
+              "default_value": "",
+              "is_static": false
+            },
+            {
+              "name": "speed_limit_kmh",
+              "type": "float",
+              "visibility": "+",
+              "default_value": "",
+              "is_static": false
+            }
+          ],
+          "methods": [],
+          "position": {
+            "x": 1158.0,
+            "y": 622.0
+          },
+          "size": {
+            "width": 240.0,
+            "height": 190.0
+          },
+          "note": "frozen dataclass：规划路线中的一段。",
+          "provided_interfaces": [],
+          "required_interfaces": []
+        },
+        {
+          "id": "class_routeplan",
+          "name": "RoutePlan",
+          "stereotype": "class",
+          "attributes": [
+            {
+              "name": "route_id",
+              "type": "int",
+              "visibility": "+",
+              "default_value": "",
+              "is_static": false
+            },
+            {
+              "name": "request_id",
+              "type": "int",
+              "visibility": "+",
+              "default_value": "",
+              "is_static": false
+            },
+            {
+              "name": "map_id",
+              "type": "str",
+              "visibility": "+",
+              "default_value": "",
+              "is_static": false
+            },
+            {
+              "name": "success",
+              "type": "bool",
+              "visibility": "+",
+              "default_value": "",
+              "is_static": false
+            },
+            {
+              "name": "failure_reason",
+              "type": "str",
+              "visibility": "+",
+              "default_value": "",
+              "is_static": false
+            },
+            {
+              "name": "segments",
+              "type": "Tuple[RouteSegment, ...]",
+              "visibility": "+",
+              "default_value": "",
+              "is_static": false
+            },
+            {
+              "name": "points",
+              "type": "Tuple[PathTuple, ...]",
+              "visibility": "+",
+              "default_value": "",
+              "is_static": false
+            },
+            {
+              "name": "total_length_m",
+              "type": "float",
+              "visibility": "+",
+              "default_value": "0.0",
+              "is_static": false
+            },
+            {
+              "name": "target_lane",
+              "type": "int",
+              "visibility": "+",
+              "default_value": "-1",
+              "is_static": false
+            },
+            {
+              "name": "metadata",
+              "type": "Dict[str, str]",
+              "visibility": "+",
+              "default_value": "",
+              "is_static": false
+            }
+          ],
+          "methods": [
+            {
+              "name": "failure",
+              "return_type": "RoutePlan",
+              "params": "route_id: int, request_id: int, map_id: str, reason: str",
+              "visibility": "+",
+              "is_static": true,
+              "is_abstract": false
+            }
+          ],
+          "position": {
+            "x": 1168.0,
+            "y": 100.0
+          },
+          "size": {
+            "width": 240.0,
+            "height": 190.0
+          },
+          "note": "frozen dataclass：路由结果（成功标志、段集合、采样点与总长）。",
+          "provided_interfaces": [],
+          "required_interfaces": []
+        }
+      ],
+      "relations": [
+        {
+          "id": "rel_routingcore_astar",
+          "source": "class_routingcore",
+          "target": "class_astarrouter",
+          "type": "aggregation",
+          "vertices": null,
+          "multiplicity_source": "1",
+          "multiplicity_target": "0..*",
+          "role_name": "_routers",
+          "note": "每张地图对应一个 A* 路由器"
+        },
+        {
+          "id": "rel_routingnode_core",
+          "source": "class_routingnode",
+          "target": "class_routingcore",
+          "type": "dependency",
+          "vertices": null,
+          "multiplicity_source": "",
+          "multiplicity_target": "",
+          "role_name": "core",
+          "note": "ROS 节点委托路由核心"
+        },
+        {
+          "id": "rel_roadmap_laneedge",
+          "source": "class_roadmap",
+          "target": "class_laneedge",
+          "type": "composition",
+          "vertices": [
+            {
+              "x": 231.0,
+              "y": 590.0
+            }
+          ],
+          "multiplicity_source": "1",
+          "multiplicity_target": "1..*",
+          "role_name": "edges",
+          "note": "地图拥有车道边"
+        },
+        {
+          "id": "rel_roadmap_mapnode",
+          "source": "class_roadmap",
+          "target": "class_mapnode",
+          "type": "composition",
+          "vertices": null,
+          "multiplicity_source": "1",
+          "multiplicity_target": "1..*",
+          "role_name": "nodes",
+          "note": "地图拥有拓扑节点"
+        },
+        {
+          "id": "rel_routeplan_segment",
+          "source": "class_routeplan",
+          "target": "class_routesegment",
+          "type": "aggregation",
+          "vertices": null,
+          "multiplicity_source": "1",
+          "multiplicity_target": "0..*",
+          "role_name": "segments",
+          "note": "路线由若干段组成"
+        },
+        {
+          "id": "rel_routerequest_pose",
+          "source": "class_routerequest",
+          "target": "class_pose2d",
+          "type": "aggregation",
+          "vertices": null,
+          "multiplicity_source": "1",
+          "multiplicity_target": "2",
+          "role_name": "start, goal",
+          "note": "请求包含起终位姿"
+        }
+      ],
+      "lifelines": [],
+      "messages": [],
+      "fragments": [],
+      "components": [],
+      "comp_relations": [],
+      "grid_visible": true,
+      "grid_size": 20,
+      "grid_color": "#e0e0e0",
+      "grid_thickness": 1,
+      "snap_to_grid": true,
+      "zoom": 1.0,
+      "pan_x": 136.5,
+      "pan_y": -108.0
+    },
+    {
+      "version": "1.0",
+      "name": "Reference Line Module Classes",
+      "diagram_type": "class",
+      "component_id": "comp_reflinepkg",
+      "classes": [
+        {
+          "id": "class_reflinecore",
+          "name": "ReferenceLineCore",
+          "stereotype": "class",
+          "attributes": [
+            {
+              "name": "sample_spacing_m",
+              "type": "float",
+              "visibility": "+",
+              "default_value": "1.0",
+              "is_static": false
+            },
+            {
+              "name": "max_lateral_deviation_m",
+              "type": "float",
+              "visibility": "+",
+              "default_value": "0.15",
+              "is_static": false
+            },
+            {
+              "name": "join_tolerance_m",
+              "type": "float",
+              "visibility": "+",
+              "default_value": "0.25",
+              "is_static": false
+            },
+            {
+              "name": "boundary_margin_m",
+              "type": "float",
+              "visibility": "+",
+              "default_value": "0.1",
+              "is_static": false
+            },
+            {
+              "name": "max_curvature_1pm",
+              "type": "float",
+              "visibility": "+",
+              "default_value": "0.15",
+              "is_static": false
+            },
+            {
+              "name": "corner_angle_threshold_rad",
+              "type": "float",
+              "visibility": "+",
+              "default_value": "0.7",
+              "is_static": false
+            }
+          ],
+          "methods": [
+            {
+              "name": "__init__",
+              "return_type": "void",
+              "params": "maps: Iterable[RoadMap] = (), *, sample_spacing_m: float = 1.0, max_lateral_deviation_m: float = 0.15, join_tolerance_m: float = 0.25, boundary_margin_m: float = 0.1, max_curvature_1pm: float = 0.15, corner_angle_threshold_rad: float = 0.7",
+              "visibility": "+",
+              "is_static": false,
+              "is_abstract": false
+            },
+            {
+              "name": "register_map",
+              "return_type": "void",
+              "params": "road_map: RoadMap",
+              "visibility": "+",
+              "is_static": false,
+              "is_abstract": false
+            },
+            {
+              "name": "map_ids",
+              "return_type": "Tuple[str, ...]",
+              "params": "",
+              "visibility": "+",
+              "is_static": false,
+              "is_abstract": false
+            },
+            {
+              "name": "build",
+              "return_type": "ReferenceLinePlan",
+              "params": "route: RoutePlan, *, reference_id: int",
+              "visibility": "+",
+              "is_static": false,
+              "is_abstract": false
+            }
+          ],
+          "position": {
+            "x": 540.0,
+            "y": 693.0
+          },
+          "size": {
+            "width": 280.0,
+            "height": 200.0
+          },
+          "note": "把有序路由边转换为规划器可用的连续车道参考线：采样拼接、角点圆化（曲率受限）、偏移生成车道/可行驶边界。",
+          "provided_interfaces": [],
+          "required_interfaces": []
+        },
+        {
+          "id": "class_reflineplan",
+          "name": "ReferenceLinePlan",
+          "stereotype": "class",
+          "attributes": [
+            {
+              "name": "reference_id",
+              "type": "int",
+              "visibility": "+",
+              "default_value": "",
+              "is_static": false
+            },
+            {
+              "name": "route_id",
+              "type": "int",
+              "visibility": "+",
+              "default_value": "",
+              "is_static": false
+            },
+            {
+              "name": "request_id",
+              "type": "int",
+              "visibility": "+",
+              "default_value": "",
+              "is_static": false
+            },
+            {
+              "name": "map_id",
+              "type": "str",
+              "visibility": "+",
+              "default_value": "",
+              "is_static": false
+            },
+            {
+              "name": "success",
+              "type": "bool",
+              "visibility": "+",
+              "default_value": "",
+              "is_static": false
+            },
+            {
+              "name": "failure_reason",
+              "type": "str",
+              "visibility": "+",
+              "default_value": "",
+              "is_static": false
+            },
+            {
+              "name": "total_length_m",
+              "type": "float",
+              "visibility": "+",
+              "default_value": "0.0",
+              "is_static": false
+            },
+            {
+              "name": "sample_spacing_m",
+              "type": "float",
+              "visibility": "+",
+              "default_value": "1.0",
+              "is_static": false
+            },
+            {
+              "name": "lane_width",
+              "type": "float",
+              "visibility": "+",
+              "default_value": "3.5",
+              "is_static": false
+            },
+            {
+              "name": "num_lanes",
+              "type": "int",
+              "visibility": "+",
+              "default_value": "1",
+              "is_static": false
+            },
+            {
+              "name": "reference_lane_index",
+              "type": "int",
+              "visibility": "+",
+              "default_value": "-1",
+              "is_static": false
+            },
+            {
+              "name": "target_lane",
+              "type": "int",
+              "visibility": "+",
+              "default_value": "-1",
+              "is_static": false
+            },
+            {
+              "name": "points",
+              "type": "Tuple[PathTuple, ...]",
+              "visibility": "+",
+              "default_value": "",
+              "is_static": false
+            },
+            {
+              "name": "left_boundary",
+              "type": "Tuple[PathTuple, ...]",
+              "visibility": "+",
+              "default_value": "",
+              "is_static": false
+            },
+            {
+              "name": "right_boundary",
+              "type": "Tuple[PathTuple, ...]",
+              "visibility": "+",
+              "default_value": "",
+              "is_static": false
+            },
+            {
+              "name": "drivable_left_boundary",
+              "type": "Tuple[PathTuple, ...]",
+              "visibility": "+",
+              "default_value": "",
+              "is_static": false
+            },
+            {
+              "name": "drivable_right_boundary",
+              "type": "Tuple[PathTuple, ...]",
+              "visibility": "+",
+              "default_value": "",
+              "is_static": false
+            }
+          ],
+          "methods": [
+            {
+              "name": "failure",
+              "return_type": "ReferenceLinePlan",
+              "params": "reference_id: int, route_id: int, request_id: int, map_id: str, reason: str",
+              "visibility": "+",
+              "is_static": true,
+              "is_abstract": false
+            }
+          ],
+          "position": {
+            "x": 550.0,
+            "y": 1329.0
+          },
+          "size": {
+            "width": 260.0,
+            "height": 210.0
+          },
+          "note": "frozen dataclass：由一条拓扑路线生成的连续几何参考及左右/可行驶边界。",
+          "provided_interfaces": [],
+          "required_interfaces": []
+        },
+        {
+          "id": "class_routeaware",
+          "name": "RouteAwareMotionPlanner",
+          "stereotype": "class",
+          "attributes": [
+            {
+              "name": "reference_lane_index",
+              "type": "int",
+              "visibility": "+",
+              "default_value": "",
+              "is_static": false
+            },
+            {
+              "name": "target_lane",
+              "type": "int",
+              "visibility": "+",
+              "default_value": "",
+              "is_static": false
+            },
+            {
+              "name": "drivable_left_boundary",
+              "type": "tuple",
+              "visibility": "+",
+              "default_value": "",
+              "is_static": false
+            },
+            {
+              "name": "drivable_right_boundary",
+              "type": "tuple",
+              "visibility": "+",
+              "default_value": "",
+              "is_static": false
+            },
+            {
+              "name": "collision_margin_m",
+              "type": "float",
+              "visibility": "+",
+              "default_value": "0.25",
+              "is_static": false
+            },
+            {
+              "name": "vehicle_length_m",
+              "type": "float",
+              "visibility": "+",
+              "default_value": "4.0",
+              "is_static": false
+            },
+            {
+              "name": "vehicle_width_m",
+              "type": "float",
+              "visibility": "+",
+              "default_value": "2.0",
+              "is_static": false
+            }
+          ],
+          "methods": [
+            {
+              "name": "__init__",
+              "return_type": "void",
+              "params": "global_frenet_path, *, lane_width: float, num_lanes: int, reference_lane_index: int, target_lane: int, drivable_left_boundary=(), drivable_right_boundary=(), corridor_margin_m: float = 1.1, ..., vehicle_length_m: float = 4.0, vehicle_width_m: float = 2.0",
+              "visibility": "+",
+              "is_static": false,
+              "is_abstract": false
+            },
+            {
+              "name": "_plan",
+              "return_type": "list",
+              "params": "pred_loc: tuple, vehicle_loc: tuple, obstacles: list",
+              "visibility": "-",
+              "is_static": false,
+              "is_abstract": false
+            }
+          ],
+          "position": {
+            "x": 728.0,
+            "y": 100.0
+          },
+          "size": {
+            "width": 280.0,
+            "height": 200.0
+          },
+          "note": "继承 algorithms.planner.MotionPlanner（跨组件）；用路由车道身份让局部绕行最终回到任务车道，并做候选轨迹矩形安全校验。",
+          "provided_interfaces": [],
+          "required_interfaces": []
+        },
+        {
+          "id": "class_reflinenode",
+          "name": "ReferenceLineNode",
+          "stereotype": "class",
+          "attributes": [
+            {
+              "name": "core",
+              "type": "ReferenceLineCore",
+              "visibility": "-",
+              "default_value": "",
+              "is_static": false
+            },
+            {
+              "name": "reference_pub",
+              "type": "Publisher",
+              "visibility": "-",
+              "default_value": "",
+              "is_static": false
+            }
+          ],
+          "methods": [
+            {
+              "name": "__init__",
+              "return_type": "void",
+              "params": "",
+              "visibility": "+",
+              "is_static": false,
+              "is_abstract": false
+            },
+            {
+              "name": "_load_maps",
+              "return_type": "list",
+              "params": "",
+              "visibility": "-",
+              "is_static": false,
+              "is_abstract": false
+            },
+            {
+              "name": "_on_route",
+              "return_type": "void",
+              "params": "message: RosRoutePlan",
+              "visibility": "-",
+              "is_static": false,
+              "is_abstract": false
+            },
+            {
+              "name": "_to_ros_reference",
+              "return_type": "RosReferenceLine",
+              "params": "reference: ReferenceLinePlan",
+              "visibility": "-",
+              "is_static": false,
+              "is_abstract": false
+            }
+          ],
+          "position": {
+            "x": 352.0,
+            "y": 100.0
+          },
+          "size": {
+            "width": 280.0,
+            "height": 200.0
+          },
+          "note": "ROS 2 节点：订阅 RoutePlan，发布经地图校验的 ReferenceLine。",
+          "provided_interfaces": [],
+          "required_interfaces": []
+        }
+      ],
+      "relations": [
+        {
+          "id": "rel_reflinecore_plan",
+          "source": "class_reflinecore",
+          "target": "class_reflineplan",
+          "type": "dependency",
+          "vertices": null,
+          "multiplicity_source": "",
+          "multiplicity_target": "",
+          "role_name": "",
+          "note": "build 返回参考线计划"
+        },
+        {
+          "id": "rel_reflinenode_core",
+          "source": "class_reflinenode",
+          "target": "class_reflinecore",
+          "type": "dependency",
+          "vertices": null,
+          "multiplicity_source": "",
+          "multiplicity_target": "",
+          "role_name": "core",
+          "note": "ROS 节点委托参考线核心"
+        },
+        {
+          "id": "rel_routeaware_reflineplan",
+          "source": "class_routeaware",
+          "target": "class_reflineplan",
+          "type": "dependency",
+          "vertices": null,
+          "multiplicity_source": "",
+          "multiplicity_target": "",
+          "role_name": "",
+          "note": "使用路由参考线与可行驶边界"
+        }
+      ],
+      "lifelines": [],
+      "messages": [],
+      "fragments": [],
+      "components": [],
+      "comp_relations": [],
+      "grid_visible": true,
+      "grid_size": 20,
+      "grid_color": "#e0e0e0",
+      "grid_thickness": 1,
+      "snap_to_grid": true,
+      "zoom": 1.0,
+      "pan_x": -111.5,
+      "pan_y": 30.5
+    },
+    {
+      "version": "1.0",
+      "name": "Analysis Module Classes",
+      "diagram_type": "class",
+      "component_id": "comp_analysis",
+      "classes": [
+        {
+          "id": "class_trackingmonitor",
+          "name": "TrackingMonitor",
+          "stereotype": "class",
+          "attributes": [
+            {
+              "name": "tracker",
+              "type": "RouteTracker",
+              "visibility": "+",
+              "default_value": "",
+              "is_static": false
+            },
+            {
+              "name": "last_time",
+              "type": "float",
+              "visibility": "+",
+              "default_value": "None",
+              "is_static": false
+            }
+          ],
+          "methods": [
+            {
+              "name": "__init__",
+              "return_type": "void",
+              "params": "path: list",
+              "visibility": "+",
+              "is_static": false,
+              "is_abstract": false
+            },
+            {
+              "name": "update",
+              "return_type": "dict",
+              "params": "state: VehicleState",
+              "visibility": "+",
+              "is_static": false,
+              "is_abstract": false
+            }
+          ],
+          "position": {
+            "x": 372.0,
+            "y": 584.0
+          },
+          "size": {
+            "width": 260.0,
+            "height": 190.0
+          },
+          "note": "与控制器预测无关的共享测量定义（protocol=route_projection_v2）；输出 ed/ephi/route_s 等指标字典。",
+          "provided_interfaces": [],
+          "required_interfaces": []
+        },
+        {
+          "id": "class_eightoracle",
+          "name": "FigureEightOracle",
+          "stereotype": "class",
+          "attributes": [
+            {
+              "name": "phase",
+              "type": "float",
+              "visibility": "+",
+              "default_value": "0.0",
+              "is_static": false
+            }
+          ],
+          "methods": [
+            {
+              "name": "__init__",
+              "return_type": "void",
+              "params": "",
+              "visibility": "+",
+              "is_static": false,
+              "is_abstract": false
+            },
+            {
+              "name": "update",
+              "return_type": "Tuple[float, float, str]",
+              "params": "x: float, y: float",
+              "visibility": "+",
+              "is_static": false,
+              "is_abstract": false
+            },
+            {
+              "name": "wrong_branch",
+              "return_type": "bool",
+              "params": "reference_heading: float, oracle_heading: float, region: str",
+              "visibility": "+",
+              "is_static": true,
+              "is_abstract": false
+            }
+          ],
+          "position": {
+            "x": 728.0,
+            "y": 584.0
+          },
+          "size": {
+            "width": 260.0,
+            "height": 190.0
+          },
+          "note": "独立解析路线预言机：拟合 x=78cos(t), y=42sin(2t) 真值相位，用于分支/圈数校验（不读控制索引）。",
+          "provided_interfaces": [],
+          "required_interfaces": []
+        },
+        {
+          "id": "class_evalmodule",
+          "name": "evaluation",
+          "stereotype": "class",
+          "attributes": [],
+          "methods": [
+            {
+              "name": "run_evaluation",
+              "return_type": "dict",
+              "params": "output_dir, label, *, laps: int = 10, duration=None, speed: float = 50.0, dt: float = 0.05, ...",
+              "visibility": "+",
+              "is_static": true,
+              "is_abstract": false
+            },
+            {
+              "name": "stats",
+              "return_type": "dict",
+              "params": "rows: list, key: str",
+              "visibility": "+",
+              "is_static": true,
+              "is_abstract": false
+            },
+            {
+              "name": "group_metrics",
+              "return_type": "dict",
+              "params": "rows: list",
+              "visibility": "+",
+              "is_static": true,
+              "is_abstract": false
+            },
+            {
+              "name": "provenance",
+              "return_type": "dict",
+              "params": "",
+              "visibility": "+",
+              "is_static": true,
+              "is_abstract": false
+            },
+            {
+              "name": "archive_sources",
+              "return_type": "void",
+              "params": "metadata: dict, output_dir",
+              "visibility": "+",
+              "is_static": true,
+              "is_abstract": false
+            },
+            {
+              "name": "resample",
+              "return_type": "list",
+              "params": "path: list, spacing: float | None",
+              "visibility": "+",
+              "is_static": true,
+              "is_abstract": false
+            }
+          ],
+          "position": {
+            "x": 540.0,
+            "y": 100.0
+          },
+          "size": {
+            "width": 280.0,
+            "height": 200.0
+          },
+          "note": "Python 模块 analysis/evaluation.py（自由函数集合）。可复现的八形多圈评估与报告生成（含溯源/归档）。",
+          "provided_interfaces": [],
+          "required_interfaces": []
+        }
+      ],
+      "relations": [
+        {
+          "id": "rel_eval_tracking",
+          "source": "class_evalmodule",
+          "target": "class_trackingmonitor",
+          "type": "dependency",
+          "vertices": null,
+          "multiplicity_source": "",
+          "multiplicity_target": "",
+          "role_name": "",
+          "note": "评估使用跟踪监控"
+        },
+        {
+          "id": "rel_eval_oracle",
+          "source": "class_evalmodule",
+          "target": "class_eightoracle",
+          "type": "dependency",
+          "vertices": null,
+          "multiplicity_source": "",
+          "multiplicity_target": "",
+          "role_name": "",
+          "note": "评估使用解析预言机"
+        }
+      ],
+      "lifelines": [],
+      "messages": [],
+      "fragments": [],
+      "components": [],
+      "comp_relations": [],
+      "grid_visible": true,
+      "grid_size": 20,
+      "grid_color": "#e0e0e0",
+      "grid_thickness": 1,
+      "snap_to_grid": true,
+      "zoom": 1.0,
+      "pan_x": -334.5,
+      "pan_y": -172.0
     },
     {
       "version": "1.0",
@@ -2423,14 +5378,43 @@
               "is_static": false
             },
             {
+              "name": "command_timeout",
+              "type": "float",
+              "visibility": "-",
+              "default_value": "0.25",
+              "is_static": false
+            },
+            {
               "name": "paused",
               "type": "bool",
               "visibility": "-",
               "default_value": "False",
               "is_static": false
+            },
+            {
+              "name": "run_id",
+              "type": "int",
+              "visibility": "-",
+              "default_value": "0",
+              "is_static": false
+            },
+            {
+              "name": "frame_id",
+              "type": "str",
+              "visibility": "-",
+              "default_value": "map",
+              "is_static": false
             }
           ],
           "methods": [
+            {
+              "name": "__init__",
+              "return_type": "void",
+              "params": "",
+              "visibility": "+",
+              "is_static": false,
+              "is_abstract": false
+            },
             {
               "name": "_on_command",
               "return_type": "void",
@@ -2458,7 +5442,7 @@
             {
               "name": "_on_step",
               "return_type": "Trigger.Response",
-              "params": "request: Trigger.Request, response: Trigger.Response",
+              "params": "request, response",
               "visibility": "-",
               "is_static": false,
               "is_abstract": false
@@ -2466,7 +5450,7 @@
             {
               "name": "_on_reset",
               "return_type": "Empty.Response",
-              "params": "request: Empty.Request, response: Empty.Response",
+              "params": "request, response",
               "visibility": "-",
               "is_static": false,
               "is_abstract": false
@@ -2474,7 +5458,15 @@
             {
               "name": "_on_pause",
               "return_type": "SetBool.Response",
-              "params": "request: SetBool.Request, response: SetBool.Response",
+              "params": "request, response",
+              "visibility": "-",
+              "is_static": false,
+              "is_abstract": false
+            },
+            {
+              "name": "_on_edit_scene",
+              "return_type": "EditScene.Response",
+              "params": "request, response",
               "visibility": "-",
               "is_static": false,
               "is_abstract": false
@@ -2486,17 +5478,41 @@
               "visibility": "-",
               "is_static": false,
               "is_abstract": false
+            },
+            {
+              "name": "_publish_run_context",
+              "return_type": "void",
+              "params": "sequence: int",
+              "visibility": "-",
+              "is_static": false,
+              "is_abstract": false
+            },
+            {
+              "name": "_publish_route_request",
+              "return_type": "void",
+              "params": "config: ScenarioConfig",
+              "visibility": "-",
+              "is_static": false,
+              "is_abstract": false
+            },
+            {
+              "name": "_on_parameters",
+              "return_type": "SetParametersResult",
+              "params": "parameters: list",
+              "visibility": "-",
+              "is_static": false,
+              "is_abstract": false
             }
           ],
           "position": {
-            "x": 224.0,
+            "x": 120.0,
             "y": 100.0
           },
           "size": {
-            "width": 240.0,
-            "height": 190.0
+            "width": 280.0,
+            "height": 230.0
           },
-          "note": "ROS 2 仿真节点：定时步进引擎、发布 vehicle/state/obstacles 与 sim/context，订阅唯一仲裁后的 control_command。",
+          "note": "ROS 2 仿真节点：定时步进引擎、发布 vehicle/state、obstacles、sim/status、sim/context 与 /clock，订阅唯一仲裁后的 control_command；支持运行时切换场景。",
           "provided_interfaces": [],
           "required_interfaces": []
         },
@@ -2506,17 +5522,10 @@
           "stereotype": "class",
           "attributes": [
             {
-              "name": "path",
-              "type": "list",
-              "visibility": "-",
-              "default_value": "",
-              "is_static": false
-            },
-            {
               "name": "state",
               "type": "VehicleState",
               "visibility": "-",
-              "default_value": "",
+              "default_value": "None",
               "is_static": false
             },
             {
@@ -2530,15 +5539,59 @@
               "name": "planner",
               "type": "MotionPlanner",
               "visibility": "-",
+              "default_value": "None",
+              "is_static": false
+            },
+            {
+              "name": "routing_reference_path",
+              "type": "list",
+              "visibility": "-",
               "default_value": "",
+              "is_static": false
+            },
+            {
+              "name": "routing_reference_lane",
+              "type": "int",
+              "visibility": "-",
+              "default_value": "-1",
+              "is_static": false
+            },
+            {
+              "name": "active_run",
+              "type": "int",
+              "visibility": "-",
+              "default_value": "None",
+              "is_static": false
+            },
+            {
+              "name": "plan_pending",
+              "type": "bool",
+              "visibility": "-",
+              "default_value": "False",
               "is_static": false
             }
           ],
           "methods": [
             {
-              "name": "_on_path",
+              "name": "__init__",
               "return_type": "void",
-              "params": "message: RosPath",
+              "params": "",
+              "visibility": "+",
+              "is_static": false,
+              "is_abstract": false
+            },
+            {
+              "name": "_on_context",
+              "return_type": "void",
+              "params": "message: String",
+              "visibility": "-",
+              "is_static": false,
+              "is_abstract": false
+            },
+            {
+              "name": "_on_routing_reference",
+              "return_type": "void",
+              "params": "message: RosReferenceLine",
               "visibility": "-",
               "is_static": false,
               "is_abstract": false
@@ -2574,17 +5627,33 @@
               "visibility": "-",
               "is_static": false,
               "is_abstract": false
+            },
+            {
+              "name": "_publish_plan",
+              "return_type": "void",
+              "params": "path: list",
+              "visibility": "-",
+              "is_static": false,
+              "is_abstract": false
+            },
+            {
+              "name": "_activate_reference",
+              "return_type": "void",
+              "params": "",
+              "visibility": "-",
+              "is_static": false,
+              "is_abstract": false
             }
           ],
           "position": {
-            "x": 560.0,
+            "x": 496.0,
             "y": 100.0
           },
           "size": {
-            "width": 240.0,
-            "height": 190.0
+            "width": 280.0,
+            "height": 230.0
           },
-          "note": "ROS 2 规划节点：订阅参考线/状态/障碍，最新优先异步请求规划并发布 planned_path。",
+          "note": "ROS 2 规划节点：消费 routing/reference_line、vehicle/state、obstacles 与 sim/context，按 run 激活 RouteAwareMotionPlanner 并锁存发布 planned_path。",
           "provided_interfaces": [],
           "required_interfaces": []
         },
@@ -2601,7 +5670,7 @@
               "is_static": false
             },
             {
-              "name": "routing_reference_path",
+              "name": "reference_path",
               "type": "list",
               "visibility": "-",
               "default_value": "",
@@ -2613,9 +5682,38 @@
               "visibility": "-",
               "default_value": "",
               "is_static": false
+            },
+            {
+              "name": "state",
+              "type": "VehicleState",
+              "visibility": "-",
+              "default_value": "None",
+              "is_static": false
+            },
+            {
+              "name": "active_run",
+              "type": "int",
+              "visibility": "-",
+              "default_value": "None",
+              "is_static": false
+            },
+            {
+              "name": "plan_ready",
+              "type": "bool",
+              "visibility": "-",
+              "default_value": "False",
+              "is_static": false
             }
           ],
           "methods": [
+            {
+              "name": "__init__",
+              "return_type": "void",
+              "params": "",
+              "visibility": "+",
+              "is_static": false,
+              "is_abstract": false
+            },
             {
               "name": "_on_state",
               "return_type": "void",
@@ -2625,9 +5723,17 @@
               "is_abstract": false
             },
             {
-              "name": "_on_reference",
+              "name": "_on_context",
               "return_type": "void",
-              "params": "message: RosPath",
+              "params": "message: String",
+              "visibility": "-",
+              "is_static": false,
+              "is_abstract": false
+            },
+            {
+              "name": "_on_routing_reference",
+              "return_type": "void",
+              "params": "message: RosReferenceLine",
               "visibility": "-",
               "is_static": false,
               "is_abstract": false
@@ -2636,6 +5742,14 @@
               "name": "_on_planned",
               "return_type": "void",
               "params": "message: RosPath",
+              "visibility": "-",
+              "is_static": false,
+              "is_abstract": false
+            },
+            {
+              "name": "_target_speed_at",
+              "return_type": "float",
+              "params": "x: float, y: float",
               "visibility": "-",
               "is_static": false,
               "is_abstract": false
@@ -2658,19 +5772,336 @@
             }
           ],
           "position": {
-            "x": 896.0,
+            "x": 872.0,
             "y": 100.0
           },
           "size": {
-            "width": 240.0,
-            "height": 190.0
+            "width": 280.0,
+            "height": 230.0
           },
-          "note": "ROS 2 控制节点：消费当前 routing reference 与 planned_path；仅发布 control_command/cruise 候选命令。",
+          "note": "ROS 2 控制节点：仅接受当前 run 的 routing reference 与新鲜 planned_path；发布 control_command/cruise 候选命令与 tracking/metrics。",
+          "provided_interfaces": [],
+          "required_interfaces": []
+        },
+        {
+          "id": "class_managernode",
+          "name": "ControllerManager",
+          "stereotype": "class",
+          "attributes": [
+            {
+              "name": "_mode",
+              "type": "str",
+              "visibility": "-",
+              "default_value": "CRUISE",
+              "is_static": false
+            },
+            {
+              "name": "_control_source",
+              "type": "str",
+              "visibility": "-",
+              "default_value": "AUTO",
+              "is_static": false
+            },
+            {
+              "name": "_commands",
+              "type": "Dict[str, ControlCommand]",
+              "visibility": "-",
+              "default_value": "",
+              "is_static": false
+            },
+            {
+              "name": "_run_id",
+              "type": "int",
+              "visibility": "-",
+              "default_value": "0",
+              "is_static": false
+            },
+            {
+              "name": "_safety_stop",
+              "type": "bool",
+              "visibility": "-",
+              "default_value": "True",
+              "is_static": false
+            }
+          ],
+          "methods": [
+            {
+              "name": "__init__",
+              "return_type": "void",
+              "params": "",
+              "visibility": "+",
+              "is_static": false,
+              "is_abstract": false
+            },
+            {
+              "name": "_on_mode",
+              "return_type": "void",
+              "params": "message: ControlMode",
+              "visibility": "-",
+              "is_static": false,
+              "is_abstract": false
+            },
+            {
+              "name": "_on_candidate",
+              "return_type": "void",
+              "params": "mode: str, message: ControlCommand",
+              "visibility": "-",
+              "is_static": false,
+              "is_abstract": false
+            },
+            {
+              "name": "_on_safety_stop",
+              "return_type": "void",
+              "params": "message: Bool",
+              "visibility": "-",
+              "is_static": false,
+              "is_abstract": false
+            },
+            {
+              "name": "_tick",
+              "return_type": "void",
+              "params": "",
+              "visibility": "-",
+              "is_static": false,
+              "is_abstract": false
+            },
+            {
+              "name": "_brake_command",
+              "return_type": "ControlCommand",
+              "params": "reason: str",
+              "visibility": "-",
+              "is_static": false,
+              "is_abstract": false
+            }
+          ],
+          "position": {
+            "x": 1248.0,
+            "y": 100.0
+          },
+          "size": {
+            "width": 280.0,
+            "height": 230.0
+          },
+          "note": "模式仲裁器（CRUISE/PARKING/MANUAL/EMERGENCY_STOP）：唯一写入 control_command 的节点，防止控制器冲突；缺安全心跳即刹车。",
+          "provided_interfaces": [],
+          "required_interfaces": []
+        },
+        {
+          "id": "class_safestop",
+          "name": "SafeStopNode",
+          "stereotype": "class",
+          "attributes": [
+            {
+              "name": "_context",
+              "type": "dict",
+              "visibility": "-",
+              "default_value": "None",
+              "is_static": false
+            },
+            {
+              "name": "_reference_ready",
+              "type": "bool",
+              "visibility": "-",
+              "default_value": "False",
+              "is_static": false
+            },
+            {
+              "name": "_plan_run",
+              "type": "int",
+              "visibility": "-",
+              "default_value": "None",
+              "is_static": false
+            },
+            {
+              "name": "_plan_received_at",
+              "type": "float",
+              "visibility": "-",
+              "default_value": "None",
+              "is_static": false
+            }
+          ],
+          "methods": [
+            {
+              "name": "__init__",
+              "return_type": "void",
+              "params": "",
+              "visibility": "+",
+              "is_static": false,
+              "is_abstract": false
+            },
+            {
+              "name": "_on_context",
+              "return_type": "void",
+              "params": "message: String",
+              "visibility": "-",
+              "is_static": false,
+              "is_abstract": false
+            },
+            {
+              "name": "_on_reference",
+              "return_type": "void",
+              "params": "message: RosReferenceLine",
+              "visibility": "-",
+              "is_static": false,
+              "is_abstract": false
+            },
+            {
+              "name": "_on_plan",
+              "return_type": "void",
+              "params": "message: RosPath",
+              "visibility": "-",
+              "is_static": false,
+              "is_abstract": false
+            },
+            {
+              "name": "_stop_reason",
+              "return_type": "str",
+              "params": "",
+              "visibility": "-",
+              "is_static": false,
+              "is_abstract": false
+            },
+            {
+              "name": "_publish_status",
+              "return_type": "void",
+              "params": "",
+              "visibility": "-",
+              "is_static": false,
+              "is_abstract": false
+            }
+          ],
+          "position": {
+            "x": 872.0,
+            "y": 897.0
+          },
+          "size": {
+            "width": 280.0,
+            "height": 230.0
+          },
+          "note": "失效即停的规划就绪监督器：仅发布 safety/stop_request（Bool）心跳，本身不发执行器命令，由 ControllerManager 消费。",
+          "provided_interfaces": [],
+          "required_interfaces": []
+        },
+        {
+          "id": "class_guinode",
+          "name": "GuiNode",
+          "stereotype": "class",
+          "attributes": [
+            {
+              "name": "_mode",
+              "type": "str",
+              "visibility": "-",
+              "default_value": "",
+              "is_static": false
+            },
+            {
+              "name": "_control_source",
+              "type": "str",
+              "visibility": "-",
+              "default_value": "",
+              "is_static": false
+            }
+          ],
+          "methods": [
+            {
+              "name": "__init__",
+              "return_type": "void",
+              "params": "",
+              "visibility": "+",
+              "is_static": false,
+              "is_abstract": false
+            },
+            {
+              "name": "_on_context",
+              "return_type": "void",
+              "params": "message: String",
+              "visibility": "-",
+              "is_static": false,
+              "is_abstract": false
+            },
+            {
+              "name": "_on_routing",
+              "return_type": "void",
+              "params": "message: RosRoutePlan",
+              "visibility": "-",
+              "is_static": false,
+              "is_abstract": false
+            },
+            {
+              "name": "_on_routing_reference",
+              "return_type": "void",
+              "params": "message: RosReferenceLine",
+              "visibility": "-",
+              "is_static": false,
+              "is_abstract": false
+            },
+            {
+              "name": "_on_planned",
+              "return_type": "void",
+              "params": "message: RosPath",
+              "visibility": "-",
+              "is_static": false,
+              "is_abstract": false
+            },
+            {
+              "name": "_handle_action",
+              "return_type": "void",
+              "params": "action: GuiAction",
+              "visibility": "-",
+              "is_static": false,
+              "is_abstract": false
+            },
+            {
+              "name": "_switch_scenario",
+              "return_type": "void",
+              "params": "name: str",
+              "visibility": "-",
+              "is_static": false,
+              "is_abstract": false
+            },
+            {
+              "name": "_apply_scene_edit",
+              "return_type": "void",
+              "params": "",
+              "visibility": "-",
+              "is_static": false,
+              "is_abstract": false
+            },
+            {
+              "name": "_publish_manual_command",
+              "return_type": "void",
+              "params": "command",
+              "visibility": "-",
+              "is_static": false,
+              "is_abstract": false
+            }
+          ],
+          "position": {
+            "x": 1624.0,
+            "y": 100.0
+          },
+          "size": {
+            "width": 280.0,
+            "height": 230.0
+          },
+          "note": "可视化/操作节点（pygame 前端 + ROS 适配）：显示状态/路径/路由，发布手动命令、模式与场景/场景编辑请求。",
           "provided_interfaces": [],
           "required_interfaces": []
         }
       ],
-      "relations": [],
+      "relations": [
+        {
+          "id": "rel_guinode_safestop",
+          "source": "class_guinode",
+          "target": "class_safestop",
+          "type": "dependency",
+          "vertices": null,
+          "multiplicity_source": "",
+          "multiplicity_target": "",
+          "role_name": "",
+          "note": "GUI 与安全监督同属仿真运行的人机/安全侧；SimulatorNode/PlannerNode/ControllerNode 持有的引擎、规划器、控制器详见对应组件的类图。"
+        }
+      ],
       "lifelines": [],
       "messages": [],
       "fragments": [],
@@ -2682,8 +6113,8 @@
       "grid_thickness": 1,
       "snap_to_grid": true,
       "zoom": 0.4,
-      "pan_x": 283.5,
-      "pan_y": 169.1
+      "pan_x": 150.7,
+      "pan_y": 36.30000000000001
     },
     {
       "version": "1.0",
@@ -2704,67 +6135,118 @@
           "id": "life_engine",
           "name": "engine: SimulationEngine",
           "class_ref": "class_simengine",
-          "x": 378.0,
+          "x": 418.0,
+          "activations": []
+        },
+        {
+          "id": "life_routingnode",
+          "name": "routing: RoutingNode",
+          "class_ref": "class_routingnode",
+          "x": 696.0,
+          "activations": []
+        },
+        {
+          "id": "life_reflinenode",
+          "name": "refline: ReferenceLineNode",
+          "class_ref": "class_reflinenode",
+          "x": 990.0,
           "activations": []
         },
         {
           "id": "life_plannernode",
-          "name": "planner: PlannerNode",
+          "name": "plannerNode: PlannerNode",
           "class_ref": "class_plannernode",
-          "x": 656.0,
+          "x": 1284.0,
           "activations": []
         },
         {
-          "id": "life_motion",
-          "name": "motion: MotionPlanner",
-          "class_ref": "class_motionplanner",
-          "x": 910.0,
+          "id": "life_planner",
+          "name": "planner: RouteAwareMotionPlanner",
+          "class_ref": "class_routeaware",
+          "x": 1638.0,
           "activations": []
         },
         {
           "id": "life_ctrlnode",
           "name": "ctrl: ControllerNode",
           "class_ref": "class_ctrlnode",
-          "x": 1164.0,
+          "x": 1980.0,
           "activations": []
         },
         {
           "id": "life_veh",
           "name": "veh: VehicleController",
           "class_ref": "class_vehctrl",
-          "x": 1426.0,
+          "x": 2280.0,
+          "activations": []
+        },
+        {
+          "id": "life_manager",
+          "name": "manager: ControllerManager",
+          "class_ref": "class_managernode",
+          "x": 2574.0,
           "activations": []
         }
       ],
       "messages": [
+        {
+          "id": "msg_route_request",
+          "from_lifeline": "life_simnode",
+          "to_lifeline": "life_routingnode",
+          "label": "publish routing/request (RouteRequest)",
+          "type": "async",
+          "order": 1,
+          "y": 190.0,
+          "note": "每次 run/reset 广播一次任务（起终位姿、地图、闭环绕行）。"
+        },
+        {
+          "id": "msg_route_plan",
+          "from_lifeline": "life_routingnode",
+          "to_lifeline": "life_reflinenode",
+          "label": "publish routing/route (RoutePlan)",
+          "type": "async",
+          "order": 2,
+          "y": 238.0,
+          "note": "A* 搜索成功后锁存发布 RoutePlan；失败返回 failure_reason。"
+        },
+        {
+          "id": "msg_reference_line",
+          "from_lifeline": "life_reflinenode",
+          "to_lifeline": "life_plannernode",
+          "label": "publish routing/reference_line",
+          "type": "async",
+          "order": 3,
+          "y": 286.0,
+          "note": "ReferenceLineCore 把路由边转成连续参考线与可行驶边界。"
+        },
         {
           "id": "msg_step",
           "from_lifeline": "life_simnode",
           "to_lifeline": "life_engine",
           "label": "step(command, dt)",
           "type": "sync",
-          "order": 1,
-          "y": 190.0,
+          "order": 4,
+          "y": 334.0,
           "note": "仿真节点按 physics_dt 调用引擎步进，传入限幅后的控制指令。"
         },
         {
           "id": "msg_engine_self",
           "from_lifeline": "life_engine",
           "to_lifeline": "life_engine",
-          "label": "advanceEgoAndCollisionCheck()",
+          "label": "substep: steering.advance + ego.step + obstacles.step + collision/offroad/destination check",
           "type": "self",
-          "order": 2,
-          "y": 252.0,
-          "note": "子步推进自车动力学、更新障碍物并做 SAT 碰撞、越界与到点判定。"
+          "order": 5,
+          "y": 396.0,
+          "note": "子步推进执行器、自车与障碍物，并做 SAT 碰撞、越界与到点判定。"
         },
         {
           "id": "msg_step_return",
           "from_lifeline": "life_engine",
           "to_lifeline": "life_simnode",
-          "label": "return state",
+          "label": "return VehicleState",
           "type": "return",
-          "order": 3,
-          "y": 314.0,
+          "order": 6,
+          "y": 458.0,
           "note": "返回新的 VehicleState。"
         },
         {
@@ -2773,38 +6255,38 @@
           "to_lifeline": "life_plannernode",
           "label": "publish(vehicle/state, obstacles, sim/context)",
           "type": "async",
-          "order": 4,
-          "y": 362.0,
-          "note": "以 sensor_data_qos 广播状态、障碍物与锁存参考线。"
+          "order": 7,
+          "y": 506.0,
+          "note": "以 sensor_qos 广播状态/障碍物，并锁存 run 上下文。"
         },
         {
           "id": "msg_plan",
           "from_lifeline": "life_plannernode",
-          "to_lifeline": "life_motion",
-          "label": "plan(state, obstacles, pred_loc)",
+          "to_lifeline": "life_planner",
+          "label": "plan(ego_state, obstacles, pred_loc, vehicle_loc)",
           "type": "sync",
-          "order": 5,
-          "y": 418.0,
+          "order": 8,
+          "y": 554.0,
           "note": "最新优先请求：清空旧请求后入队，返回是否被接受。"
         },
         {
           "id": "msg_worker_self",
-          "from_lifeline": "life_motion",
-          "to_lifeline": "life_motion",
+          "from_lifeline": "life_planner",
+          "to_lifeline": "life_planner",
           "label": "_plan(pred_loc, vehicle_loc, obstacles)",
           "type": "self",
-          "order": 6,
-          "y": 480.0,
-          "note": "worker 线程选择安全车道并生成 S 型平滑换道轨迹。"
+          "order": 9,
+          "y": 616.0,
+          "note": "worker 线程选择安全车道并在走廊内生成 S 型平滑换道轨迹。"
         },
         {
           "id": "msg_plan_return",
-          "from_lifeline": "life_motion",
+          "from_lifeline": "life_planner",
           "to_lifeline": "life_plannernode",
-          "label": "return plannedPath",
+          "label": "return local path (poll_result/get_result)",
           "type": "return",
-          "order": 7,
-          "y": 542.0,
+          "order": 10,
+          "y": 678.0,
           "note": "异步结果通过响应队列返回，由轮询取回。"
         },
         {
@@ -2813,28 +6295,28 @@
           "to_lifeline": "life_ctrlnode",
           "label": "publish planned_path",
           "type": "async",
-          "order": 8,
-          "y": 590.0,
-          "note": "锁存发布规划轨迹，供控制器订阅。"
+          "order": 11,
+          "y": 726.0,
+          "note": "锁存发布（带 run/版本编码 sequence）供控制器订阅。"
         },
         {
           "id": "msg_update_ref",
           "from_lifeline": "life_ctrlnode",
           "to_lifeline": "life_veh",
-          "label": "update_ref_path(path)",
+          "label": "update_ref_path(path, reset=False)",
           "type": "sync",
-          "order": 9,
-          "y": 638.0,
-          "note": "只接受当前 run 的 routing/reference_line 和新鲜 planned_path；缺失时由 safe_stop 请求停车。"
+          "order": 12,
+          "y": 774.0,
+          "note": "只接受当前 run 的 routing/reference_line 与新鲜 planned_path；缺失时由 safe_stop 请求停车。"
         },
         {
           "id": "msg_ctrl_step",
           "from_lifeline": "life_ctrlnode",
           "to_lifeline": "life_veh",
-          "label": "step(x, y, phi, vx, vy, r)",
+          "label": "step(x, y, phi, vx, vy, r, actual_steer)",
           "type": "sync",
-          "order": 10,
-          "y": 686.0,
+          "order": 13,
+          "y": 822.0,
           "note": "控制周期内计算横向转角与纵向油门/刹车。"
         },
         {
@@ -2843,19 +6325,19 @@
           "to_lifeline": "life_veh",
           "label": "lat.control(x, y, phi, vx, vy, r, ref_path)",
           "type": "self",
-          "order": 11,
-          "y": 748.0,
-          "note": "几何横向控制器：预瞄点匹配 + 曲率与误差反馈。"
+          "order": 14,
+          "y": 884.0,
+          "note": "动态 Riccati LQR：预瞄投影匹配 + 曲率前馈与状态反馈。"
         },
         {
           "id": "msg_lon_self",
           "from_lifeline": "life_veh",
           "to_lifeline": "life_veh",
-          "label": "lon.control(speed)",
+          "label": "lon.control(speed, coupling_accel)",
           "type": "self",
-          "order": 12,
-          "y": 810.0,
-          "note": "纵向 PID 跟踪目标车速并限幅加速度。"
+          "order": 15,
+          "y": 946.0,
+          "note": "纵向 PID 跟踪目标车速、抵消侧向耦合并限幅加速度。"
         },
         {
           "id": "msg_ctrl_return",
@@ -2863,19 +6345,29 @@
           "to_lifeline": "life_ctrlnode",
           "label": "return (steer, throttle, brake)",
           "type": "return",
-          "order": 13,
-          "y": 872.0,
+          "order": 16,
+          "y": 1008.0,
           "note": "加速度映射为归一化油门/刹车。"
         },
         {
           "id": "msg_publish_command",
           "from_lifeline": "life_ctrlnode",
-          "to_lifeline": "life_simnode",
-          "label": "publish control_command",
+          "to_lifeline": "life_manager",
+          "label": "publish control_command/cruise",
           "type": "async",
-          "order": 14,
-          "y": 920.0,
-          "note": "以 command_qos 发布控制指令，闭环回到仿真节点。"
+          "order": 17,
+          "y": 1056.0,
+          "note": "控制节点只发布候选命令到私有 topic。"
+        },
+        {
+          "id": "msg_publish_final",
+          "from_lifeline": "life_manager",
+          "to_lifeline": "life_simnode",
+          "label": "publish control_command (arbitrated)",
+          "type": "async",
+          "order": 18,
+          "y": 1104.0,
+          "note": "仲裁器是唯一写入 control_command 的节点，闭环回到仿真节点。"
         },
         {
           "id": "msg_command_fresh",
@@ -2883,18 +6375,18 @@
           "to_lifeline": "life_engine",
           "label": "step(command, dt)",
           "type": "sync",
-          "order": 15,
-          "y": 968.0,
+          "order": 19,
+          "y": 1152.0,
           "note": "命令新鲜（在超时窗口内）时使用收到的控制指令步进。"
         },
         {
           "id": "msg_command_stale",
           "from_lifeline": "life_simnode",
           "to_lifeline": "life_engine",
-          "label": "step(ControlCommand(brake=1.0), dt)",
+          "label": "step(ControlCommand(brake=1.0, gear=0), dt)",
           "type": "sync",
-          "order": 16,
-          "y": 1016.0,
+          "order": 20,
+          "y": 1200.0,
           "note": "命令超时（stale）时施加全刹车，保证安全。"
         }
       ],
@@ -2904,45 +6396,54 @@
           "type": "loop",
           "label": "[each physics tick @ 20 Hz]",
           "x": 76.0,
-          "width": 466.0,
-          "y_start": 162.0,
-          "y_end": 350.0
+          "width": 506.0,
+          "y_start": 306.0,
+          "y_end": 494.0
         },
         {
           "id": "frag_loop_plan",
           "type": "loop",
-          "label": "[each plan period @ 2 Hz]",
-          "x": 632.0,
-          "width": 442.0,
-          "y_start": 390.0,
-          "y_end": 578.0
+          "label": "[each plan period]",
+          "x": 1260.0,
+          "width": 542.0,
+          "y_start": 526.0,
+          "y_end": 714.0
         },
         {
           "id": "frag_loop_ctrl",
           "type": "loop",
           "label": "[each control period @ 20 Hz]",
-          "x": 1140.0,
-          "width": 450.0,
-          "y_start": 610.0,
-          "y_end": 908.0
+          "x": 1956.0,
+          "width": 488.0,
+          "y_start": 794.0,
+          "y_end": 1044.0
         },
         {
           "id": "frag_alt_fresh",
           "type": "alt",
           "label": "[command age <= timeout]",
           "x": 76.0,
-          "width": 466.0,
-          "y_start": 940.0,
-          "y_end": 1040.0
+          "width": 506.0,
+          "y_start": 1124.0,
+          "y_end": 1224.0
         },
         {
           "id": "frag_alt_stale",
           "type": "alt",
           "label": "[else: command stale]",
           "x": 76.0,
-          "width": 466.0,
-          "y_start": 988.0,
-          "y_end": 1088.0
+          "width": 506.0,
+          "y_start": 1172.0,
+          "y_end": 1272.0
+        },
+        {
+          "id": "frag_loop_run",
+          "type": "loop",
+          "label": "[once per run / reset]",
+          "x": 76.0,
+          "width": 1372.0,
+          "y_start": 162.0,
+          "y_end": 322.0
         }
       ],
       "components": [],
@@ -2952,10 +6453,10 @@
       "grid_color": "#e0e0e0",
       "grid_thickness": 1,
       "snap_to_grid": true,
-      "zoom": 0.5787037037037038,
+      "zoom": 0.5,
       "pan_x": 12.5,
       "pan_y": 82.5
     }
   ],
-  "active_diagram_index": 2
+  "active_diagram_index": 1
 }
