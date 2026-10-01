@@ -19,7 +19,7 @@ def test_shared_runtime_defaults_match_fixed_step_planning():
 def test_shared_runtime_speed_defaults_match_ros_configuration():
     runtime = DEFAULT_RUNTIME_CONFIG
     config_path = Path(__file__).parents[1] / "config" / "default.yaml"
-    yaml_text = config_path.read_text(encoding="utf-8")
+    yaml_text = "\n".join(line.split("#", 1)[0] for line in config_path.read_text(encoding="utf-8").splitlines())
 
     shared_parameters = {
         "default_speed_limit_kmh": runtime.default_speed_limit_kmh,
@@ -45,7 +45,7 @@ def test_shared_runtime_speed_defaults_match_ros_configuration():
 
 def test_parking_planner_selection_is_configured_for_ros_node():
     config_path = Path(__file__).parents[1] / "config" / "default.yaml"
-    yaml_text = config_path.read_text(encoding="utf-8")
+    yaml_text = "\n".join(line.split("#", 1)[0] for line in config_path.read_text(encoding="utf-8").splitlines())
 
     assert "parking_controller_node:" in yaml_text
     assert re.search(r"(?m)^\s+planner_type:\s*hybrid_astar\s*$", yaml_text)

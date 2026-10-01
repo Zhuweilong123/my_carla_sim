@@ -27,11 +27,22 @@ Routing 只负责拓扑路径，不负责动态障碍物避让。内置 JSON 地
 
 ## 局部路径规划
 
-`engine/algorithms/planner/motion_planner.py` 根据当前 run 匹配的 Routing 参考线和障碍物，生成短时域车道级避障路径。ROS planner 节点以异步方式提交规划任务，优先保留最新请求与结果；局部候选受路廊及碰撞间距参数约束。
+ROS `planner_node` 通过 `local_planner_algorithm` 选择算法，默认 `dp_qp`，可改为 `baseline` 对比。两者继承 `CorridorMotionPlanner`，共用异步请求队列、参考线边界和最终矩形碰撞检查，不互相继承。原 `RouteAwareMotionPlanner` 名称保留为基线算法的兼容别名。
 
-全局 Routing 选择拓扑车道序列；局部规划可以为绕开障碍物暂时偏离目标车道。当前局部规划以几何路径生成为主，并非完整行为规划或 ST 时空优化：不提供通用动态障碍物轨迹预测、信号灯规则处理或完整纵向速度规划。历史 `dp_path_plan.py` 与 `qp_path_plan.py` 不在默认执行链中。
+`BaselinePathPlanner` 保留原车道中心候选算法：生成固定目标横向偏移的五次多项式过渡，在候选中选择安全路径。`local_transition_distance_m` 仅控制这一算法的过渡距离。
 
-若当前 run 缺少匹配的 Routing 参考线或新鲜局部路径，`safe_stop_node` 请求制动；系统不以仿真器道路路径代替缺失的 Routing 参考线。
+`DPQPPathPlanner` 的执行链为：
+
+1. 以实际车辆位置投影作为规划起点，按参考线实际弧长建立 S-L 坐标，并从车辆航向、速度和横摆角速度计算起始横向导数。
+2. `engine/algorithms/planner/dp_qp.py::DP_algorithm` 在可行驶边界内建立横向格点（默认 0.5 m），纵向最大间隔 8 m，起点和障碍物附近加密至 4 m。状态包含横向偏移和斜率（-0.2、0、0.2），节点二阶导数为零；相邻状态用匹配两端导数的五次多项式连接。先排除不可达状态对，再批量计算代价与安全约束。偏移、一二阶导数及靠近障碍物的软余量构成代价，不硬编码车道中心或左侧偏好。
+3. DP 与 QP 共用斜率、道路边界及车身五个纵向位置的约束；障碍物按对应车身位置的纵向占用收紧边界，避免把前后车身余量同时施加在整个膨胀区。根据 DP 绕障方向构造凸走廊。QP 显式保留 l、dl、ddl 和每段 jerk，通过稀疏连续性等式精确积分，得到 C2 横向曲线，避免全时域积分矩阵的病态问题。起点前 12 m 加密至 0.5 m，障碍物附近加密至 1 m，远端最大间隔由 `qp_station_step_m` 控制。上一帧有效路径在新弧长坐标中作为软连续性目标；OSQP 从 DP 曲线初始化，执行不可行检测、迭代限制和默认 0.08 s 求解时间限制，之后独立检查所有约束残差。QP 额外约束二阶空间导数以改善可跟踪性；起点已超过舒适阈值时允许逐渐恢复，不要求状态瞬间跳变。这仍不保证任意可行 DP 路径均有可行 QP 解。
+4. 输出按 `local_path_sampling_resolution_m` 增密，默认最大参考线弧长间距 0.5 m；重算笛卡尔航向和曲率。再次检查障碍物碰撞及车身四角是否超出物理道路边界。
+
+`last_qp_diagnostics` 提供 OSQP 状态、迭代数、求解耗时及变量数；失败日志同时记录自车位置和状态。`last_status` 提供 `solved`、`dp_infeasible`、`corridor_infeasible`、`qp_failed`、`validation_failed` 等诊断。任一阶段失败都返回空路径，触发现有安全停车；不会用走廊中线冒充 QP，也不会自动切换基线算法。历史 CARLA 兼容工具 `dp_path_plan.py`、`qp_path_plan.py` 不参与这条链；其点障碍物、固定道路边界和失败回退不适合作为正式实现直接调用。
+
+两种算法都需要参考线；正式算法在提供可行驶左右边界时不依赖明确车道线。缺少边界时仍采用名义车道宽度推导道路范围。上游 Routing 仍使用车道拓扑，因此这次改动不等于完整的无结构道路导航。参考线分支匹配仍使用最近投影，交叉或重叠参考线需要后续加入有状态的分支选择。
+
+这是横向几何路径 DP+QP；障碍物按当前矩形处理，不包含动态目标预测和纵向 ST 速度优化。空间 jerk 优化不等同于变速车辆的时间 jerk 最优。QP 限制相对参考线的斜率（约 0.35 rad），较大起始航向偏差会失败停车。边界和碰撞约束采用密集采样及保守矩形近似，并非连续空间的形式化安全证明。
 
 ## 控制与车辆模型
 
@@ -46,7 +57,7 @@ Routing 只负责拓扑路径，不负责动态障碍物避让。内置 JSON 地
 ```text
 LateralController
 └── ProjectedLateralController（公共路径投影、误差计算）
-    ├── LateralLQRController（包含内部 LQR 实现层）
+    ├── LateralLQRController（lat_lqr.py，直接实现 Riccati LQR）
     └── LateralMPCController
 
 LongitudinalController

@@ -58,7 +58,8 @@ jobs:
           rosdep install --from-paths lightweight_sim_msgs lightweight_sim parking_module \
             --ignore-src --rosdistro lyrical --skip-keys=ament_python -y
           apt-get update
-          apt-get install -y python3-venv
+          apt-get install -y python3-venv python3-pip
+          python3 -m pip install --user --break-system-packages "osqp>=1.0"
 
       - name: Install Python test dependencies
         run: |

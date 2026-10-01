@@ -34,6 +34,7 @@ class RuntimeConfig:
     max_lateral_accel_mps2: float = 2.0
     max_reference_curvature_1pm: float = 0.15
     local_transition_distance_m: float = 12.0
+    local_path_sampling_resolution_m: float = 0.5
     junction_angle_threshold_rad: float = 0.7
     lane_width: float = 3.5
     num_lanes: int = 2

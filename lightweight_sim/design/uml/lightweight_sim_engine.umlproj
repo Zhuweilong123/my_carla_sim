@@ -3276,7 +3276,7 @@
             "width": 260.0,
             "height": 351.0
           },
-          "note": "速度相关自行车模型 DARE 的投影动态 Riccati LQR：Euler 预瞄投影匹配参考线，曲率前馈 + 状态反馈；支持执行器（延迟/滞后）增广。活跃实现链 lat_lqr→_lat_lqr_opt2→_lat_lqr_impl。",
+          "note": "速度相关自行车模型 DARE 的投影动态 Riccati LQR：Euler 预瞄投影匹配参考线，曲率前馈 + 状态反馈；支持执行器（延迟/滞后）增广。lat_lqr.py 直接实现 LQR，继承 ProjectedLateralController 复用路径投影与误差计算。",
           "provided_interfaces": [],
           "required_interfaces": []
         },

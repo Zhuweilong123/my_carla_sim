@@ -12,7 +12,7 @@ from lightweight_sim_msgs.msg import ReferenceLine as RosReferenceLine
 from lightweight_sim_msgs.msg import VehicleState as RosVehicleState
 from rclpy.node import Node
 from ..algorithms.planner.motion_planner import MotionPlanner
-from ..reference_line import RouteAwareMotionPlanner
+from ..reference_line.dp_qp_planner import create_local_planner
 from ..simulator.data_types import Obstacle, VehicleState
 from ..runtime_config import DEFAULT_RUNTIME_CONFIG
 from .qos import latched_path_qos, sensor_data_qos
@@ -31,9 +31,18 @@ class PlannerNode(Node):
         self.declare_parameter("routing_reference_topic", "routing/reference_line")
         self.declare_parameter("routing_corridor_margin_m", 1.1)
         self.declare_parameter("local_plan_points", 80)
+        self.declare_parameter("local_planner_algorithm", "dp_qp")
+        self.declare_parameter("dp_station_step_m", 8.0)
+        self.declare_parameter("dp_lateral_step_m", 0.5)
+        self.declare_parameter("qp_station_step_m", 4.0)
+        self.declare_parameter("qp_time_limit_s", 0.08)
         self.declare_parameter(
             "local_transition_distance_m",
             DEFAULT_RUNTIME_CONFIG.local_transition_distance_m,
+        )
+        self.declare_parameter(
+            "local_path_sampling_resolution_m",
+            DEFAULT_RUNTIME_CONFIG.local_path_sampling_resolution_m,
         )
         self.declare_parameter("local_collision_margin_m", 0.25)
         self.declare_parameter("local_obstacle_longitudinal_min_m", -5.0)
@@ -172,8 +181,13 @@ class PlannerNode(Node):
             Parameter("num_lanes", value=int(self.route_context["num_lanes"]))])
         lane_width = float(self.get_parameter("lane_width").value)
         num_lanes = int(self.get_parameter("num_lanes").value)
-        self.planner = RouteAwareMotionPlanner(
-                self.routing_reference_path,
+        self.planner = create_local_planner(
+                str(self.get_parameter("local_planner_algorithm").value),
+                dp_station_step_m=float(self.get_parameter("dp_station_step_m").value),
+                dp_lateral_step_m=float(self.get_parameter("dp_lateral_step_m").value),
+                qp_station_step_m=float(self.get_parameter("qp_station_step_m").value),
+                qp_time_limit_s=float(self.get_parameter("qp_time_limit_s").value),
+                global_frenet_path=self.routing_reference_path,
                 lane_width=lane_width,
                 num_lanes=num_lanes,
                 reference_lane_index=self.routing_reference_lane,
@@ -186,6 +200,9 @@ class PlannerNode(Node):
                 horizon_points=int(self.get_parameter("local_plan_points").value),
                 transition_distance_m=float(
                     self.get_parameter("local_transition_distance_m").value
+                ),
+                sampling_resolution_m=float(
+                    self.get_parameter("local_path_sampling_resolution_m").value
                 ),
                 collision_margin_m=float(
                     self.get_parameter("local_collision_margin_m").value
@@ -209,7 +226,7 @@ class PlannerNode(Node):
         self.planner.start()
         if self.state is not None:
             self._request_plan()
-        self.get_logger().info("planner reference source=routing")
+        self.get_logger().info(f"planner reference source=routing algorithm={type(self.planner).__name__}")
 
     def _stop_planner(self):
         if self.planner is not None:

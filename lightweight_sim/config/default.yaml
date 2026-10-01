@@ -47,6 +47,12 @@ planner_node:  # 局部规划：参考线跟踪、障碍物筛选与轨迹碰撞
     num_lanes: 2  # 车道数量的初始值；接到当前场景上下文后会被场景值覆盖。
     routing_reference_topic: routing/reference_line  # 订阅的 Routing 参考线话题，需与 reference_line_node 的输出一致。
     routing_corridor_margin_m: 1.1  # 可行驶走廊边缘的预留距离，单位 m，非负；越大允许的横向活动范围越小。
+    local_planner_algorithm: dp_qp  # 局部算法：dp_qp 为正式 DP+QP；baseline 为原车道候选五次多项式对比算法。
+    dp_station_step_m: 8.0  # DP 纵向网格最大间距，单位 m；起点和障碍物附近加密至 4 m，按实际弧长采样。
+    dp_lateral_step_m: 0.5  # DP 横向采样间距，单位 m；覆盖可行驶边界，不依赖车道中心。
+    qp_station_step_m: 4.0  # QP 远端节点最大间距，单位 m；起点前 12 m 加密至 0.5 m，障碍物附近加密至 1 m。
+    qp_time_limit_s: 0.08  # OSQP 求解时间上限，单位 s；失败返回空路径并保留安全停车。
+    local_path_sampling_resolution_m: 0.5  # 输出路径沿参考线的最大采样间距，单位 m；用于增密与碰撞检查。
     local_plan_points: 80  # 局部规划参考点截取数量，至少为 2；决定规划前视范围，不是 MPC 预测步数。
     local_transition_distance_m: 12.0  # 横向偏移/换道的过渡距离，单位 m，必须为正；越大过渡越长。
     local_collision_margin_m: 0.25  # 局部轨迹碰撞检查的额外安全余量，单位 m，非负。

@@ -75,10 +75,20 @@ SI 单位用于物理量：位置 m、速度 m/s、角度 rad、加速度 m/s²�
 
 在已安装 ROS 2 的 Linux/WSL 终端：
 
+默认 DP+QP 需要 ROS 节点实际使用的 Python 环境包含 SciPy 和 OSQP。Ubuntu/WSL 可执行：
+
+```bash
+sudo apt install python3-scipy python3-pip
+python3 -m pip install --user --break-system-packages "osqp>=1.0"
+python3 -c "import scipy, osqp; print(scipy.__version__, osqp.__version__)"
+```
+
+这里的 `--break-system-packages` 是 Ubuntu 系统 Python 安装用户包时的显式选项；若使用虚拟环境，请在构建及启动时使用同一环境。Windows Conda 的依赖不会提供给 WSL；`colcon build` 不会自动安装运行依赖。SciPy 已声明在 `package.xml`，可通过 rosdep 安装；OSQP 通过上述 pip 命令安装，版本要求同时写入 `requirements.txt` 和 `setup.py`。
+
 ```bash
 source /opt/ros/$ROS_DISTRO/setup.bash
 cd /mnt/d/AI_tools/vehicle_motion
-python3 -m pip install -r lightweight_sim/requirements.txt
+python3 -m pip install --user --break-system-packages -r lightweight_sim/requirements.txt
 colcon build
 source install/setup.bash
 ros2 launch lightweight_sim lightweight_sim.launch.py gui:=true

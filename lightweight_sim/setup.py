@@ -55,7 +55,7 @@ setup(
             ],
         ),
     ],
-    install_requires=["setuptools", "numpy", "pygame-ce>=2.5"],
+    install_requires=["setuptools", "numpy", "scipy>=1.10", "osqp>=1.0", "pygame-ce>=2.5"],
     zip_safe=True,
     entry_points={
         "console_scripts": [
