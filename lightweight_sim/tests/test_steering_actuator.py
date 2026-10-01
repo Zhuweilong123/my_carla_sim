@@ -13,6 +13,37 @@ from lightweight_sim.engine.simulator.scenarios import make_scenario
 from lightweight_sim.engine.algorithms.controller.combined import VehicleController
 
 
+def test_plant_history_snapshot_replaces_unexecuted_candidate_after_arbitration():
+    params = steering_profile('assumed')
+    actuator = SteeringActuator(params, .5)
+    controller = VehicleController(steering_params=params)
+    assert actuator.history_snapshot(.05) == [0.]
+    controller.lat.command_history = [.3]  # Cruise candidate was overridden.
+    actuator.begin_period(0., .05)  # Actual safety-stop command.
+    actuator.advance(.05)
+    snapshot = actuator.history_snapshot(.05)
+    controller.lat.synchronize_actuator_state(actuator.angle, snapshot)
+    assert controller.lat.command_history == [0.]
+    snapshot[0] = .4
+    assert actuator.history_snapshot(.05) == [0.]
+    assert controller.lat.command_history == [0.]
+    # Later manual steering also replaces cruise's speculative history.
+    actuator.begin_period(-.2, .05)
+    actuator.advance(.05)
+    controller.lat.synchronize_actuator_state(actuator.angle, actuator.history_snapshot(.05))
+    assert controller.lat.command_history == [-.2]
+
+
+@pytest.mark.parametrize('angle, history', [(0., []), (0., [float('nan')]),
+                                           (0., [.6]), (float('nan'), [0.]), (.6, [0.])])
+def test_invalid_plant_history_does_not_corrupt_controller_state(angle, history):
+    controller = VehicleController(steering_params=steering_profile('assumed'))
+    controller.lat.command_history = [.1]
+    with pytest.raises(ValueError, match='delay-queue feedback'):
+        controller.lat.synchronize_actuator_state(angle, history)
+    assert controller.lat.command_history == [.1]
+
+
 def test_step_delay_and_lag_analytic_response():
     params = SteeringParams(mode="dynamic", rate_limit_rad_s=100)
     actuator = SteeringActuator(params, 0.5)
@@ -53,13 +84,18 @@ def test_invalid_parameters_and_unrepresentable_delay_rejected():
         actuator.begin_period(float("nan"), 0.05)
 
 
-def transition(error, command, speed, dt, params):
+def transition(error, command, speed, dt, params, max_substep_s=None):
     vehicle = EgoVehicle(VehicleState(vx=speed, y=error[0], vy=error[1]-speed*error[2],
                                      phi=error[2], r=error[3], steer=error[4]))
     actuator = SteeringActuator(params, 0.5, error[4])
     actuator.queue = deque(error[5:])
     actuator.begin_period(command, dt)
-    n = max(1, math.ceil(speed*dt/0.5))
+    # Match SimulationEngine's dynamic integration, including its time bound.
+    from lightweight_sim.engine.runtime_config import DEFAULT_RUNTIME_CONFIG
+    if max_substep_s is None:
+        max_substep_s = DEFAULT_RUNTIME_CONFIG.dynamic_max_substep_s
+    n = max(1, math.ceil(speed*dt/0.5),
+            math.ceil(dt/max_substep_s))
     for _ in range(n):
         state = vehicle.step(actuator.advance(dt/n), 0, dt/n, "dynamic")
     return np.array([state.y, state.vy+speed*state.phi, state.phi, state.r,
@@ -87,6 +123,29 @@ def test_augmented_model_matches_independent_physics_difference(speed, delay):
     residual = A.T@P@A-A.T@P@B@np.linalg.solve(R+B.T@P@B, B.T@P@A)+cost-P
     assert np.max(abs(residual)) < 1e-7
     assert max(abs(np.linalg.eigvals(A-controller.B@controller.K))) < 1
+
+
+@pytest.mark.parametrize("max_substep_s", [0.001, 0.005])
+def test_lqr_custom_integration_matches_physics(max_substep_s):
+    params = steering_profile("assumed")
+    controller = VehicleController(steering_params=params,
+                                   dynamic_max_substep_s=max_substep_s).lat
+    controller.update_lqr_gain(6.)
+    dim, eps = controller.A.shape[0], 1e-6
+    basis = np.eye(dim)
+    def step(error, command):
+        return transition(error, command, 6., .05, params, max_substep_s)
+    A = np.column_stack([(step(e*eps, 0)-step(-e*eps, 0))/(2*eps)
+                         for e in basis])
+    B = (step(np.zeros(dim), eps)-step(np.zeros(dim), -eps))/(2*eps)
+    assert np.allclose(controller.A, A, atol=1e-7)
+    assert np.allclose(controller.B[:, 0], B, atol=1e-7)
+
+
+@pytest.mark.parametrize("max_substep_s", [0., -0.001, float("nan"), float("inf")])
+def test_lqr_rejects_invalid_integration_step(max_substep_s):
+    with pytest.raises(ValueError, match="max_substep_s"):
+        VehicleController(dynamic_max_substep_s=max_substep_s)
 
 
 def test_reset_clears_plant_and_controller_history_and_requires_feedback():

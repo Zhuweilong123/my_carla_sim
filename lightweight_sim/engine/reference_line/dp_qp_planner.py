@@ -60,6 +60,7 @@ class DPQPPathPlanner(CorridorMotionPlanner):
         if len(s) < 2 or s[-1] < 1.:
             return []
         angles = np.unwrap(ref[:, 2])
+        reference_curvature_derivative = np.gradient(ref[:, 3], s)
 
         def geometry(t):
             return (np.interp(t, s, ref[:, 0]), np.interp(t, s, ref[:, 1]),
@@ -82,8 +83,15 @@ class DPQPPathPlanner(CorridorMotionPlanner):
                 return []
             factor = 1.-ref[0, 3]*l0
             dl0 = factor*math.tan(delta)
-            curvature = yaw_rate/math.hypot(vx, vy) if math.hypot(vx, vy) > .5 else ref[0, 3]
-            ddl0 = factor*(factor*curvature/math.cos(delta)-ref[0, 3])/math.cos(delta)**2
+            nominal_handover = getattr(self, '_planning_handover', False)
+            minimum_speed = .01 if nominal_handover else .5
+            curvature = yaw_rate/math.hypot(vx, vy) if math.hypot(vx, vy) > minimum_speed else ref[0, 3]
+            if nominal_handover:
+                norm_squared = factor*factor+dl0*dl0
+                ddl0 = (curvature*norm_squared**1.5-ref[0, 3]*(factor*factor+2*dl0*dl0)
+                        -reference_curvature_derivative[0]*l0*dl0)/factor
+            else:
+                ddl0 = factor*(factor*curvature/math.cos(delta)-ref[0, 3])/math.cos(delta)**2
         start = (float(l0), dl0, ddl0)
         preferred = (self.lane_width*(self.target_lane-self.reference_lane_index)
                      if 0 <= self.target_lane < self.num_lanes else 0.)
@@ -174,7 +182,8 @@ class DPQPPathPlanner(CorridorMotionPlanner):
             relative = anchor-previous_anchor+samples
             valid = (relative >= 0.) & (relative <= previous_s[-1])
             previous_target = np.interp(relative, previous_s, previous_l)
-            target_profile = np.where(valid, (dp_l+5*previous_target)/6, dp_l)
+            weight = 5*np.exp(-samples/12.)
+            target_profile = np.where(valid, (dp_l+weight*previous_target)/(1+weight), dp_l)
         optimized = Quadratic_planning(knots, samples, start, target_profile, lower, upper, preferred,
                                        road_limits=road_bounds(samples),
                                        footprint_constraints=[(offset, *convex_bounds(samples, dp_l, offset))
@@ -191,6 +200,15 @@ class DPQPPathPlanner(CorridorMotionPlanner):
         x, y, theta = geometry(samples)
         points = list(zip(x-l*np.sin(theta), y+l*np.cos(theta)))
         heading, curvature = cal_heading_kappa(points)
+        if getattr(self, '_planning_handover', False):
+            # Preserve the committed boundary exactly. Elsewhere derive heading
+            # from actual Cartesian samples: the reference x/y interpolation is
+            # piecewise linear and is not exactly consistent with its stored k.
+            factor = 1-ref[0, 3]*l[0]
+            norm_squared = factor*factor+dl[0]*dl[0]
+            heading[0] = theta[0]+math.atan2(dl[0], factor)
+            curvature[0] = (factor*ddl[0]+ref[0, 3]*(factor*factor+2*dl[0]*dl[0])
+                            +reference_curvature_derivative[0]*l[0]*dl[0])/max(norm_squared, 1e-12)**1.5
         result = [(float(px), float(py), float(h), float(k))
                   for (px, py), h, k in zip(points, heading, curvature)]
         if not edge_safe(samples, l, dl, ddl) or not self._trajectory_is_safe(result, obstacles):
@@ -224,6 +242,46 @@ class DPQPPathPlanner(CorridorMotionPlanner):
         self._previous_profile = (anchor, samples.copy(), l.copy())
         self.last_status = 'solved'
         return result
+
+    def validate_path(self, path, obstacles):
+        """Revalidate the committed prefix and tail against the latest context."""
+        if len(path) < 2 or not np.all(np.isfinite(path)):
+            return False
+        rectangles = [(o.x, o.y, o.length, o.width, o.speed, o.heading) for o in obstacles]
+        if not self._trajectory_is_safe(path, rectangles):
+            return False
+        ref = np.asarray(self.global_path, dtype=float)
+        segments = np.diff(ref[:, :2], axis=0)
+        lengths = np.linalg.norm(segments, axis=1)
+        keep = lengths > 1e-6
+        segments, lengths = segments[keep], lengths[keep]
+        anchors = ref[:-1, :2][keep]
+        limits = np.asarray([self._corridor_bounds(i, p) for i, p in enumerate(ref)])
+        lo0, hi0 = limits[:-1][keep].T
+        lo1, hi1 = limits[1:][keep].T
+        points = np.asarray(path)
+        tangent = np.column_stack((np.cos(points[:, 2]), np.sin(points[:, 2])))
+        normal = np.column_stack((-np.sin(points[:, 2]), np.cos(points[:, 2])))
+        corners = np.concatenate([points[:, :2]+a*tangent+b*normal
+                                  for a in (-self.vehicle_length_m/2, self.vehicle_length_m/2)
+                                  for b in (-self.vehicle_width_m/2, self.vehicle_width_m/2)])
+        # Bound memory for long routes; final checks use actual rotated corners.
+        for first in range(0, len(corners), 128):
+            batch = corners[first:first+128]
+            delta = batch[:, None, :]-anchors[None, :, :]
+            ratios = np.clip(np.sum(delta*segments[None, :, :], axis=-1)/lengths**2, 0., 1.)
+            projected = anchors[None, :, :]+ratios[:, :, None]*segments[None, :, :]
+            nearest = np.argmin(np.sum((batch[:, None, :]-projected)**2, axis=-1), axis=1)
+            rows = np.arange(len(batch))
+            displacement = batch-projected[rows, nearest]
+            unit = segments[nearest]/lengths[nearest, None]
+            offset = -displacement[:, 0]*unit[:, 1]+displacement[:, 1]*unit[:, 0]
+            ratio = ratios[rows, nearest]
+            lower = (1-ratio)*lo0[nearest]+ratio*lo1[nearest]-self.corridor_margin_m
+            upper = (1-ratio)*hi0[nearest]+ratio*hi1[nearest]+self.corridor_margin_m
+            if np.any(offset < lower-1e-5) or np.any(offset > upper+1e-5):
+                return False
+        return True
 
 
 def create_local_planner(algorithm, *args, **kwargs):

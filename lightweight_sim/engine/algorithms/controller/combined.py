@@ -6,6 +6,7 @@ from .lon_pid import LongitudinalPIDController
 from .base import LateralController, LongitudinalController
 from ...simulator.data_types import VehicleParams
 from ...simulator.steering import SteeringParams
+from ...runtime_config import DEFAULT_RUNTIME_CONFIG
 import math
 import numpy as np
 
@@ -17,8 +18,16 @@ class VehicleController:
                  dynamic_lateral_r=300.0, feedback_horizon_s=0.0,
                  smooth_reference_heading=True, discretization="plant",
                  longitudinal_params=None, lateral_controller=None,
-                 longitudinal_controller=None, mpc_params=None):
+                 longitudinal_controller=None, mpc_params=None,
+                 dynamic_max_substep_s=DEFAULT_RUNTIME_CONFIG.dynamic_max_substep_s):
         self.params = vehicle_params or VehicleParams()
+        if not math.isfinite(dt) or dt <= 0:
+            raise ValueError("control period must be positive and finite")
+        if lateral_controller is None and controller_type not in ("LQR_controller", "MPC_controller"):
+            raise ValueError("unknown lateral controller: " + str(controller_type))
+        if vehicle_params is not None and vehicle_para is not None and not np.allclose(
+                vehicle_para, vehicle_params.lateral_tuple, rtol=0, atol=1e-9):
+            raise ValueError("vehicle_para disagrees with vehicle_params")
         vehicle_para = vehicle_para or self.params.lateral_tuple
         self.controller_type = controller_type
         self.vehicle_para = vehicle_para
@@ -32,9 +41,10 @@ class VehicleController:
                            else SteeringParams())
         control_cost = dynamic_lateral_r if actuator_params.mode == "dynamic" else lateral_r
         lateral_kwargs = dict(Q=lateral_q, R=float(control_cost), ts=dt,
-                              discretization=discretization)
+                              discretization=discretization,
+                              max_substep_s=dynamic_max_substep_s)
         self.lat: LateralController = lateral_controller if lateral_controller is not None else (
-            LateralMPCController(vehicle_para, **lateral_kwargs, **(mpc_params or {}))
+            LateralMPCController(vehicle_para, **(lateral_kwargs | (mpc_params or {})))
             if controller_type == "MPC_controller"
             else LateralLQRController(vehicle_para, **lateral_kwargs)
         )

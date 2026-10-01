@@ -112,6 +112,7 @@ class ControllerNode(Node):
         self.plan_time = None
         self.plan_ready = False
         self.last_control_stamp = None
+        self._history_command_stamp = None
         self.actuator_timing_fault = False
         self.tracking_monitor = None
         self.measurement_path = None
@@ -141,7 +142,10 @@ class ControllerNode(Node):
         self.timer = self.create_timer(period, self._on_timer)
 
     def _controller_options(self):
+        context = getattr(self, "route_context", None) or {}
         return dict(
+            dynamic_max_substep_s=float(context.get(
+                "dynamic_max_substep_s", DEFAULT_RUNTIME_CONFIG.dynamic_max_substep_s)),
             actuator_compensation=bool(
                 self.get_parameter("actuator_compensation").value
             ),
@@ -212,6 +216,7 @@ class ControllerNode(Node):
         self.plan_ready = False
         self.state = None
         self.last_control_stamp = None
+        self._history_command_stamp = None
         self.last_sequence = -1
         pending_reference = self._pending_routing_reference
         if (
@@ -370,6 +375,16 @@ class ControllerNode(Node):
         self.controller.update_ref_path(self.planned_path or self.reference_path, reset=False)
 
     def _publish_command(self, steer: float, throttle: float, brake: float) -> None:
+        # Legacy/direct-writer inputs without plant FIFO feedback still account
+        # for a brake/hold command once per physics state, including early exits.
+        if (self.active_run is not None and self.state is not None
+                and self.controller.lat.actuator_params.mode == "dynamic"
+                and self.state.steering_delay_queue is None
+                and self._history_command_stamp != self.state.timestamp):
+            history = self.controller.lat.command_history
+            if history:
+                self.controller.lat.command_history = history[1:]+[float(steer)]
+            self._history_command_stamp = self.state.timestamp
         message = ControlCommand()
         message.header.stamp = self.get_clock().now().to_msg()
         message.header.frame_id = "base_link"
@@ -383,14 +398,41 @@ class ControllerNode(Node):
         if self.active_run is None or self.state is None or self.state_time is None:
             self._publish_command(0.0, 0.0, 1.0)
             return
+        age = (self.get_clock().now() - self.state_time).nanoseconds / 1e9
+        timeout = float(self.get_parameter("state_timeout").value)
+        if age < 0 or age > timeout:
+            self._publish_command(0.0, 0.0, 1.0)
+            return
+        if self.last_control_stamp == self.state.timestamp:
+            return
+        if self.controller.lat.actuator_params.mode == "dynamic":
+            elapsed = (None if self.last_control_stamp is None
+                       else self.state.timestamp-self.last_control_stamp)
+            try:
+                if not math.isfinite(self.state.timestamp) or (elapsed is not None and elapsed <= 0):
+                    raise ValueError('actuator state timestamp is invalid or moved backwards')
+                feedback = self.state.steering_delay_queue
+                if feedback is not None:
+                    # Same timestamp as measured angle: actual plant inputs after
+                    # arbitration, safe-stop and manual/parking overrides.
+                    self.controller.lat.synchronize_actuator_state(self.state.steer, feedback)
+                elif elapsed is not None and not math.isclose(elapsed, self.controller.lat.ts, abs_tol=1e-6):
+                    raise ValueError('actuator command history lost time alignment without plant feedback')
+            except ValueError as exc:
+                if not self.actuator_timing_fault:
+                    self.get_logger().error(f'{exc}; reset required')
+                self.actuator_timing_fault = True
+            if self.actuator_timing_fault:
+                self._publish_command(self.state.steer, 0.0, 1.0)
+                return
+        # Account for every fresh physics state, even when no path is ready.
+        self.last_control_stamp = self.state.timestamp
         if self.route_context and self.route_context.get("maneuver") == "reverse_parking":
             # Reverse parking has a separate controller candidate.  The cruise
             # controller must stay neutral even if it was launched directly.
             self._publish_command(0.0, 0.0, 1.0)
             return
-        age = (self.get_clock().now() - self.state_time).nanoseconds / 1e9
-        timeout = float(self.get_parameter("state_timeout").value)
-        if age < 0 or age > timeout or not self.reference_path:
+        if not self.reference_path:
             self._publish_command(0.0, 0.0, 1.0)
             return
         if not self.plan_ready:
@@ -405,20 +447,6 @@ class ControllerNode(Node):
                 # obstacles on the global centreline. Wait stopped for a plan.
                 self._publish_command(0.0, 0.0, 1.0)
                 return
-        if self.last_control_stamp == self.state.timestamp:
-            return
-        if self.controller.lat.actuator_params.mode == "dynamic":
-            if self.last_control_stamp is not None and not math.isclose(
-                    self.state.timestamp-self.last_control_stamp, self.controller.lat.ts, abs_tol=1e-6):
-                if not self.actuator_timing_fault:
-                    self.get_logger().error("actuator command history lost time alignment; reset required")
-                self.actuator_timing_fault = True
-            if self.actuator_timing_fault:
-                # Do not extrapolate a delay FIFO through missing physics ticks.
-                # Latch a bounded hold-angle/brake request until a new run/reset.
-                self._publish_command(self.state.steer, 0.0, 1.0)
-                return
-        self.last_control_stamp = self.state.timestamp
         self.controller.set_target_speed(
             self._target_speed_at(self.state.x, self.state.y)
         )
@@ -432,6 +460,7 @@ class ControllerNode(Node):
                 self.state.r,
                 actual_steer=self.state.steer,
             )
+            self._history_command_stamp = self.state.timestamp
         except (RuntimeError, ValueError) as exc:
             self.get_logger().error(f"controller failed; braking: {exc}")
             self.actuator_timing_fault = self.controller.lat.actuator_params.mode == "dynamic"

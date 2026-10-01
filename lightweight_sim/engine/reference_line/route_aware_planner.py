@@ -8,6 +8,7 @@ from ..algorithms.planner.motion_planner import MotionPlanner
 from ..algorithms.utils.frenet import find_match_points
 from ..algorithms.utils.quintic import sample_quintic_path
 from ..runtime_config import DEFAULT_RUNTIME_CONFIG
+from ..simulator.data_types import VehicleParams
 
 
 class CorridorMotionPlanner(MotionPlanner):
@@ -31,8 +32,8 @@ class CorridorMotionPlanner(MotionPlanner):
         obstacle_longitudinal_min_m: float = -5.0,
         obstacle_longitudinal_max_m: float = 65.0,
         obstacle_lateral_clearance_m: float = 2.2,
-        vehicle_length_m: float = 4.0,
-        vehicle_width_m: float = 2.0,
+        vehicle_length_m: float = VehicleParams().length,
+        vehicle_width_m: float = VehicleParams().width,
     ) -> None:
         super().__init__(
             global_frenet_path,

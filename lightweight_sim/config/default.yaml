@@ -7,7 +7,7 @@ simulator_node:  # 仿真器：物理推进、车辆参数、场景限速与转�
   ros__parameters:  # 本节点的 ROS 参数。
     use_sim_time: false  # 仿真器使用系统时间推进物理步，通常设为 false，避免等待自己发布的 /clock。
     scenario: obstacle  # 初始场景：default、demo_grid、obstacle、three_lane、curve、figure_eight、reverse_parking；launch 可覆盖。
-    dynamic_max_substep_s: 0.0025  # 动力学积分的最大子步，单位 s，必须为正；越小积分越精细、计算量越大。
+    dynamic_max_substep_s: 0.0025  # 动力学积分的最大子步，单位 s，必须为正；经场景上下文同步给 LQR/MPC 的 plant 模型，越小计算量越大。
     steering_profile: ideal  # 转向执行器模式：ideal 为理想响应，assumed 含假设的延迟/惯性/速率限制；launch 可覆盖，非实车标定。
     physics_dt: 0.05  # 物理/控制模型的离散步长，单位 s，必须为正；控制端应与仿真端一致。
     command_timeout: 0.25  # 最终控制命令的接收超时，单位 s（本节点使用系统时间）；超时后制动。
@@ -18,7 +18,6 @@ simulator_node:  # 仿真器：物理推进、车辆参数、场景限速与转�
     lane_change_speed_limit_kmh: 40.0  # 换道路段/场景的限速，单位 km/h。
     parking_speed_limit_kmh: 12.0  # 泊车场景的限速，单位 km/h。
     target_speed_ratio: 0.85  # 限速转目标速度的比例，取值 (0, 1]；目标速度 = 路段限速 × 此比例。
-    speed_profile_lookahead_m: 20.0  # 预留的速度剖面前瞻距离，单位 m；当前仿真节点未读取该项，实际使用控制节点同名参数。
     max_lateral_accel_mps2: 2.0  # 弯道速度约束的最大横向加速度，单位 m/s²；传给控制端，用于 v²×曲率限速。
     publish_clock: true  # 是否发布 /clock；使用仿真时间的其他节点依赖该时钟，通常保持 true。
     frame_id: map  # 车辆状态等消息的坐标系名称；map 表示地图坐标系。
@@ -42,7 +41,14 @@ planner_node:  # 局部规划：参考线跟踪、障碍物筛选与轨迹碰撞
     use_sim_time: true  # 规划定时器及路径时间戳使用 /clock；暂停仿真时规划时间同步暂停。
     plan_period: 0.05  # 提交局部规划请求的周期，单位 s；0.05 对应 20 Hz。
     result_poll_period: 0.02  # 轮询异步规划结果的周期，单位 s；越小结果发布延迟越低。
-    prediction_time: 0.2  # 预测自车位置的前视时间，单位 s；用于选择规划起点，不是 MPC 预测时域。
+    prediction_time: 0.2  # baseline 预测位置前视时间，单位 s；DP+QP 改用当前执行路径与接管延迟预测。
+    handover_min_time_s: 0.15  # DP+QP 接管预测的最小时间，单位仿真 s；覆盖计算、发布和定时轮询延迟。
+    handover_max_time_s: 0.4  # 接管预测时间上限，单位仿真 s；超时结果拒绝接入。
+    handover_margin_time_s: 0.05  # 实测规划/发布延迟之上的接管余量，单位仿真 s。
+    handover_position_tolerance_m: 0.35  # 沿当前路径预测和接管验证允许的位置跟踪偏差，单位 m。
+    handover_heading_tolerance_rad: 0.25  # 速度方向相对当前路径的跟踪容差，单位 rad；拼接点采用更严格的 0.03 rad。
+    handover_curvature_tolerance_1pm: 0.12  # 车辆运动曲率与当前路径的跟踪容差，单位 1/m；拼接点采用更严格的 0.02 1/m。
+    handover_reuse_time_s: 0.5  # 拒绝过期/不匹配的新结果时，旧路径可复用的最大接受年龄，单位仿真 s；仍需安全复核。
     lane_width: 3.5  # 车道宽度的初始值，单位 m；接到当前场景上下文后会被场景值覆盖。
     num_lanes: 2  # 车道数量的初始值；接到当前场景上下文后会被场景值覆盖。
     routing_reference_topic: routing/reference_line  # 订阅的 Routing 参考线话题，需与 reference_line_node 的输出一致。
@@ -59,8 +65,8 @@ planner_node:  # 局部规划：参考线跟踪、障碍物筛选与轨迹碰撞
     local_obstacle_longitudinal_min_m: -5.0  # 考虑障碍物的纵向位置下界，单位 m，相对自车；负数包含车后区域。
     local_obstacle_longitudinal_max_m: 65.0  # 考虑障碍物的纵向位置上界，单位 m，相对自车；与下界共同确定筛选范围。
     local_obstacle_lateral_clearance_m: 2.2  # 障碍物影响候选横向位置的距离阈值，单位 m；在此范围内认为该横向位置受阻。
-    local_vehicle_length_m: 4.0  # 局部轨迹碰撞检查采用的自车长度，单位 m；独立于仿真器车辆几何，应保持一致。
-    local_vehicle_width_m: 2.0  # 局部轨迹碰撞检查采用的自车宽度，单位 m；独立于仿真器车辆几何，应保持一致。
+    local_vehicle_length_m: 3.91  # 旧上下文缺少车辆参数时的备用车长，单位 m；正常运行由仿真端 a+b+body_overhang 覆盖。
+    local_vehicle_width_m: 2.0  # 旧上下文缺少车辆参数时的备用车宽，单位 m；正常运行由仿真端 width 覆盖。
 
 controller_node:  # 巡航控制：横向 LQR/MPC 与纵向 PID。
   ros__parameters:  # 本节点的 ROS 参数。

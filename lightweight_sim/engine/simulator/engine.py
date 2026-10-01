@@ -35,7 +35,10 @@ class SimulationEngine:
         self.obstacles.add_from_config(config.obstacles)
         self.sim_time = 0.0
         self.step_count = 0
-        self.physics_dt = 0.05
+        self.physics_dt = float(config.physics_dt)
+        if not math.isfinite(self.physics_dt) or self.physics_dt <= 0.0:
+            raise ValueError("physics_dt must be positive and finite")
+        config.steering.delay_steps(self.physics_dt)
         self.vehicle_model = getattr(config, "vehicle_model", "kinematic")
         self.dynamic_max_substep_s = float(config.dynamic_max_substep_s)
         if not math.isfinite(self.dynamic_max_substep_s) or self.dynamic_max_substep_s <= 0.0:

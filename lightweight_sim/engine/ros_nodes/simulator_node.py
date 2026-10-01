@@ -62,6 +62,7 @@ class SimulatorNode(_LegacySimulatorNode):
                        max_lateral_accel_mps2=config.max_lateral_accel_mps2,
                        speed_limit_type=getattr(config, "speed_limit_type", "default"),
                        vehicle_model=config.vehicle_model,
+                       dynamic_max_substep_s=config.dynamic_max_substep_s,
                        vehicle_parameters=asdict(config.vehicle_params),
                        steering_parameters=asdict(config.steering),
                        maneuver=getattr(config, "maneuver", "cruise"),
@@ -127,6 +128,12 @@ class SimulatorNode(_LegacySimulatorNode):
         self.route_request_pub.publish(message)
 
     def _on_parameters(self, parameters):
+        # This period also owns the wall timer and delay FIFO. Storing a new
+        # ROS value without rebuilding those objects would advertise a false dt.
+        for parameter in parameters:
+            if parameter.name == "physics_dt" and parameter.value != self.physics_dt:
+                return SetParametersResult(successful=False,
+                    reason="physics_dt is fixed for this node; restart with the new value")
         requested = None
         requested_slot_id = None
         for parameter in parameters:

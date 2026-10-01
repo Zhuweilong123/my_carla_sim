@@ -56,6 +56,23 @@ Routing 请求是场景切换或重置时更新的事件，不是固定频率轨
 
 实际发布/订阅数量可用 `ros2 topic info -v <topic>` 检查；Routing 的服务型调用可用 `ros2 service list` 查看。
 
+### 执行器历史反馈
+
+`sim/context.dynamic_max_substep_s` 携带仿真动力学积分的最大子步（默认 0.0025 s）。每次运行/重置时，控制节点以该值重建 LQR/MPC 的 `plant` 模型；`physics_dt` 决定控制周期，最大子步决定周期内的积分次数，两者必须同时匹配仿真端。兼容未提供该字段的上下文时采用共享默认值。
+
+`VehicleState` 的 `steering_angle` 是实际前轮角。`steering_history_valid` 表示该状态同时携带完整执行器历史；`steering_delay_queue` 按最早待执行命令在前的顺序，记录该物理步结束后的真实转向延迟队列，与位姿共享 `header.stamp`。首次尚未推进时按执行器初始角初始化；理想执行器或零延迟对应空队列。
+
+队列来自仿真器执行器，包含仲裁后实际执行的巡航、手动、泊车和安全制动指令。控制器在每个新状态上，先同步实际角和队列、记录该物理时间戳，再判断路径是否就绪或过期。缺少路径时继续制动，但不暂停历史同步；恢复路径无需重置运行。
+
+完整反馈允许在漏掉中间状态后重新同步。无完整反馈的直接控制输入仍按固定周期维护候选历史，并在无法确定丢失步骤时锁定制动；队列长度错误、非有限数值、转角越限或时间倒退也保留故障保护。同一状态时间戳只处理一次，不会因定时器重复调用多次推进队列。
+
+消息结构修改后需重建并重启所有使用该接口的节点，例如：
+
+```bash
+colcon build --packages-select lightweight_sim_msgs lightweight_sim parking_module
+source install/setup.bash
+```
+
 ## Services
 
 - `routing/compute_route`（`lightweight_sim_msgs/srv/ComputeRoute`）：按请求同步计算路线。

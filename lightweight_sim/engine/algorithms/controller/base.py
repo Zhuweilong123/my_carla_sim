@@ -1,6 +1,7 @@
 """Algorithm-independent lateral and longitudinal controller contracts."""
 
 from abc import ABC, abstractmethod
+import math
 
 from ...simulator.steering import SteeringParams
 
@@ -10,6 +11,8 @@ class LateralController(ABC):
 
     def __init__(self, ts=0.05):
         self.ts = float(ts)
+        if not math.isfinite(self.ts) or self.ts <= 0:
+            raise ValueError("control period must be positive and finite")
         self.max_steer = 0.5
         self.min_index = 0
         self.actuator_params = SteeringParams()
@@ -24,10 +27,23 @@ class LateralController(ABC):
         self.command_history = [0.0] * self.actuator_params.delay_steps(self.ts)
         self.actual_steer = 0.0
 
+    def synchronize_actuator_state(self, angle, pending_commands):
+        """Replace speculative candidate history with timestamped plant feedback."""
+        expected = self.actuator_params.delay_steps(self.ts)
+        values = list(pending_commands)
+        if (len(values) != expected or not math.isfinite(angle)
+                or abs(angle) > self.max_steer+1e-6
+                or any(not math.isfinite(v) or abs(v) > self.max_steer+1e-6 for v in values)):
+            raise ValueError('invalid actuator delay-queue feedback')
+        self.command_history = values
+        self.actual_steer = float(angle)
+
     def configure_tracking(self, *, feedback_horizon_s=0.0,
                            smooth_reference_heading=True):
         """Configure reference preprocessing independently of the solver."""
         self.feedback_horizon_s = float(feedback_horizon_s)
+        if not math.isfinite(self.feedback_horizon_s) or self.feedback_horizon_s < 0:
+            raise ValueError("feedback horizon must be non-negative and finite")
         self.smooth_reference_heading = bool(smooth_reference_heading)
 
     @abstractmethod
@@ -50,10 +66,15 @@ class LongitudinalController(ABC):
         self.dt = float(dt)
         self.max_accel = float(max_accel)
         self.max_decel = float(max_decel)
+        if not all(math.isfinite(v) and v > 0 for v in (self.dt, self.max_accel, self.max_decel)):
+            raise ValueError("longitudinal period and acceleration limits must be positive and finite")
         self.target_speed = 50.0
 
     def set_target(self, speed_kmh):
-        self.target_speed = float(speed_kmh)
+        value = float(speed_kmh)
+        if not math.isfinite(value) or value < 0:
+            raise ValueError("target speed must be non-negative and finite")
+        self.target_speed = value
 
     @abstractmethod
     def control(self, current_speed_ms, coupling_accel=0.0):

@@ -143,7 +143,23 @@ class ParkingControllerNode(Node):
             self.get_logger().error("reverse-parking target speed must be positive")
             self._slot = None
             return
-        parking_config = replace(ParkingConfig(), approach_speed=target_speed_kmh / 3.6)
+        try:
+            vehicle = context.get("vehicle_parameters")
+            dimensions = {}
+            if vehicle is not None:
+                a, b = float(vehicle["a"]), float(vehicle["b"])
+                overhang = float(vehicle["body_overhang"])
+                if not all(math.isfinite(v) and v > 0 for v in (a, b, overhang)):
+                    raise ValueError("invalid vehicle axle distances/body overhang")
+                dimensions = dict(wheelbase=a+b, vehicle_length=a+b+overhang,
+                                  vehicle_width=float(vehicle["width"]),
+                                  max_steer=float(vehicle["max_steer"]))
+            parking_config = replace(ParkingConfig(), approach_speed=target_speed_kmh / 3.6,
+                                     **dimensions)
+        except (KeyError, TypeError, ValueError) as error:
+            self.get_logger().error(f"invalid parking vehicle parameters: {error}")
+            self._slot = None
+            return
         self._planner = create_planner(self._planner_type, parking_config)
         self._controller = ParkingController(parking_config)
 

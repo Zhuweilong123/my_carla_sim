@@ -4,16 +4,12 @@ from __future__ import annotations
 
 from dataclasses import replace
 
-from .data_types import ControlCommand, ScenarioConfig
+from .data_types import ControlCommand
 from .engine import SimulationEngine as _BaseSimulationEngine
 
 
 class SimulationEngine(_BaseSimulationEngine):
     """Enable signed reverse motion while reusing the common physics loop."""
-
-    def __init__(self, config: ScenarioConfig):
-        super().__init__(config)
-        self.physics_dt = config.physics_dt
 
     def step(self, control: ControlCommand | None = None, dt=None):
         if control is None:

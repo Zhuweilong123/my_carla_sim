@@ -1,6 +1,7 @@
 """Longitudinal PID producing physical acceleration in m/s^2."""
 
 from collections import deque
+import math
 
 from .base import LongitudinalController
 
@@ -27,6 +28,10 @@ class LongitudinalPIDController(LongitudinalController):
         self.error_threshold = float(error_threshold)
         self.max_jerk = float(max_jerk)
         self.coupling_gain = float(coupling_gain)
+        if (not all(math.isfinite(v) and v >= 0 for v in
+                    (self.K_P, self.K_I, self.K_D, self.error_threshold, self.coupling_gain))
+                or not math.isfinite(self.max_jerk) or self.max_jerk <= 0):
+            raise ValueError("PID gains/threshold must be non-negative and jerk positive, all finite")
         self.error_buffer = deque(maxlen=60)
         self._previous_error = None
         self._filtered_derivative = 0.0

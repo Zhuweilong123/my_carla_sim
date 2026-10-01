@@ -5,6 +5,7 @@ import math
 import numpy as np
 from .reference_tracking import ProjectedLateralController
 from .lateral_model import BicycleLateralModel
+from ...runtime_config import DEFAULT_RUNTIME_CONFIG
 
 
 class LateralLQRController(ProjectedLateralController):
@@ -16,7 +17,8 @@ class LateralLQRController(ProjectedLateralController):
     """
 
     def __init__(self, vehicle_para, Q=None, R=100.0, ts=0.05,
-                 *, discretization="plant"):
+                 *, discretization="plant",
+                 max_substep_s=DEFAULT_RUNTIME_CONFIG.dynamic_max_substep_s):
         if len(vehicle_para) != 6:
             raise ValueError("vehicle_para must contain (a, b, m, Cf, Cr, Iz)")
         self.a, self.b, self.m, self.Cf, self.Cr, self.Iz = map(float, vehicle_para)
@@ -24,14 +26,20 @@ class LateralLQRController(ProjectedLateralController):
             raise ValueError("vehicle geometry, mass, and inertia must be positive")
 
         super().__init__(ts=ts)
+        BicycleLateralModel(vehicle_para, ts)  # Same physical validation as MPC.
+        if not math.isfinite(max_substep_s) or max_substep_s <= 0:
+            raise ValueError("LQR max_substep_s must be positive and finite")
+        self.max_substep_s = float(max_substep_s)
         self.Q = np.array(
             Q if Q is not None else np.diag([200.0, 1.0, 50.0, 1.0]),
             dtype=float,
         )
         self.R = np.array([[float(R)]], dtype=float)
-        if self.Q.shape != (4, 4) or not np.allclose(self.Q, self.Q.T):
+        if (self.Q.shape != (4, 4) or not np.all(np.isfinite(self.Q))
+                or not np.allclose(self.Q, self.Q.T)):
             raise ValueError("Q must be a symmetric 4x4 matrix")
-        if np.any(np.linalg.eigvalsh(self.Q) < 0.0) or self.R[0, 0] <= 0.0:
+        if (np.any(np.linalg.eigvalsh(self.Q) < 0.0) or not np.isfinite(self.R[0, 0])
+                or self.R[0, 0] <= 0.0):
             raise ValueError("Q must be positive semidefinite and R positive")
 
         self.A = np.zeros((4, 4), dtype=float)
@@ -48,6 +56,8 @@ class LateralLQRController(ProjectedLateralController):
         self.last_ephi = 0.0
         self.last_error_state = np.zeros(4, dtype=float)
         self.discretization = str(discretization)
+        if self.discretization not in ("plant", "bilinear"):
+            raise ValueError("unknown LQR discretization")
         self.last_feedforward = 0.0
         self.last_feedback = 0.0
         self.last_unclipped_steer = 0.0
@@ -118,7 +128,8 @@ class LateralLQRController(ProjectedLateralController):
         return self.K
 
     def _plant_discretize(self, vx, actuator=False):
-        A, B, _ = self._model().plant(vx, actuator=actuator)
+        A, B, _ = self._model().plant(
+            vx, actuator=actuator, max_substep_s=self.max_substep_s)
         return A, B
 
     def control_from_error(self, error_state, kappa: float, vx: float) -> float:

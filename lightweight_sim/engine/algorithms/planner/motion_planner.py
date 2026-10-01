@@ -94,6 +94,7 @@ class MotionPlanner:
         vehicle_a=(0, 0),
         pred_loc=None,
         vehicle_loc=None,
+        handover_state=False,
     ):
         del vehicle_v, vehicle_a
         if not self._running or not self.global_path:
@@ -118,7 +119,8 @@ class MotionPlanner:
             (o.x, o.y, o.length, o.width, o.speed, o.heading)
             for o in obstacles
         ]
-        data = (request_id, pred_loc, vehicle_loc, obstacle_data, (ego_state.phi, ego_state.vx, ego_state.vy, ego_state.r))
+        data = (request_id, pred_loc, vehicle_loc, obstacle_data,
+                (ego_state.phi, ego_state.vx, ego_state.vy, ego_state.r), bool(handover_state))
         try:
             self._requests.put_nowait(data)
             obstacle_summary = ";".join(
@@ -160,7 +162,7 @@ class MotionPlanner:
             if data is None:
                 break
 
-            request_id, pred_loc, vehicle_loc, obstacles, self._planning_state = data
+            request_id, pred_loc, vehicle_loc, obstacles, self._planning_state, self._planning_handover = data
             started = time.perf_counter()
             try:
                 path = self._plan(pred_loc, vehicle_loc, obstacles)

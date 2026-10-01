@@ -12,8 +12,9 @@ from lightweight_sim_msgs.msg import ReferenceLine as RosReferenceLine
 from lightweight_sim_msgs.msg import VehicleState as RosVehicleState
 from rclpy.node import Node
 from ..algorithms.planner.motion_planner import MotionPlanner
+from ..algorithms.planner.handover import PathHandover
 from ..reference_line.dp_qp_planner import create_local_planner
-from ..simulator.data_types import Obstacle, VehicleState
+from ..simulator.data_types import Obstacle, VehicleState, VehicleParams
 from ..runtime_config import DEFAULT_RUNTIME_CONFIG
 from .qos import latched_path_qos, sensor_data_qos
 from .route_session import encode_sequence, parse_context
@@ -36,6 +37,11 @@ class PlannerNode(Node):
         self.declare_parameter("dp_lateral_step_m", 0.5)
         self.declare_parameter("qp_station_step_m", 4.0)
         self.declare_parameter("qp_time_limit_s", 0.08)
+        for name, value in dict(handover_min_time_s=.15, handover_max_time_s=.4,
+                                handover_margin_time_s=.05, handover_position_tolerance_m=.35,
+                                handover_heading_tolerance_rad=.25, handover_curvature_tolerance_1pm=.12,
+                                handover_reuse_time_s=.5).items():
+            self.declare_parameter(name, value)
         self.declare_parameter(
             "local_transition_distance_m",
             DEFAULT_RUNTIME_CONFIG.local_transition_distance_m,
@@ -48,13 +54,16 @@ class PlannerNode(Node):
         self.declare_parameter("local_obstacle_longitudinal_min_m", -5.0)
         self.declare_parameter("local_obstacle_longitudinal_max_m", 65.0)
         self.declare_parameter("local_obstacle_lateral_clearance_m", 2.2)
-        self.declare_parameter("local_vehicle_length_m", 4.0)
-        self.declare_parameter("local_vehicle_width_m", 2.0)
+        self.declare_parameter("local_vehicle_length_m", VehicleParams().length)
+        self.declare_parameter("local_vehicle_width_m", VehicleParams().width)
         self.state: Optional[VehicleState] = None
         self.obstacles = []
         self.sequence = 0
         self.planner: Optional[MotionPlanner] = None
         self.plan_pending = False
+        self.handover = self._new_handover()
+        self._request_time = 0.
+        self._accepted_profile = None
         self.route_context = None
         self.active_run = None
         self.active_reference_source = None
@@ -181,6 +190,16 @@ class PlannerNode(Node):
             Parameter("num_lanes", value=int(self.route_context["num_lanes"]))])
         lane_width = float(self.get_parameter("lane_width").value)
         num_lanes = int(self.get_parameter("num_lanes").value)
+        vehicle = self.route_context.get("vehicle_parameters")
+        if vehicle is not None:
+            params = VehicleParams(**vehicle)
+            vehicle_length, vehicle_width = params.length, params.width
+            self.set_parameters([
+                Parameter("local_vehicle_length_m", value=vehicle_length),
+                Parameter("local_vehicle_width_m", value=vehicle_width)])
+        else:
+            vehicle_length = float(self.get_parameter("local_vehicle_length_m").value)
+            vehicle_width = float(self.get_parameter("local_vehicle_width_m").value)
         self.planner = create_local_planner(
                 str(self.get_parameter("local_planner_algorithm").value),
                 dp_station_step_m=float(self.get_parameter("dp_station_step_m").value),
@@ -216,17 +235,20 @@ class PlannerNode(Node):
                 obstacle_lateral_clearance_m=float(
                     self.get_parameter("local_obstacle_lateral_clearance_m").value
                 ),
-                vehicle_length_m=float(
-                    self.get_parameter("local_vehicle_length_m").value
-                ),
-                vehicle_width_m=float(
-                    self.get_parameter("local_vehicle_width_m").value
-                ),
+                vehicle_length_m=vehicle_length,
+                vehicle_width_m=vehicle_width,
             )
         self.planner.start()
         if self.state is not None:
             self._request_plan()
         self.get_logger().info(f"planner reference source=routing algorithm={type(self.planner).__name__}")
+
+    def _new_handover(self):
+        options = dict(min_time="handover_min_time_s", max_time="handover_max_time_s",
+                       margin_time="handover_margin_time_s", position_tolerance="handover_position_tolerance_m",
+                       heading_tolerance="handover_heading_tolerance_rad",
+                       curvature_tolerance="handover_curvature_tolerance_1pm", reuse_time="handover_reuse_time_s")
+        return PathHandover(**{name: float(self.get_parameter(parameter).value) for name, parameter in options.items()})
 
     def _stop_planner(self):
         if self.planner is not None:
@@ -235,6 +257,8 @@ class PlannerNode(Node):
         self.active_run = None
         self.active_reference_source = None
         self.plan_pending = False
+        self.handover = self._new_handover()
+        self._accepted_profile = None
 
     def _on_state(self, message: RosVehicleState) -> None:
         self.state = message_to_state(message)
@@ -270,6 +294,21 @@ class PlannerNode(Node):
             return
         prediction_time = float(self.get_parameter("prediction_time").value)
         state = self.state
+        self._request_time = self.get_clock().now().nanoseconds*1e-9
+        if str(self.get_parameter("local_planner_algorithm").value) == "dp_qp":
+            state = self.handover.prepare(state, self._request_time)
+            if state is None:
+                self.get_logger().warning(f"handover rejected before planning: {self.handover.status} errors={self.handover.tracking_errors}")
+                old = self._safe_recovery_path(self._request_time)
+                if old:
+                    # Keep controlling the safe prefix while recovering from
+                    # measured state, without a brake/resume history gap.
+                    state = self.state
+                    self.planner._previous_profile = None
+                    self._accepted_profile = None
+                else:
+                    self._publish_plan([])
+                    return
         pred_loc = (
             state.x + state.vx * prediction_time * math.cos(state.phi)
             - state.vy * prediction_time * math.sin(state.phi),
@@ -281,16 +320,54 @@ class PlannerNode(Node):
             obstacles=self.obstacles,
             pred_loc=pred_loc,
             vehicle_loc=(state.x, state.y),
+            handover_state=self.handover.request is not None,
         )
+
+    def _safe_recovery_path(self, now):
+        old = self.handover.reusable(self.state, now, recovery=True)
+        state = self.state
+        # Check the actual body as well as the nominal retained trajectory.
+        actual = [(state.x, state.y, state.phi, 0.),
+                  (state.x+.1*math.cos(state.phi), state.y+.1*math.sin(state.phi), state.phi, 0.)]
+        if (old and self.planner.validate_path(old, self.obstacles)
+                and self.planner.validate_path(actual, self.obstacles)):
+            return old
+        return []
 
     def _poll_result(self) -> None:
         if self.planner is None or not self.plan_pending or not self.planner.poll_result():
             return
         path = self.planner.get_result() or []
+        now = self.get_clock().now().nanoseconds*1e-9
+        self.handover.observe_latency(now, self._request_time)
+        if path and str(self.get_parameter("local_planner_algorithm").value) == "dp_qp":
+            candidate = self.handover.splice(path, self.state, now)
+            if candidate is not None and not self.planner.validate_path(candidate, self.obstacles):
+                self.handover.status = 'unsafe_splice'
+                candidate = None
+            if candidate is None:
+                self.get_logger().warning(f"handover result rejected: {self.handover.status} errors={self.handover.tracking_errors}")
+                self.planner._previous_profile = self._accepted_profile
+                old = self.handover.reusable(self.state, now)
+                if not old and self.handover.status == 'tracking_mismatch':
+                    old = self._safe_recovery_path(now)
+                if old and self.planner.validate_path(old, self.obstacles):
+                    # Do not extend the old path's acceptance age on reuse.
+                    self._publish_plan(old, accepted=False)
+                    return
+                path = []
+            else:
+                path = candidate
+                self._accepted_profile = self.planner._previous_profile
         self._publish_plan(path)
         self.plan_pending = False
 
-    def _publish_plan(self, path):
+    def _publish_plan(self, path, *, accepted=True):
+        if accepted:
+            self.handover.accept(path, self.get_clock().now().nanoseconds*1e-9)
+            if not path and self.planner is not None:
+                self.planner._previous_profile = None
+                self._accepted_profile = None
         self.sequence += 1
         message = RosPath()
         message.header.stamp = self.get_clock().now().to_msg()

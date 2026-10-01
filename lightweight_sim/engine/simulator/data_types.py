@@ -32,6 +32,7 @@ class VehicleState:
     steer: float = 0.0
     accel: float = 0.0
     timestamp: float = 0.0
+    steering_delay_queue: Optional[List[float]] = None
     @property
     def speed(self) -> float:
         return math.hypot(self.vx, self.vy)
@@ -81,6 +82,9 @@ class VehicleParams:
     @property
     def wheelbase(self) -> float:
         return self.a + self.b
+    @property
+    def length(self) -> float:
+        return self.wheelbase + self.body_overhang
 
 @dataclass
 class ControlCommand:

@@ -111,6 +111,7 @@ def run_evaluation(output_dir, label, *, laps=10, duration=None, speed=50.0,
     if prefix.with_suffix(".json").exists():
         raise FileExistsError(f"archive already exists: {prefix}")
     config = make_scenario("figure_eight")
+    config.physics_dt = dt
     config.target_speed, config.vehicle_model = speed, vehicle_model
     config.steering = steering_params or SteeringParams()
     config.ego_start_x -= lateral_offset  # Left normal at the initial +y tangent.
