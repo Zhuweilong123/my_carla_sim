@@ -12,7 +12,7 @@ Vehicle Motion 是一个轻量级二维车辆仿真与 ROS 2 规划控制工作�
 - 独立的 `parking_module` ROS 2 包，默认使用 Hybrid A* 倒车入库规划器，同时保留基线规划器用于对比，并提供控制器适配节点。
 - 回归测试与拆分后的 GitHub Actions：每次 push/PR 运行无 ROS 的 Python 测试；相关改动或手动触发时运行 ROS 构建、集成测试和 launch smoke test。
 
-默认仿真与控制周期为 0.05 秒（20 Hz）。车辆、规划器、Routing、控制器、GUI 和安全相关参数主要配置在 `lightweight_sim/config/default.yaml`；共享时序默认值位于 `lightweight_sim/engine/runtime_config.py`。设计文档统一位于 `lightweight_sim/`：[设计总览](lightweight_sim/design/DESIGN.md)、[算法说明](lightweight_sim/design/ALGORITHMS.md)、[ROS 2 架构](lightweight_sim/design/ROS2.md)、[Routing](lightweight_sim/design/ROUTING.md) 和[参考线](lightweight_sim/design/REFERENCE_LINE.md)。
+默认仿真与控制周期为 0.05 秒（20 Hz）。常用设置在 `lightweight_sim/config/default.yaml`；车辆、算法、系统接口与备用参数分层配置，详见[配置说明](lightweight_sim/config/README.md)。共享时序默认值位于 `lightweight_sim/engine/runtime_config.py`。设计文档统一位于 `lightweight_sim/`：[设计总览](lightweight_sim/design/DESIGN.md)、[算法说明](lightweight_sim/design/ALGORITHMS.md)、[ROS 2 架构](lightweight_sim/design/ROS2.md)、[Routing](lightweight_sim/design/ROUTING.md) 和[参考线](lightweight_sim/design/REFERENCE_LINE.md)。
 
 ## 构建与启动（ROS 2 / WSL2）
 
@@ -83,7 +83,7 @@ ros2 launch lightweight_sim lightweight_sim.launch.py \
 在 `lightweight_sim/config/default.yaml` 中切换泊车算法：
 
 ```yaml
-parking_controller_node:
+/**/parking_controller_node:
   ros__parameters:
     planner_type: hybrid_astar  # 或 baseline
 ```

@@ -1,6 +1,6 @@
 # DP＋QP 局部路径规划设计
 
-本文对应当前 `DPQPPathPlanner` 的实际实现，说明一帧局部路径从车辆状态到控制器输入的完整过程。算法选择、基线对比和其他模块见 [ALGORITHMS.md](ALGORITHMS.md)。配置入口为 `config/default.yaml`。
+本文对应当前 `DPQPPathPlanner` 的实际实现，说明一帧局部路径从车辆状态到控制器输入的完整过程。算法选择、基线对比和其他模块见 [ALGORITHMS.md](ALGORITHMS.md)。算法选择位于 `config/default.yaml`，DP+QP 与接管调参位于 `config/algorithms.yaml`，完整说明见[配置说明](../config/README.md)。
 
 ## 处理顺序与模块职责
 

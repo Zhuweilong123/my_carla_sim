@@ -1,3 +1,7 @@
+from pathlib import Path
+
+import yaml
+
 from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument
 from launch.conditions import IfCondition
@@ -7,7 +11,14 @@ from ament_index_python.packages import get_package_share_directory
 
 
 def generate_launch_description():
-    config = get_package_share_directory("lightweight_sim") + "/config/default.yaml"
+    config_dir = Path(get_package_share_directory("lightweight_sim")) / "config"
+    # Load implementation settings first; everyday settings take precedence.
+    config = [str(config_dir / name) for name in (
+        "system.yaml", "vehicle.yaml", "algorithms.yaml", "baseline.yaml",
+        "compatibility.yaml", "default.yaml",
+    )]
+    with (config_dir / "default.yaml").open(encoding="utf-8") as stream:
+        defaults = yaml.safe_load(stream)["/**/simulator_node"]["ros__parameters"]
     namespace = LaunchConfiguration("namespace")
     gui = LaunchConfiguration("gui")
     controller_enabled = LaunchConfiguration("controller_enabled")
@@ -17,7 +28,7 @@ def generate_launch_description():
     steering = LaunchConfiguration("steering_profile")
     return LaunchDescription(
         [
-            DeclareLaunchArgument("steering_profile", default_value="ideal",
+            DeclareLaunchArgument("steering_profile", default_value=str(defaults["steering_profile"]),
                 description="ideal or assumed (uncalibrated steering delay/lag/rate limits)"),
             DeclareLaunchArgument(
                 "namespace",
@@ -46,7 +57,7 @@ def generate_launch_description():
             ),
             DeclareLaunchArgument(
                 "scenario",
-                default_value="obstacle",
+                default_value=str(defaults["scenario"]),
                 description="Initial scenario key",
             ),
             Node(
@@ -56,7 +67,7 @@ def generate_launch_description():
                 namespace=namespace,
                 output="screen",
                 parameters=[
-                    config,
+                    *config,
                     {"use_sim_time": False, "scenario": scenario, "steering_profile": steering},
                 ],
             ),
@@ -66,7 +77,7 @@ def generate_launch_description():
                 name="planner_node",
                 namespace=namespace,
                 output="screen",
-                parameters=[config, {"use_sim_time": True}],
+                parameters=[*config, {"use_sim_time": True}],
             ),
             Node(
                 package="lightweight_sim",
@@ -75,7 +86,7 @@ def generate_launch_description():
                 namespace=namespace,
                 output="screen",
                 condition=IfCondition(routing_enabled),
-                parameters=[config, {"use_sim_time": True}],
+                parameters=[*config, {"use_sim_time": True}],
             ),
             Node(
                 package="lightweight_sim",
@@ -84,7 +95,7 @@ def generate_launch_description():
                 namespace=namespace,
                 output="screen",
                 condition=IfCondition(reference_line_enabled),
-                parameters=[config, {"use_sim_time": True}],
+                parameters=[*config, {"use_sim_time": True}],
             ),
             Node(
                 package="lightweight_sim",
@@ -93,7 +104,7 @@ def generate_launch_description():
                 namespace=namespace,
                 output="screen",
                 condition=IfCondition(controller_enabled),
-                parameters=[config, {"use_sim_time": True}],
+                parameters=[*config, {"use_sim_time": True}],
             ),
             Node(
                 package="parking_module",
@@ -102,7 +113,7 @@ def generate_launch_description():
                 namespace=namespace,
                 output="screen",
                 parameters=[
-                    config,
+                    *config,
                     {"use_sim_time": True, "output_topic": "control_command/parking"}
                 ],
             ),
@@ -112,7 +123,7 @@ def generate_launch_description():
                 name="controller_manager",
                 namespace=namespace,
                 output="screen",
-                parameters=[config, {"use_sim_time": True}],
+                parameters=[*config, {"use_sim_time": True}],
             ),
             Node(
                 package="lightweight_sim",
@@ -120,7 +131,7 @@ def generate_launch_description():
                 name="safe_stop_node",
                 namespace=namespace,
                 output="screen",
-                parameters=[config, {"use_sim_time": False}],
+                parameters=[*config, {"use_sim_time": False}],
             ),
             Node(
                 package="lightweight_sim",
@@ -129,7 +140,7 @@ def generate_launch_description():
                 namespace=namespace,
                 output="screen",
                 condition=IfCondition(gui),
-                parameters=[config, {"use_sim_time": True}],
+                parameters=[*config, {"use_sim_time": True}],
             ),
         ]
     )

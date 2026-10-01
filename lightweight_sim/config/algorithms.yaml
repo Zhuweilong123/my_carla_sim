@@ -1,0 +1,52 @@
+# 算法调参：DP+QP、路径接管、LQR/MPC、PID、Routing 和参考线几何。
+# 先调整 default.yaml 中的算法选择，再调整这里对应算法的参数。
+# dynamic_lateral_r 仅用于动态执行器补偿；ki=0 时积分分离阈值不影响积分输出。
+
+/**/planner_node:
+  ros__parameters:
+    handover_min_time_s: 0.15  # DP+QP 接管预测的最小时间，单位仿真 s；覆盖计算、发布和定时轮询延迟。
+    handover_max_time_s: 0.4  # 接管预测时间上限，单位仿真 s；超时结果拒绝接入。
+    handover_margin_time_s: 0.05  # 实测规划/发布延迟之上的接管余量，单位仿真 s。
+    handover_position_tolerance_m: 0.35  # 沿当前路径预测和接管验证允许的位置跟踪偏差，单位 m。
+    handover_heading_tolerance_rad: 0.25  # 速度方向相对当前路径的跟踪容差，单位 rad；拼接点采用更严格的 0.03 rad。
+    handover_curvature_tolerance_1pm: 0.12  # 车辆运动曲率与当前路径的跟踪容差，单位 1/m；拼接点采用更严格的 0.02 1/m。
+    handover_reuse_time_s: 0.5  # 拒绝过期/不匹配的新结果时，旧路径可复用的最大接受年龄，单位仿真 s；仍需安全复核。
+    routing_corridor_margin_m: 1.1  # 可行驶走廊边缘的预留距离，单位 m，非负；越大允许的横向活动范围越小。
+    dp_station_step_m: 8.0  # DP 纵向网格最大间距，单位 m；起点和障碍物附近加密至 4 m，按实际弧长采样。
+    dp_lateral_step_m: 0.5  # DP 横向采样间距，单位 m；覆盖可行驶边界，不依赖车道中心。
+    qp_station_step_m: 4.0  # QP 远端节点最大间距，单位 m；起点前 12 m 加密至 0.5 m，障碍物附近加密至 1 m。
+    qp_time_limit_s: 0.08  # OSQP 求解时间上限，单位 s；失败返回空路径并保留安全停车。
+    local_path_sampling_resolution_m: 0.5  # 输出路径沿参考线的最大采样间距，单位 m；用于增密与碰撞检查。
+    local_plan_points: 80  # 局部规划参考点截取数量，至少为 2；决定规划前视范围，不是 MPC 预测步数。
+    local_collision_margin_m: 0.25  # 局部轨迹碰撞检查的额外安全余量，单位 m，非负。
+
+/**/controller_node:
+  ros__parameters:
+    speed_profile_lookahead_m: 20.0  # 沿路线前瞻速度限制和最大曲率的距离，单位 m；用于提前响应低限速与弯道。
+    actuator_compensation: true  # 是否在横向模型中考虑场景转向执行器；true 时 assumed 模式使用实际转角和延迟历史。
+    lateral_q_weights: [200.0, 1.0, 50.0, 1.0]  # 横向状态代价对角权重：[横向误差、横向误差变化率、航向误差、航向误差变化率]，各项非负。
+    lateral_r: 100.0  # 理想执行器下的转角代价权重，必须为正；LQR/MPC 共用，越大越抑制转向输入。
+    dynamic_lateral_r: 300.0  # 启用动态执行器补偿时的转角代价权重，必须为正；此时替代 lateral_r。
+    lateral_feedback_horizon_s: 0.0  # 计算路径跟踪误差前的自车状态预览时间，单位 s；0 表示使用当前状态，不是 MPC 预测时域。
+    lateral_smooth_reference_heading: true  # 是否在路径采样点间插值参考航向，减小离散点切线变化带来的控制跳变。
+    lateral_discretization: plant  # 模型离散方法：plant 为仿真子步模型，bilinear 为双线性变换；动态执行器补偿要求 plant。
+    longitudinal_kp: 1.15  # 纵向 PID 比例增益；速度误差在算法内换算为 m/s 后计算加速度。
+    longitudinal_ki: 0.0  # 纵向 PID 积分增益；0 表示关闭积分项。
+    longitudinal_kd: 0.55  # 纵向 PID 微分增益；作用于经滤波的速度误差变化率。
+    longitudinal_error_threshold_kmh: 1.0  # 积分分离的速度误差阈值，单位 km/h；绝对误差超出该值时清空积分误差缓存。
+    longitudinal_max_jerk_mps3: 40.0  # 纵向加速度命令的变化率上限，单位 m/s³；每步最多改变该值 × physics_dt。
+    longitudinal_coupling_gain: 0.5  # 抵消横纵向动力学耦合 r×vy 的比例；0 关闭补偿，1 完全抵消该耦合项。
+
+/**/routing_node:
+  ros__parameters:
+    turn_penalty_s: 2.0  # A* 路线代价中的转弯附加时间，单位 s；影响路线选择，不是实际停车等待时间。
+    lane_change_penalty_s: 1.0  # A* 路线代价中的换道附加时间，单位 s。
+    u_turn_penalty_s: 30.0  # A* 路线代价中的掉头附加时间，单位 s；越大越不倾向选择掉头路径。
+    sample_spacing_m: 1.0  # 全局路线几何采样间距，单位 m，必须为正；越小路径点越密集。
+
+/**/reference_line_node:
+  ros__parameters:
+    sample_spacing_m: 1.0  # 参考线几何采样间距，单位 m，必须为正；影响航向/曲率计算及路径点密度。
+    join_tolerance_m: 0.25  # 相邻路线边几何拼接的最大允许间隙，单位 m；超过此值生成参考线失败。
+    max_reference_curvature_1pm: 0.15  # 路口圆角的目标曲率上限，单位 1/m，必须为正；按其倒数选择圆角半径。
+    junction_angle_threshold_rad: 0.7  # 识别需要圆角处理的路径拐角阈值，单位 rad，必须为正。

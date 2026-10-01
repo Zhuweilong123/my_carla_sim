@@ -12,7 +12,7 @@ Vehicle Motion is a lightweight 2D vehicle simulation and ROS 2 planning/control
 - An independent `parking_module` ROS 2 package with a Hybrid A* reverse-parking planner, a retained baseline planner for comparison, and a controller adapter.
 - Regression tests with split GitHub Actions: ROS-independent Python tests run on every push/PR; ROS build, integration tests and launch smoke run for relevant changes or manual dispatch.
 
-The default simulation and control periods are 0.05 s (20 Hz). These settings and most vehicle, planner, routing, controller, GUI, and safety parameters are in `lightweight_sim/config/default.yaml`; shared timing defaults are defined in `lightweight_sim/engine/runtime_config.py`. Architecture and algorithm notes: [design overview](lightweight_sim/design/DESIGN.md), [algorithms](lightweight_sim/design/ALGORITHMS.md), [ROS 2](lightweight_sim/design/ROS2.md), [Routing](lightweight_sim/design/ROUTING.md), and [reference line](lightweight_sim/design/REFERENCE_LINE.md).
+The default simulation and control periods are 0.05 s (20 Hz). Everyday settings are in `lightweight_sim/config/default.yaml`; vehicle, algorithm, system, and fallback parameters are split into layers described in the [configuration guide](lightweight_sim/config/README.md). Shared timing defaults are defined in `lightweight_sim/engine/runtime_config.py`. Architecture and algorithm notes: [design overview](lightweight_sim/design/DESIGN.md), [algorithms](lightweight_sim/design/ALGORITHMS.md), [ROS 2](lightweight_sim/design/ROS2.md), [Routing](lightweight_sim/design/ROUTING.md), and [reference line](lightweight_sim/design/REFERENCE_LINE.md).
 
 ## Build and launch (ROS 2 / WSL2)
 
@@ -85,7 +85,7 @@ safety system.
 Choose the parking algorithm in `lightweight_sim/config/default.yaml`:
 
 ```yaml
-parking_controller_node:
+/**/parking_controller_node:
   ros__parameters:
     planner_type: hybrid_astar  # or baseline
 ```

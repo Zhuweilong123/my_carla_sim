@@ -1,0 +1,26 @@
+# 启动备用值、旧上下文兼容值和未启用的预留参数，不作为日常调参入口。
+# 正常运行时，道路/车辆/目标速度/控制步长由 sim/context 覆盖。
+# reference_line_node 的两个预留参数当前仅校验/保存，不改变生成结果。
+
+/**/planner_node:
+  ros__parameters:
+    lane_width: 3.5  # 车道宽度的初始值，单位 m；接到当前场景上下文后会被场景值覆盖。
+    num_lanes: 2  # 车道数量的初始值；接到当前场景上下文后会被场景值覆盖。
+    local_vehicle_length_m: 3.91  # 旧上下文缺少车辆参数时的备用车长，单位 m；正常运行由仿真端 a+b+body_overhang 覆盖。
+    local_vehicle_width_m: 2.0  # 旧上下文缺少车辆参数时的备用车宽，单位 m；正常运行由仿真端 width 覆盖。
+
+/**/controller_node:
+  ros__parameters:
+    physics_dt: 0.05  # 控制模型的初始离散步长，单位 s；新运行时由场景上下文覆盖，须与车辆物理步长一致。
+    target_speed_kmh: 60.0  # 初始/无场景上下文时的目标速度，单位 km/h；正常运行由场景目标、路线限速及曲率约束决定。
+
+/**/reference_line_node:
+  ros__parameters:
+    max_lateral_deviation_m: 0.15  # 预留的参考线平滑横向偏移上限，单位 m，非负；当前流程仅校验/保存，不执行二次平滑。
+    boundary_margin_m: 0.1  # 预留的参考线边界安全余量，单位 m，非负；当前生成流程仅校验/保存。
+
+/**/simulator_gui:
+  ros__parameters:
+    lane_width: 3.5  # GUI 初始显示的车道宽度，单位 m；接到场景上下文后使用场景值。
+    num_lanes: 2  # GUI 初始显示的车道数量；接到场景上下文后使用场景值。
+    target_speed_kmh: 34.0  # GUI 初始显示的目标速度，单位 km/h；接到场景上下文后更新，不直接设定车辆速度。

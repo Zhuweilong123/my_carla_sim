@@ -1,0 +1,20 @@
+# 车辆物理模型与转向执行器；通过 sim/context 同步给规划/控制节点。
+# 三个 steering_* 动态参数仅在 steering_profile=assumed 时影响执行器响应。
+
+/**/simulator_node:
+  ros__parameters:
+    dynamic_max_substep_s: 0.0025  # 动力学积分的最大子步，单位 s，必须为正；经场景上下文同步给 LQR/MPC 的 plant 模型，越小计算量越大。
+    vehicle_a_m: 1.015  # 车辆质心到前轴的距离，单位 m，必须为正；a + b 为轴距。
+    vehicle_b_m: 1.895  # 车辆质心到后轴的距离，单位 m，必须为正。
+    vehicle_mass_kg: 1412.0  # 整车质量，单位 kg，必须为正；用于动力学及横向控制模型。
+    vehicle_cf_n_per_rad: -148970.0  # 前轮侧偏刚度，单位 N/rad；本项目采用负刚度符号约定，必须为负。
+    vehicle_cr_n_per_rad: -82204.0  # 后轮侧偏刚度，单位 N/rad；与前轮一致，必须为负。
+    vehicle_iz_kgm2: 1537.0  # 车辆绕竖直轴的转动惯量，单位 kg·m²，必须为正。
+    vehicle_max_steer_rad: 0.5  # 前轮物理转角的绝对值上限，单位 rad，必须为正；不是归一化方向盘输入。
+    vehicle_max_accel_mps2: 3.0  # 满油门对应的最大加速度，单位 m/s²，必须为正。
+    vehicle_max_decel_mps2: 6.0  # 满刹车对应的最大减速度幅值，单位 m/s²，使用正数。
+    vehicle_width_m: 2.0  # 车辆碰撞几何的宽度，单位 m，必须为正。
+    vehicle_body_overhang_m: 1.0  # 车辆总长度相对轴距增加的长度，单位 m；车长 = a + b + 此项。
+    steering_time_constant_s: 0.15  # assumed 转向执行器的一阶惯性时间常数，单位 s；越大转向响应越慢。
+    steering_delay_s: 0.05  # assumed 转向执行器的传输延迟，单位 s；须为 physics_dt 的非负整数倍。
+    steering_rate_limit_rad_s: 0.6  # assumed 转向执行器的最大转角变化速率，单位 rad/s，必须为正。

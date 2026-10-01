@@ -50,7 +50,7 @@ ROS `planner_node` 通过 `local_planner_algorithm` 选择算法，默认 `dp_qp
 
 横向控制器采用离散动态自行车误差模型、Riccati LQR 反馈和曲率前馈；通过单调弧长进度及局部参考投影维持分支连续性，适用于闭环交叉处的路径跟踪。转向执行器支持理想模式，以及显式假设的延迟/惯性/速率限制模式；后者不是实车标定。
 
-纵向控制采用 PID。速度限值、目标限速比例、弯道/横向加速度约束和车辆参数由 `config/default.yaml` 配置；共享周期与默认值集中在 `engine/runtime_config.py`。默认仿真物理步长和规划/控制周期均为 0.05 s（20 Hz）。
+纵向控制采用 PID。速度策略在 `config/default.yaml`，车辆参数在 `config/vehicle.yaml`，算法调参在 `config/algorithms.yaml`，调度与超时在 `config/system.yaml`；详见[配置说明](../config/README.md)。共享周期与默认值集中在 `engine/runtime_config.py`。默认仿真物理步长和规划/控制周期均为 0.05 s（20 Hz）。
 
 ### 控制器扩展结构
 

@@ -42,7 +42,15 @@ setup(
         ("share/ament_index/resource_index/packages", [f"resource/{package_name}"]),
         (f"share/{package_name}", ["package.xml"]),
         (f"share/{package_name}/launch", ["config/launch/lightweight_sim.launch.py"]),
-        (f"share/{package_name}/config", ["config/default.yaml"]),
+        (f"share/{package_name}/config", [
+            "config/default.yaml",
+            "config/vehicle.yaml",
+            "config/algorithms.yaml",
+            "config/system.yaml",
+            "config/compatibility.yaml",
+            "config/baseline.yaml",
+            "config/README.md",
+        ]),
         (
             f"share/{package_name}/config/maps",
             [

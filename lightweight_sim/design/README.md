@@ -1,6 +1,6 @@
 # 轻量级仿真设计文档
 
-本目录集中存放 lightweight_sim 的系统设计和接口说明。文档描述当前代码实现；参数默认值以 ../config/default.yaml 和 ../engine/runtime_config.py 为准。
+本目录集中存放 lightweight_sim 的系统设计和接口说明。文档描述当前代码实现；参数值以 ../config/ 下的分层配置和 ../engine/runtime_config.py 为准，加载顺序见[配置说明](../config/README.md)。
 
 | 文档 | 内容 |
 | --- | --- |

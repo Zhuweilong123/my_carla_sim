@@ -1,6 +1,8 @@
 # ROS 2 节点与接口
 
-本文描述轻量级仿真的当前 ROS 2 执行图。默认 launch 使用 `lightweight_sim/config/launch/lightweight_sim.launch.py`；可调参数集中在 `config/default.yaml`。消息定义属于独立包 `lightweight_sim_msgs/`。
+本文描述轻量级仿真的当前 ROS 2 执行图。默认 launch 使用 `lightweight_sim/config/launch/lightweight_sim.launch.py`；常用参数位于 `config/default.yaml`，其余按车辆、算法、系统与兼容用途分层，详见[配置说明](../config/README.md)。消息定义属于独立包 `lightweight_sim_msgs/`。
+
+六个配置文件均使用 `/**/节点名` 选择器，使相同配置在根命名空间和任意层级 namespace 下生效；节点之间不共享各自参数。控制模型的物理周期在新运行激活时从 `sim/context.physics_dt` 同步，兼容配置中的初始备用值无需与实际周期相等。
 
 ## 节点与数据流
 
