@@ -136,7 +136,7 @@ class ScenarioConfig:
     ego_start_x: float = 20.0
     ego_start_y: float = 0.0
     ego_start_phi: float = 0.0
-    ego_start_speed: float = 10.0
+    ego_start_speed: float = 0.0
     target_speed: float = 50.0
     speed_limit_type: str = "straight"
     speed_limit_kmh: float = 40.0
