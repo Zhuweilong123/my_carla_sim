@@ -6,8 +6,8 @@
 | --- | ---: | --- |
 | `default.yaml` | 23 | 场景、算法选择、速度策略、地图、窗口及初始交互模式 |
 | `vehicle.yaml` | 15 | 车辆物理模型、积分子步和转向执行器 |
-| `algorithms.yaml` | 37 | DP+QP、路径接管、横纵向控制、Routing 和参考线几何 |
-| `system.yaml` | 37 | 时钟、接口名称、调度周期、仲裁与安全超时 |
+| `algorithms.yaml` | 46 | 路径与 ST 速度 DP+QP、路径接管、横纵向控制、Routing 和参考线几何 |
+| `system.yaml` | 48 | 时钟、接口名称、调度周期、仲裁与安全超时 |
 | `compatibility.yaml` | 11 | 启动/旧上下文备用值及未启用的预留参数 |
 | `baseline.yaml` | 5 | baseline 对比规划器的专用参数 |
 
@@ -18,7 +18,8 @@
 ## 常用调整
 
 - 场景和执行器模式：修改 `default.yaml` 的 `scenario`、`steering_profile`。launch 默认值读取这两项，显式命令行参数优先，例如 `scenario:=figure_eight steering_profile:=assumed`。
-- 速度：修改仿真端的场景/路段限速、`target_speed_ratio` 和 `max_lateral_accel_mps2`。控制器还会应用路线限速与曲率约束，GUI 的目标速度仅是显示备用值。
+- 速度：修改仿真端的场景/路段限速、`target_speed_ratio` 和 `max_lateral_accel_mps2`。独立 `speed_planner_node` 将限速、曲率、障碍物及终点转为 ST 约束，纵向控制跟踪速度参考；GUI 的目标速度仅是显示备用值。
+- ST 速度规划：`algorithms.yaml` 的 `/**/speed_planner_node` 设置时域、格点、舒适加减速度、jerk、停车余量和求解预算；`system.yaml` 设置提交周期和时效。关闭控制端 `speed_planning_enabled` 对比旧标量速度策略时，同步关闭安全监督的 `require_speed_plan`。
 - 算法：在 `default.yaml` 选择 `local_planner_algorithm`、`controller` 和泊车 `planner_type`，再调整 `algorithms.yaml` 中对应参数。
 - 地图：Routing 和参考线节点的 `map_file` / `map_dir` 应保持一致；`map_file` 非空时优先使用单个地图，目录配置不参与该次加载。
 - 窗口和初始模式：修改 GUI 的尺寸、帧率、`initial_mode`、`initial_control_source`；渲染帧率不改变物理步长。仲裁器的启动备用模式在 `system.yaml` 中。

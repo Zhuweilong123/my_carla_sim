@@ -8,6 +8,9 @@ import rclpy
 from std_msgs.msg import String
 from lightweight_sim_msgs.msg import ControlCommand, Path as RosPath
 from lightweight_sim_msgs.msg import ReferenceLine as RosReferenceLine
+from lightweight_sim_msgs.msg import SpeedProfile
+import numpy as np
+from ..algorithms.planner.st_speed import SpeedPlan
 from lightweight_sim_msgs.msg import VehicleState as RosVehicleState
 from rclpy.node import Node
 from ..algorithms.controller.combined import VehicleController
@@ -59,6 +62,8 @@ class ControllerNode(Node):
     def __init__(self) -> None:
         super().__init__("controller_node")
         self.declare_parameter("controller", DEFAULT_RUNTIME_CONFIG.controller)
+        self.declare_parameter("speed_planning_enabled", False)
+        self.declare_parameter("speed_profile_timeout_s", .6)
         self.declare_parameter("physics_dt", DEFAULT_RUNTIME_CONFIG.physics_dt)
         self.declare_parameter("target_speed_kmh", DEFAULT_RUNTIME_CONFIG.target_speed_kmh)
         self.declare_parameter("control_period", DEFAULT_RUNTIME_CONFIG.control_period)
@@ -98,6 +103,11 @@ class ControllerNode(Node):
         self.reference_path = []
         self.planned_path = []
         self.last_sequence = -1
+        self._path_candidates = {}
+        self._speed_candidates = {}
+        self.speed_reference = None
+        self.speed_stamp = None
+        self._invalid_path_sequence = -1
         self.route_context = None
         self.reference_run = None
         self.active_run = None
@@ -133,6 +143,8 @@ class ControllerNode(Node):
         self.planned_sub = self.create_subscription(
             RosPath, "planned_path", self._on_planned, latched_path_qos()
         )
+        self.create_subscription(SpeedProfile, "speed_profile", self._on_speed, latched_path_qos())
+        self.speed_tracking_pub = self.create_publisher(String, "speed/tracking", sensor_data_qos())
         self.command_pub = self.create_publisher(
             ControlCommand,
             str(self.get_parameter("output_topic").value),
@@ -218,6 +230,10 @@ class ControllerNode(Node):
         self.last_control_stamp = None
         self._history_command_stamp = None
         self.last_sequence = -1
+        self._path_candidates.clear()
+        self._speed_candidates.clear()
+        self.speed_reference = self.speed_stamp = None
+        self._invalid_path_sequence = -1
         pending_reference = self._pending_routing_reference
         if (
             pending_reference is not None
@@ -368,11 +384,82 @@ class ControllerNode(Node):
         age = self.get_clock().now().nanoseconds/1e9 - stamp
         if age < -0.1 or age > float(self.get_parameter("plan_timeout").value):
             return
+        if bool(self.get_parameter("speed_planning_enabled").value):
+            sequence = int(message.sequence)
+            if sequence <= self._invalid_path_sequence:
+                return
+            if len(message.points) < 2:
+                self._invalid_path_sequence = sequence
+                self._path_candidates.clear()
+                self._speed_candidates.clear()
+                self.speed_reference = self.speed_stamp = None
+                self.plan_ready = False
+                return
+            self._path_candidates[sequence] = (path_to_tuples(message), stamp)
+            while len(self._path_candidates) > 16:
+                del self._path_candidates[min(self._path_candidates)]
+            pending = self._speed_candidates.pop(sequence, None)
+            if pending is not None:
+                self._on_speed(pending)
+            return
         self.last_sequence = int(message.sequence)
         self.planned_path = path_to_tuples(message)
         self.plan_time = stamp
         self.plan_ready = bool(self.planned_path)
         self.controller.update_ref_path(self.planned_path or self.reference_path, reset=False)
+
+    def _on_speed(self, message):
+        if not bool(self.get_parameter("speed_planning_enabled").value):
+            return
+        run, version = decode_sequence(message.path_sequence)
+        stamp = message.header.stamp.sec+message.header.stamp.nanosec/1e9
+        age = self.get_clock().now().nanoseconds/1e9-stamp
+        if (run != self.active_run or message.run_id != run or not version
+                or message.path_sequence <= self._invalid_path_sequence
+                or message.path_sequence < self.last_sequence
+                or not -.001 <= age <= float(self.get_parameter("speed_profile_timeout_s").value)
+                or (self.speed_stamp is not None and stamp < self.speed_stamp)):
+            return
+        if not message.valid:
+            self.speed_reference = None
+            self.plan_ready = False
+            self.controller.lon.reset()
+            return
+        points = message.points
+        if len(points) < 2:
+            return
+        data = np.array([[p.time_from_start, p.s, p.speed, p.acceleration, p.jerk] for p in points])
+        if (not np.isfinite(data).all() or not math.isfinite(message.origin_s) or abs(data[0, 0]) > 1e-8
+                or np.any(np.diff(data[:, 0]) <= 0) or np.any(data[:, 2] < 0)
+                or np.any(np.diff(data[:, 1]) < -.002)):
+            return
+        # Verify the advertised interpolation follows its knot states.
+        for first, second in zip(data[:-1], data[1:]):
+            dt = second[0]-first[0]
+            s, v, a, j = first[1:]
+            expected = [s+v*dt+.5*a*dt**2+j*dt**3/6, v+a*dt+.5*j*dt**2, a+j*dt]
+            if np.max(np.abs(np.array(expected)-second[1:4])) > .01:
+                return
+        if message.path_sequence not in self._path_candidates:
+            self._speed_candidates[message.path_sequence] = message
+            while len(self._speed_candidates) > 16:
+                del self._speed_candidates[min(self._speed_candidates)]
+            return
+        path, path_stamp = self._path_candidates[message.path_sequence]
+        if self.get_clock().now().nanoseconds/1e9-path_stamp > float(self.get_parameter("plan_timeout").value):
+            return
+        reference = SpeedPlan(*[data[:, i].copy() for i in range(4)], data[:-1, 4].copy(),
+                              message.origin_s, None, 'solved')
+        try:
+            _, v, _ = reference.sample(age)
+        except ValueError:
+            return
+        if self.state is not None and abs(v-self.state.speed) > 1.5:
+            return
+        self.speed_reference, self.speed_stamp = reference, stamp
+        self.last_sequence = int(message.path_sequence)
+        self.planned_path, self.plan_time, self.plan_ready = path, path_stamp, True
+        self.controller.update_ref_path(path, reset=False)
 
     def _publish_command(self, steer: float, throttle: float, brake: float) -> None:
         # Legacy/direct-writer inputs without plant FIFO feedback still account
@@ -393,6 +480,8 @@ class ControllerNode(Node):
         message.brake = float(brake)
         message.gear = 1
         self.command_pub.publish(message)
+        if brake >= .999:
+            self.controller.lon.reset()
 
     def _on_timer(self) -> None:
         if self.active_run is None or self.state is None or self.state_time is None:
@@ -447,9 +536,28 @@ class ControllerNode(Node):
                 # obstacles on the global centreline. Wait stopped for a plan.
                 self._publish_command(0.0, 0.0, 1.0)
                 return
-        self.controller.set_target_speed(
-            self._target_speed_at(self.state.x, self.state.y)
-        )
+        reference_accel = None
+        if bool(self.get_parameter("speed_planning_enabled").value):
+            elapsed = self.state.timestamp-(self.speed_stamp or 0.)
+            if (self.speed_reference is None or self.speed_stamp is None
+                    or not 0 <= elapsed <= float(self.get_parameter("speed_profile_timeout_s").value)):
+                self._publish_command(self.state.steer, 0., 1.)
+                return
+            try:
+                reference_s, reference_speed, reference_accel = self.speed_reference.sample(elapsed)
+            except ValueError:
+                self._publish_command(self.state.steer, 0., 1.)
+                return
+            if reference_speed < .05 and reference_accel <= .01 and self.state.speed < .15:
+                self._publish_command(self.state.steer, 0., 1.)
+                return
+            self.controller.set_target_speed(reference_speed*3.6)
+            self.speed_tracking_pub.publish(String(data=json.dumps(dict(run_id=self.active_run,
+                path_sequence=self.last_sequence, reference_speed_mps=reference_speed,
+                reference_accel_mps2=reference_accel, measured_speed_mps=self.state.speed,
+                reference_s=reference_s))))
+        else:
+            self.controller.set_target_speed(self._target_speed_at(self.state.x, self.state.y))
         try:
             steer, throttle, brake = self.controller.step(
                 self.state.x,
@@ -459,6 +567,7 @@ class ControllerNode(Node):
                 self.state.vy,
                 self.state.r,
                 actual_steer=self.state.steer,
+                reference_accel=reference_accel,
             )
             self._history_command_stamp = self.state.timestamp
         except (RuntimeError, ValueError) as exc:

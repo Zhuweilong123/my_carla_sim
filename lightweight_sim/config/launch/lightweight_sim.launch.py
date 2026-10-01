@@ -107,6 +107,15 @@ def generate_launch_description():
                 parameters=[*config, {"use_sim_time": True}],
             ),
             Node(
+                package="lightweight_sim",
+                executable="speed_planner_node",
+                name="speed_planner_node",
+                namespace=namespace,
+                output="screen",
+                condition=IfCondition(controller_enabled),
+                parameters=[*config, {"use_sim_time": True}],
+            ),
+            Node(
                 package="parking_module",
                 executable="parking_controller_node",
                 name="parking_controller_node",

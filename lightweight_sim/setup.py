@@ -69,6 +69,7 @@ setup(
         "console_scripts": [
             "simulator_node = lightweight_sim.engine.ros_nodes.simulator_node:main",
             "planner_node = lightweight_sim.engine.ros_nodes.planner_node:main",
+            "speed_planner_node = lightweight_sim.engine.ros_nodes.speed_planner_node:main",
             "routing_node = lightweight_sim.engine.routing.routing_node:main",
             "reference_line_node = lightweight_sim.engine.reference_line.reference_line_node:main",
             "controller_node = lightweight_sim.engine.ros_nodes.controller_node:main",

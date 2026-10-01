@@ -5,6 +5,7 @@ import time
 import rclpy
 from lightweight_sim_msgs.msg import Path as RosPath
 from lightweight_sim_msgs.msg import ReferenceLine as RosReferenceLine
+from lightweight_sim_msgs.msg import SpeedProfile
 from rclpy.node import Node
 from std_msgs.msg import Bool, String
 
@@ -34,7 +35,10 @@ class SafeStopNode(Node):
         self.declare_parameter("update_period_s", 0.05)
         self.declare_parameter("reference_topic", "routing/reference_line")
         self.declare_parameter("stop_topic", "safety/stop_request")
-        self._context = None
+        self.declare_parameter("require_speed_plan", False)
+        self.declare_parameter("speed_plan_timeout_s", .6)
+        self._speed_run = self._speed_received_at = None
+        self._run_context = None
         self._reference_run = None
         self._reference_ready = False
         self._pending_reference = None
@@ -52,6 +56,7 @@ class SafeStopNode(Node):
             latched_path_qos(),
         )
         self.create_subscription(RosPath, "planned_path", self._on_plan, latched_path_qos())
+        self.create_subscription(SpeedProfile, "speed_profile", self._on_speed, latched_path_qos())
         self._timer = self.create_timer(
             float(self.get_parameter("update_period_s").value), self._publish_status
         )
@@ -63,9 +68,10 @@ class SafeStopNode(Node):
             run_id = context["run_id"]
         except (TypeError, ValueError):
             return
-        if self._context and run_id <= int(self._context["run_id"]):
+        if self._run_context and run_id <= int(self._run_context["run_id"]):
             return
-        self._context = context
+        self._run_context = context
+        self._speed_run = self._speed_received_at = None
         pending_reference = self._pending_reference
         if pending_reference is not None and int(pending_reference.request_id) == run_id:
             self._pending_reference = None
@@ -79,15 +85,15 @@ class SafeStopNode(Node):
 
     def _on_reference(self, message: RosReferenceLine) -> None:
         run_id = int(message.request_id)
-        if self._context is None:
+        if self._run_context is None:
             if (
                 self._pending_reference is None
                 or run_id >= int(self._pending_reference.request_id)
             ):
                 self._pending_reference = message
             return
-        if self._context is not None and run_id != int(self._context["run_id"]):
-            if run_id < int(self._context["run_id"]):
+        if self._run_context is not None and run_id != int(self._run_context["run_id"]):
+            if run_id < int(self._run_context["run_id"]):
                 return
         self._reference_run = run_id
         self._reference_ready = bool(message.success and len(message.points) >= 2)
@@ -96,24 +102,33 @@ class SafeStopNode(Node):
         run_id, version = decode_sequence(message.sequence)
         if version <= 0:
             return
-        if self._context is not None and run_id != int(self._context["run_id"]):
-            if run_id < int(self._context["run_id"]):
+        if self._run_context is not None and run_id != int(self._run_context["run_id"]):
+            if run_id < int(self._run_context["run_id"]):
                 return
         self._plan_run = run_id
         self._plan_received_at = (
             time.monotonic() if len(message.points) >= 2 else None
         )
 
+    def _on_speed(self, message):
+        if self._run_context is None or message.run_id != self._run_context['run_id']:
+            return
+        run, version = decode_sequence(message.path_sequence)
+        if run != message.run_id or not version:
+            return
+        self._speed_run = run
+        self._speed_received_at = time.monotonic() if message.valid and len(message.points) >= 2 else None
+
     def _stop_reason(self) -> str:
-        if self._context is None:
+        if self._run_context is None:
             return "waiting for simulation context"
-        if self._context.get("routing_map_id"):
-            if self._reference_run != int(self._context["run_id"]):
+        if self._run_context.get("routing_map_id"):
+            if self._reference_run != int(self._run_context["run_id"]):
                 return "waiting for matching routing reference line"
             if not self._reference_ready:
                 return "routing reference line failed"
         if (
-            self._plan_run != int(self._context["run_id"])
+            self._plan_run != int(self._run_context["run_id"])
             or self._plan_received_at is None
         ):
             return "waiting for matching local plan"
@@ -121,6 +136,12 @@ class SafeStopNode(Node):
             self.get_parameter("planned_path_timeout_s").value
         ):
             return "local plan heartbeat stale"
+        if (bool(self.get_parameter('require_speed_plan').value)
+                and self._run_context.get('maneuver') != 'reverse_parking'):
+            if self._speed_run != self._run_context['run_id'] or self._speed_received_at is None:
+                return 'waiting for matching speed plan'
+            if time.monotonic()-self._speed_received_at > float(self.get_parameter('speed_plan_timeout_s').value):
+                return 'speed plan heartbeat stale'
         return ""
 
     def _publish_status(self) -> None:
@@ -143,5 +164,11 @@ def main(args=None) -> None:
     except KeyboardInterrupt:
         pass
     finally:
-        node.destroy_node()
-        rclpy.shutdown()
+        try:
+            node.destroy_node()
+        except KeyboardInterrupt:
+            pass
+        try:
+            rclpy.shutdown()
+        except (KeyboardInterrupt, RuntimeError):
+            pass

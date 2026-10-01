@@ -37,7 +37,10 @@ class LongitudinalPIDController(LongitudinalController):
         self._filtered_derivative = 0.0
         self._previous_accel = 0.0
 
-    def control(self, current_speed_ms, coupling_accel=0.0):
+    def control(self, current_speed_ms, coupling_accel=0.0, reference_accel=None):
+        if not all(math.isfinite(float(v)) for v in
+                   (current_speed_ms, coupling_accel, reference_accel or 0.)):
+            raise ValueError('longitudinal input must be finite')
         error_ms = self.target_speed / 3.6 - float(current_speed_ms)
         error_kmh = error_ms * 3.6
         self.error_buffer.append(error_kmh)
@@ -46,11 +49,16 @@ class LongitudinalPIDController(LongitudinalController):
             derivative = 0.0
         else:
             raw_derivative = (error_ms - self._previous_error) / self.dt
+            if reference_accel is not None:
+                # D acts on tracking acceleration error, avoiding a setpoint
+                # step kick while preserving nominal acceleration feedforward.
+                raw_derivative = float(reference_accel) - (float(current_speed_ms)-self._previous_speed)/self.dt
             self._filtered_derivative = (
                 0.7 * self._filtered_derivative + 0.3 * raw_derivative
             )
             derivative = self._filtered_derivative
         self._previous_error = error_ms
+        self._previous_speed = float(current_speed_ms)
 
         if abs(error_kmh) > self.error_threshold:
             integral = 0.0
@@ -62,10 +70,14 @@ class LongitudinalPIDController(LongitudinalController):
             self.K_P * error_ms
             + self.K_I * integral
             + self.K_D * derivative
+            + (float(reference_accel) if reference_accel is not None else 0.)
         )
         # EgoVehicle.dynamic_step uses vx_dot = accel + r * vy. Cancel the
         # lateral inertial coupling so the speed loop controls its target.
         requested_accel -= self.coupling_gain * float(coupling_accel)
+        if ((requested_accel > self.max_accel and error_ms > 0)
+                or (requested_accel < -self.max_decel and error_ms < 0)):
+            self.error_buffer.clear()
         requested_accel = max(
             -self.max_decel,
             min(self.max_accel, requested_accel),

@@ -273,4 +273,8 @@ def make_scenario(name: str) -> ScenarioConfig:
     config.speed_limit_kmh = speed_limit
     config.target_speed_ratio = DEFAULT_RUNTIME_CONFIG.target_speed_ratio
     config.target_speed = speed_limit * config.target_speed_ratio
+    if config.destination is not None and config.destination_speed_tolerance_mps is None:
+        # Reaching a forward mission now means stopping, not passing through
+        # its position tolerance while still travelling at cruise speed.
+        config.destination_speed_tolerance_mps = .15
     return config

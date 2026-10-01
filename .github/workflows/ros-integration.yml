@@ -81,6 +81,7 @@ jobs:
           /tmp/lightweight-sim-ci/bin/python -m pytest -q \
             lightweight_sim/tests/test_controller_manager.py \
             lightweight_sim/tests/test_controller_speed_profile.py \
+            lightweight_sim/tests/test_speed_ros.py \
             lightweight_sim/tests/test_ros_lifecycle.py
 
       - name: Run ROS 2 launch smoke test

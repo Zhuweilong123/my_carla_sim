@@ -16,6 +16,8 @@ class BlockScipy(importlib.abc.MetaPathFinder):
 sys.meta_path.insert(0, BlockScipy())
 from lightweight_sim.engine.reference_line import ReferenceLineCore
 from lightweight_sim.engine.simulator.world import World
+from lightweight_sim.engine.algorithms.planner.st_speed import SpeedPlan
+from lightweight_sim.engine.algorithms.controller.combined import VehicleController
 from lightweight_sim.engine.reference_line import create_local_planner
 options = dict(global_frenet_path=[(0, 0, 0, 0), (100, 0, 0, 0)],
                lane_width=3.5, num_lanes=2, reference_lane_index=0, target_lane=0)

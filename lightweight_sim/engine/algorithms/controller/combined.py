@@ -81,7 +81,7 @@ class VehicleController:
     def set_target_speed(self, speed_kmh):
         self.lon.set_target(speed_kmh)
 
-    def step(self, x, y, phi, vx, vy, r, *, actual_steer=None):
+    def step(self, x, y, phi, vx, vy, r, *, actual_steer=None, reference_accel=None):
         if not self.ref_path:
             return 0.0, 0.0, 0.0
         if self.lat.actuator_params.mode == "dynamic":
@@ -89,9 +89,11 @@ class VehicleController:
                 raise ValueError("actuator-aware control requires measured front-wheel angle")
             self.lat.actual_steer = actual_steer
         steer = self.lat.control(x, y, phi, vx, vy, r, self.ref_path)
+        feedforward = {} if reference_accel is None else dict(reference_accel=reference_accel)
         accel = self.lon.control(
             (vx * vx + vy * vy) ** 0.5,
             coupling_accel=r * vy,
+            **feedforward,
         )
         throttle = accel / self.params.max_accel if accel >= 0.0 else 0.0
         brake = abs(accel) / self.params.max_decel if accel < 0.0 else 0.0

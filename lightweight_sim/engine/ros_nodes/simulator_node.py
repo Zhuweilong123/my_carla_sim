@@ -67,6 +67,7 @@ class SimulatorNode(_LegacySimulatorNode):
                        steering_parameters=asdict(config.steering),
                        maneuver=getattr(config, "maneuver", "cruise"),
                        parking_goal=getattr(config, "parking_goal", None),
+                       destination=getattr(config, "destination", None),
                        ego_start_pose=(
                            config.ego_start_x,
                            config.ego_start_y,

@@ -12,6 +12,10 @@ simulator_node --routing/request-----------------------> routing_node
 routing_node --routing/route---------------------------> reference_line_node
 reference_line_node --routing/reference_line-----------> planner_node, controller_node, safe_stop_node
 planner_node --planned_path----------------------------> controller_node, safe_stop_node
+planner_node --planned_path----------------------------> speed_planner_node
+simulator_node --vehicle/state, obstacles, sim/context--> speed_planner_node
+reference_line_node --routing/reference_line-----------> speed_planner_node
+speed_planner_node --speed_profile---------------------> controller_node, safe_stop_node
 controller_node --control_command/cruise---------------+
 GUI/manual --control_command/manual--------------------+--> controller_manager
 safe_stop_node --safety/stop_request-------------------+          |
@@ -26,7 +30,8 @@ safe_stop_node --safety/stop_request-------------------+          |
 | `routing_node` | 加载内置或指定 JSON 地图，响应事件型路线请求和 `routing/compute_route` 服务 |
 | `reference_line_node` | 验证 RoutePlan 并生成连续车道参考线与道路边界 |
 | `planner_node` | 周期触发局部规划，消费 Routing 参考线和障碍物，发布最新 `planned_path` |
-| `controller_node` | 跟踪参考线/局部路径，发布巡航候选指令和 tracking metrics |
+| `speed_planner_node` | 消费固定几何路径，以 ST DP+QP 独立规划速度、加速度和 jerk |
+| `controller_node` | 配对几何路径和速度版本，横向跟踪路径，纵向以前馈 PID 跟踪速度，发布巡航候选指令和 tracking metrics |
 | `controller_manager` | 仲裁巡航、手动、泊车候选；唯一发布最终 `control_command` |
 | `safe_stop_node` | 监视当前 run 的 Routing 参考线和规划新鲜度，异常时请求停车 |
 | `gui_node` | 可选 Pygame ROS 客户端；显示状态/地图/路径并通过服务控制同一个 simulator |
@@ -47,6 +52,9 @@ Routing 请求是场景切换或重置时更新的事件，不是固定频率轨
 | `routing/route` | `lightweight_sim_msgs/RoutePlan` | Routing 发布的拓扑路线及路线几何 |
 | `routing/reference_line` | `lightweight_sim_msgs/ReferenceLine` | 参考线节点发布的车道中心线、边界及元数据 |
 | `planned_path` | `lightweight_sim_msgs/Path` | 局部规划器发布的当前短路径 |
+| `speed_profile` | `lightweight_sim_msgs/SpeedProfile` | speed_planner_node -> controller_node、safe_stop_node |
+| `speed/diagnostics` | `std_msgs/msg/String` | speed_planner_node -> 诊断工具 |
+| `speed/tracking` | `std_msgs/msg/String` | controller_node -> 诊断工具 |
 | `control_command/cruise` | `lightweight_sim_msgs/ControlCommand` | 巡航控制候选 |
 | `control_command/manual` | `lightweight_sim_msgs/ControlCommand` | 手动控制候选 |
 | `control_command/parking` | `lightweight_sim_msgs/ControlCommand` | 泊车控制候选 |
@@ -76,6 +84,8 @@ source install/setup.bash
 ```
 
 ## Services
+
+几何路径与独立 ST 速度规划的约束、消息、版本接管和前馈 PID 流程见 [独立速度规划设计](SPEED_PLANNING.md)。标准 launch 同时启用速度节点和速度就绪监督。
 
 - `routing/compute_route`（`lightweight_sim_msgs/srv/ComputeRoute`）：按请求同步计算路线。
 - `sim/reset`（`std_srvs/srv/Empty`）：重置当前仿真及场景运行标识。

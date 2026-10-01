@@ -4,7 +4,7 @@
 
 /**/planner_node:
   ros__parameters:
-    handover_min_time_s: 0.15  # DP+QP 接管预测的最小时间，单位仿真 s；覆盖计算、发布和定时轮询延迟。
+    handover_min_time_s: 0.3  # 接管预测最小时间，单位仿真 s；覆盖几何求解、ST 提交等待/求解、发布和轮询的串行延迟。
     handover_max_time_s: 0.4  # 接管预测时间上限，单位仿真 s；超时结果拒绝接入。
     handover_margin_time_s: 0.05  # 实测规划/发布延迟之上的接管余量，单位仿真 s。
     handover_position_tolerance_m: 0.35  # 沿当前路径预测和接管验证允许的位置跟踪偏差，单位 m。
@@ -32,7 +32,7 @@
     lateral_discretization: plant  # 模型离散方法：plant 为仿真子步模型，bilinear 为双线性变换；动态执行器补偿要求 plant。
     longitudinal_kp: 1.15  # 纵向 PID 比例增益；速度误差在算法内换算为 m/s 后计算加速度。
     longitudinal_ki: 0.0  # 纵向 PID 积分增益；0 表示关闭积分项。
-    longitudinal_kd: 0.55  # 纵向 PID 微分增益；作用于经滤波的速度误差变化率。
+    longitudinal_kd: 0.55  # 纵向 PID 微分增益；ST 前馈模式比较参考与测量加速度，旧模式使用速度误差变化率。
     longitudinal_error_threshold_kmh: 1.0  # 积分分离的速度误差阈值，单位 km/h；绝对误差超出该值时清空积分误差缓存。
     longitudinal_max_jerk_mps3: 40.0  # 纵向加速度命令的变化率上限，单位 m/s³；每步最多改变该值 × physics_dt。
     longitudinal_coupling_gain: 0.5  # 抵消横纵向动力学耦合 r×vy 的比例；0 关闭补偿，1 完全抵消该耦合项。
@@ -43,6 +43,18 @@
     lane_change_penalty_s: 1.0  # A* 路线代价中的换道附加时间，单位 s。
     u_turn_penalty_s: 30.0  # A* 路线代价中的掉头附加时间，单位 s；越大越不倾向选择掉头路径。
     sample_spacing_m: 1.0  # 全局路线几何采样间距，单位 m，必须为正；越小路径点越密集。
+
+/**/speed_planner_node:
+  ros__parameters:
+    horizon_s: 6.0  # ST 预测时域，单位 s；局部路径不足时缩短，不将截断点当成终点。
+    time_step_s: 0.2  # ST 时间格点间隔，单位 s；短时域可进一步缩小。
+    max_accel: 2.0  # 舒适加速度上限，单位 m/s²，同时受实际车辆能力约束。
+    max_decel: 3.0  # 舒适减速度幅值上限，单位 m/s²；初始安全制动按 jerk 回到舒适范围。
+    max_jerk: 3.0  # 速度规划 jerk 幅值上限，单位 m/s³。
+    collision_margin_m: 0.3  # 车辆与障碍物矩形碰撞检测的附加间距，单位 m。
+    stop_gap_m: 0.5  # 在首次可能碰撞位置前的停车余量，单位 m。
+    beam_width: 96  # DP 保留的不同 s/v/a 状态数；增加会提高计算量。
+    qp_time_limit_s: 0.06  # OSQP 求解时间上限，单位墙钟 s；失败输出无效速度参考。
 
 /**/reference_line_node:
   ros__parameters:
