@@ -14,7 +14,8 @@ from .pygame_compat import configure_display_driver, patch_sysfont_for_python314
 from .renderer import Camera, Renderer
 
 
-REFERENCE_LINE_PATH = (35, 195, 255)
+# Muted coral keeps the reference visible without competing with the local plan.
+REFERENCE_LINE_PATH = (198, 126, 116)
 ROUTING_PATH = (220, 90, 255)
 ROUTING_LANE_FILL = (165, 60, 220, 48)
 ROUTING_LANE_EDGE = (220, 120, 255)
@@ -252,7 +253,7 @@ class RosGuiView:
             self.renderer.draw_path(
                 [(p.x, p.y, p.theta, p.kappa) for p in active_reference],
                 color=REFERENCE_LINE_PATH,
-                width=3,
+                width=2,
             )
         if snapshot.routing_path or snapshot.reference_line_path:
             for boundary in (
@@ -287,7 +288,7 @@ class RosGuiView:
             self.renderer.draw_path(
                 snapshot.planned_path,
                 color=LOCAL_PLANNED_PATH,
-                width=2,
+                width=3,
             )
         self.renderer.draw_obstacles(snapshot.obstacles)
 

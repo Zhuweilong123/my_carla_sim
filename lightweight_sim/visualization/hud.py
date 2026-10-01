@@ -83,7 +83,7 @@ class HUD:
                 right_x, top_y, right_w, 220, control_info, auto_mode,
                 steer_cmd_deg,
             )
-            self._draw_error_graph(right_x, self.h - 182, right_w, 154, ed, ephi)
+            self._draw_error_graph(right_x, self.h - 218, right_w, 190, ed, ephi)
         self._draw_controls_hint(18, self.h - 54, 410, 34, auto_mode)
 
         if collision:
@@ -161,28 +161,28 @@ class HUD:
     def _draw_error_graph(self, x: int, y: int, w: int, h: int,
                           ed: float, ephi: float):
         self._panel(x, y, w, h, "TRACKING ERROR", (180, 130, 255))
-        graph = pygame.Rect(x + 14, y + 42, w - 28, h - 54)
-        pygame.draw.rect(self.screen, (7, 11, 17), graph, border_radius=4)
-        pygame.draw.line(self.screen, (62, 72, 86),
-                         (graph.left, graph.centery),
-                         (graph.right, graph.centery), 1)
+        row_height = (h - 48) // 2
 
-        def curve(data, color, scale):
+        def draw_series(row_y, label, data, color, scale):
+            self._text(label, x + 14, row_y, self.font_small, color)
+            graph = pygame.Rect(x + 14, row_y + 20, w - 28, row_height - 28)
+            pygame.draw.rect(self.screen, (7, 11, 17), graph, border_radius=4)
+            pygame.draw.line(self.screen, (62, 72, 86),
+                             (graph.left, graph.centery),
+                             (graph.right - 1, graph.centery), 1)
             if len(data) < 2:
                 return
             points = []
             for i, value in enumerate(data):
-                px = graph.left + int(i * graph.width / max(1, len(data) - 1))
+                px = graph.left + int(i * (graph.width - 1) / (len(data) - 1))
                 py = graph.centery - int(value * scale)
                 points.append((px, max(graph.top + 2, min(graph.bottom - 2, py))))
             pygame.draw.lines(self.screen, color, False, points, 2)
 
-        curve(self.ed_history, HUD_TEXT, 12)
-        curve(self.ephi_history, (255, 202, 74), 28)
-        self._text(f"ed {ed:+.3f} m", graph.left + 8, graph.top + 5,
-                   self.font_small, HUD_TEXT)
-        self._text(f"ephi {math.degrees(ephi):+.2f}°", graph.left + 92,
-                   graph.top + 5, self.font_small, (255, 202, 74))
+        draw_series(y + 40, f"LATERAL  ed {ed:+.3f} m",
+                    self.ed_history, HUD_TEXT, 12)
+        draw_series(y + 40 + row_height, f"HEADING  ephi {math.degrees(ephi):+.2f}°",
+                    self.ephi_history, (255, 202, 74), 28)
 
     def _draw_controls_hint(self, x: int, y: int, w: int, h: int,
                             auto_mode: bool):
