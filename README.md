@@ -57,9 +57,13 @@ Routing is part of the standard simulator launch. The bundled JSON maps are in `
 - Click `CRUISE` or `PARKING` to select the task; the GUI control-source button or `Q` switches `AUTO`/`MANUAL`. The `PAUSE`/`RESUME` button toggles simulation playback.
 - `C` and `K` select cruise and parking; `E` pauses or resumes. `1`–`7` switch scenes.
 - In manual mode, `W/S` or the up/down arrows drive, `A/D` or the left/right arrows steer, and `SPACE` brakes.
-- `P` also pauses/resumes, `R` resets, the mouse wheel or `+`/`-` zooms, and `ESC` closes the GUI.
+- `P` also pauses/resumes, `R` resets, and `ESC` closes the GUI.
+- Two-finger touchpad scrolling pans the map in both axes; middle-button dragging also pans. Panning stops automatic vehicle following. Press `F` to recenter and follow again; switching scenes restores following.
+- Hold `Ctrl` while scrolling, or use `+`/`-`, to zoom. Plain mouse-wheel scrolling pans just like touchpad scrolling, since WSLg may expose both through the same input events.
 - Click `EDIT SCENE` to pause the simulation and edit the initial vehicle pose and obstacles. Choose `EGO` and click the map to move the start position; `[`/`]` rotate it. `ADD` places a rectangular obstacle, `MOVE` selects an obstacle and then its new location, and `DELETE` removes one. Select an obstacle and use `ROT +/-` or `SIZE +/-`; click `APPLY` to reset the scene with the changes. The updated scene stays paused until you press `E` or `P`, or click `RESUME`. `CANCEL` discards the draft.
 - In the reverse-parking scene, choose one of three slots with the slot buttons or `F1`–`F3`. Pause before changing the slot after a run has started; selecting a new slot restarts the scene from its initial pose.
+
+Vehicle pose and heading are interpolated between received states for smooth drawing at the configured render FPS. The camera uses the same displayed pose and time-based following. This adds about one state interval of visual latency (normally 50 ms); telemetry and tracking errors use actual states. Pausing or resetting snaps to the actual pose, and missing messages never cause display extrapolation.
 
 GUI rendering requires a Linux display (for WSL2, WSLg). Headless simulation, ROS topics, services, and tests do not require the GUI.
 

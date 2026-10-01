@@ -31,6 +31,8 @@ class _ScenarioHUD(_LegacyHUD):
         )
         x = 220
         w = max(150, right_edge - x)
+        y = self.h - 64
+        h = 48
         panel = pygame.Surface((w, h), pygame.SRCALPHA)
         pygame.draw.rect(panel, (12, 18, 27, 215), panel.get_rect(), border_radius=7)
         pygame.draw.rect(panel, self.BORDER, panel.get_rect(), 1, border_radius=7)
@@ -45,7 +47,12 @@ class _ScenarioHUD(_LegacyHUD):
                 if w >= 500 else "W/S drive  A/D steer  SPACE brake  E/P pause"
             )
         self.screen.blit(panel, (x, y))
-        self._text(hint, x + 14, y + 10, self.font_small, self.MUTED)
+        self._text(hint, x + 14, y + 8, self.font_small, self.MUTED)
+        navigation = (
+            "2-finger / MMB: pan   Ctrl+scroll / +/-: zoom   F: follow"
+            if w >= 500 else "Scroll/MMB pan  Ctrl+scroll zoom  F follow"
+        )
+        self._text(navigation, x + 14, y + 28, self.font_small, self.MUTED)
 
 
 HUD = _ScenarioHUD
@@ -151,6 +158,8 @@ class RosGuiView(_LegacyRosGuiView):
         self.started_at = time.monotonic()
         self._history_scenario = ""
         self._camera_scenario = ""
+        self._init_navigation()
+        self._init_display_state()
         self._scenario_key_state = {
             key: False for key, _name in self.SCENARIO_KEYS
         }

@@ -69,6 +69,7 @@ class GuiNode(_LegacyGuiNode):
         if self.route_context and context["run_id"] <= self.route_context["run_id"]:
             return
         self.route_context = context
+        self.view.reset_display_state()
         self.snapshot.scene_editing = False
         self.snapshot.scene_edit_message = ""
         self.view.target_speed_kmh = context["target_speed_kmh"]
