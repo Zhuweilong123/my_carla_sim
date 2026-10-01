@@ -3,6 +3,7 @@
 from .lat_lqr import LateralLQRController
 from .lat_mpc import LateralMPCController
 from .lon_pid import LongitudinalPIDController
+from .base import LateralController, LongitudinalController
 from ...simulator.data_types import VehicleParams
 from ...simulator.steering import SteeringParams
 import math
@@ -15,7 +16,8 @@ class VehicleController:
                  actuator_compensation=True, lateral_q=None, lateral_r=100.0,
                  dynamic_lateral_r=300.0, feedback_horizon_s=0.0,
                  smooth_reference_heading=True, discretization="plant",
-                 longitudinal_params=None):
+                 longitudinal_params=None, lateral_controller=None,
+                 longitudinal_controller=None, mpc_params=None):
         self.params = vehicle_params or VehicleParams()
         vehicle_para = vehicle_para or self.params.lateral_tuple
         self.controller_type = controller_type
@@ -26,25 +28,30 @@ class VehicleController:
                 if lateral_q.size != 4:
                     raise ValueError("lateral_q must contain four diagonal weights")
                 lateral_q = np.diag(lateral_q)
-        lateral_kwargs = dict(Q=lateral_q, R=float(lateral_r), ts=dt)
-        self.lat = (
-            LateralMPCController(vehicle_para, **lateral_kwargs)
+        actuator_params = (steering_params if steering_params and actuator_compensation
+                           else SteeringParams())
+        control_cost = dynamic_lateral_r if actuator_params.mode == "dynamic" else lateral_r
+        lateral_kwargs = dict(Q=lateral_q, R=float(control_cost), ts=dt,
+                              discretization=discretization)
+        self.lat: LateralController = lateral_controller if lateral_controller is not None else (
+            LateralMPCController(vehicle_para, **lateral_kwargs, **(mpc_params or {}))
             if controller_type == "MPC_controller"
             else LateralLQRController(vehicle_para, **lateral_kwargs)
         )
-        self.lon = LongitudinalPIDController(**(longitudinal_params or {}))
+        self.lon: LongitudinalController = (
+            longitudinal_controller if longitudinal_controller is not None
+            else LongitudinalPIDController(**(longitudinal_params or {}))
+        )
+        if not isinstance(self.lat, LateralController):
+            raise TypeError("lateral_controller must implement LateralController")
+        if not isinstance(self.lon, LongitudinalController):
+            raise TypeError("longitudinal_controller must implement LongitudinalController")
         self.lat.ts = self.lon.dt = dt
         self.lat.max_steer = self.params.max_steer
         self.lon.max_accel, self.lon.max_decel = self.params.max_accel, self.params.max_decel
-        self.lat.configure_actuator(steering_params if steering_params and actuator_compensation
-                                    else SteeringParams())
-        if self.lat.actuator_params.mode == "dynamic":
-            self.lat.R[:] = float(dynamic_lateral_r)
-        self.lat.discretization = str(discretization)
-        if hasattr(self.lat, "feedback_horizon_s"):
-            self.lat.feedback_horizon_s = float(feedback_horizon_s)
-        if hasattr(self.lat, "smooth_reference_heading"):
-            self.lat.smooth_reference_heading = bool(smooth_reference_heading)
+        self.lat.configure_actuator(actuator_params)
+        self.lat.configure_tracking(feedback_horizon_s=feedback_horizon_s,
+                                    smooth_reference_heading=smooth_reference_heading)
         self.lon.set_target(target_speed_kmh)
         self.ref_path = []
 
@@ -54,14 +61,10 @@ class VehicleController:
         if not reset and (ref_path is self.ref_path or ref_path == self.ref_path):
             return
         self.ref_path = ref_path
-        if not reset and len(ref_path) >= 2 and hasattr(self.lat, "set_path"):
+        if not reset and len(ref_path) >= 2:
             self.lat.set_path(ref_path, preserve=True)
             return
-        reset_tracking = getattr(self.lat, "reset_tracking", None)
-        if reset_tracking is not None:
-            reset_tracking()
-        else:
-            self.lat.min_index = 0
+        self.lat.reset_tracking()
         if reset:
             self.lon.reset()
 

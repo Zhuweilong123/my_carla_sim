@@ -3,10 +3,11 @@
 import math
 
 import numpy as np
-from ...simulator.steering import SteeringParams
+from .reference_tracking import ProjectedLateralController
+from .lateral_model import BicycleLateralModel
 
 
-class LateralLQRController:
+class LateralLQRController(ProjectedLateralController):
     """Solve a speed-dependent bicycle-model DARE and apply ``-Kx`` feedback.
 
     ``vehicle_para`` follows the lightweight simulator convention:
@@ -14,16 +15,15 @@ class LateralLQRController:
     negative, matching the sign convention used by :class:`EgoVehicle`.
     """
 
-    def __init__(self, vehicle_para, Q=None, R=100.0, ts=0.05):
+    def __init__(self, vehicle_para, Q=None, R=100.0, ts=0.05,
+                 *, discretization="plant"):
         if len(vehicle_para) != 6:
             raise ValueError("vehicle_para must contain (a, b, m, Cf, Cr, Iz)")
         self.a, self.b, self.m, self.Cf, self.Cr, self.Iz = map(float, vehicle_para)
         if self.m <= 0.0 or self.Iz <= 0.0 or self.a + self.b <= 0.0:
             raise ValueError("vehicle geometry, mass, and inertia must be positive")
 
-        self.ts = float(ts)
-        self.min_index = 0
-        self.max_steer = 0.5
+        super().__init__(ts=ts)
         self.Q = np.array(
             Q if Q is not None else np.diag([200.0, 1.0, 50.0, 1.0]),
             dtype=float,
@@ -47,41 +47,18 @@ class LateralLQRController:
         self.last_ed = 0.0
         self.last_ephi = 0.0
         self.last_error_state = np.zeros(4, dtype=float)
-        self.discretization = "plant"
+        self.discretization = str(discretization)
         self.last_feedforward = 0.0
         self.last_feedback = 0.0
         self.last_unclipped_steer = 0.0
-        self.actuator_params = SteeringParams()
-        self.actual_steer = 0.0
-        self.command_history = []
 
-    def configure_actuator(self, params):
-        self.actuator_params = params
-        self.command_history = [0.0] * params.delay_steps(self.ts)
+    def _model(self):
+        return BicycleLateralModel(
+            (self.a, self.b, self.m, self.Cf, self.Cr, self.Iz),
+            self.ts, self.actuator_params)
 
-    def reset_actuator_history(self):
-        self.command_history = [0.0] * self.actuator_params.delay_steps(self.ts)
-        self.actual_steer = 0.0
-
-    def _continuous_model(self, vx: float) -> tuple[np.ndarray, np.ndarray]:
-        """Build the linearized lateral bicycle model at the current speed."""
-        speed = max(abs(float(vx)), 0.5)
-        a, b, m, cf, cr, iz = self.a, self.b, self.m, self.Cf, self.Cr, self.Iz
-        A = np.zeros((4, 4), dtype=float)
-        B = np.zeros((4, 1), dtype=float)
-
-        # Error state: [e_d, e_d_dot, e_phi, e_phi_dot].
-        A[0, 1] = 1.0
-        A[1, 1] = (cf + cr) / (m * speed)
-        A[1, 2] = -(cf + cr) / m
-        A[1, 3] = (a * cf - b * cr) / (m * speed)
-        A[2, 3] = 1.0
-        A[3, 1] = (a * cf - b * cr) / (iz * speed)
-        A[3, 2] = -(a * cf - b * cr) / iz
-        A[3, 3] = (a * a * cf + b * b * cr) / (iz * speed)
-        B[1, 0] = -cf / m
-        B[3, 0] = -a * cf / iz
-        return A, B
+    def _continuous_model(self, vx):
+        return self._model().continuous(vx)
 
     def _discretize(self, A: np.ndarray, B: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
         """Discretize with the same bilinear transform as the CARLA controller."""
@@ -141,57 +118,8 @@ class LateralLQRController:
         return self.K
 
     def _plant_discretize(self, vx, actuator=False):
-        """Linearize the simulator's held-input substeps at constant speed.
-
-        z=[y, vy, phi, r]; e=[y, vy+v*phi, phi, r]. The simulator uses
-        explicit Euler for vy/r/position and the new r to advance heading.
-        Accumulate these substeps before transforming to error coordinates.
-        """
-        v = max(abs(float(vx)), 0.5)
-        n = max(1, math.ceil(v*self.ts/0.5))
-        h = self.ts/n
-        a, b, m, cf, cr, iz = self.a, self.b, self.m, self.Cf, self.Cr, self.Iz
-        m11 = (cf+cr)/(m*v)
-        m12 = (a*cf-b*cr)/(m*v)-v
-        m21 = (a*cf-b*cr)/(iz*v)
-        m22 = (a*a*cf+b*b*cr)/(iz*v)
-        steer_vy, steer_r = -cf/m, -a*cf/iz
-        F = np.eye(4)
-        G = np.zeros((4, 1))
-        F[0, 1], F[0, 2] = h, h*v
-        F[1, 1], F[1, 3] = 1+h*m11, h*m12
-        F[3, 1], F[3, 3] = h*m21, 1+h*m22
-        F[2, 1], F[2, 3] = h*h*m21, h*(1+h*m22)
-        G[1, 0], G[3, 0], G[2, 0] = h*steer_vy, h*steer_r, h*h*steer_r
-        dimension = 4
-        if actuator:
-            # Updated actuator angle drives the vehicle in each substep.
-            alpha = math.exp(-h/self.actuator_params.time_constant_s)
-            augmented = np.eye(5)
-            augmented[:4, :4] = F
-            augmented[:4, 4] = G[:, 0]*alpha
-            augmented[4, 4] = alpha
-            input_matrix = np.zeros((5, 1))
-            input_matrix[:4, 0] = G[:, 0]*(1-alpha)
-            input_matrix[4, 0] = 1-alpha
-            F, G, dimension = augmented, input_matrix, 5
-        Ad, Bd = np.eye(dimension), np.zeros((dimension, 1))
-        for _ in range(n):
-            Ad, Bd = F@Ad, F@Bd+G
-        T = np.eye(dimension)
-        T[1, 2] = v
-        Ad, Bd = T@Ad@np.linalg.inv(T), T@Bd
-        delay = self.actuator_params.delay_steps(self.ts) if actuator else 0
-        if delay:
-            delayed_A = np.zeros((dimension+delay, dimension+delay))
-            delayed_B = np.zeros((dimension+delay, 1))
-            delayed_A[:dimension, :dimension] = Ad
-            delayed_A[:dimension, dimension] = Bd[:, 0]
-            for i in range(delay-1):
-                delayed_A[dimension+i, dimension+i+1] = 1.0
-            delayed_B[-1, 0] = 1.0
-            return delayed_A, delayed_B
-        return Ad, Bd
+        A, B, _ = self._model().plant(vx, actuator=actuator)
+        return A, B
 
     def control_from_error(self, error_state, kappa: float, vx: float) -> float:
         """Return curvature feedforward plus Riccati state feedback."""

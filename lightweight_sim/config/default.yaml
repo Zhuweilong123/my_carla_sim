@@ -1,148 +1,147 @@
-simulator_node:
-  ros__parameters:
-    # Shared defaults are defined in engine/runtime_config.py.
-    # The simulator owns /clock and uses a wall timer to advance fixed-step physics.
-    use_sim_time: false
-    scenario: obstacle
-    dynamic_max_substep_s: 0.0025
-    # Opt in with launch steering_profile:=assumed; not real-vehicle calibration.
-    steering_profile: ideal
-    physics_dt: 0.05
-    command_timeout: 0.25
-    default_speed_limit_kmh: 40.0
-    straight_speed_limit_kmh: 50.0
-    curve_speed_limit_kmh: 40.0
-    intersection_speed_limit_kmh: 25.0
-    lane_change_speed_limit_kmh: 40.0
-    parking_speed_limit_kmh: 12.0
-    target_speed_ratio: 0.85
-    speed_profile_lookahead_m: 20.0
-    max_lateral_accel_mps2: 2.0
-    publish_clock: true
-    frame_id: map
-    vehicle_a_m: 1.015
-    vehicle_b_m: 1.895
-    vehicle_mass_kg: 1412.0
-    vehicle_cf_n_per_rad: -148970.0
-    vehicle_cr_n_per_rad: -82204.0
-    vehicle_iz_kgm2: 1537.0
-    vehicle_max_steer_rad: 0.5
-    vehicle_max_accel_mps2: 3.0
-    vehicle_max_decel_mps2: 6.0
-    vehicle_width_m: 2.0
-    vehicle_body_overhang_m: 1.0
-    steering_time_constant_s: 0.15
-    steering_delay_s: 0.05
-    steering_rate_limit_rad_s: 0.6
+# ROS 2 轻量级仿真节点配置；共享默认值见 engine/runtime_config.py。
+# 每个顶层名称对应一个 ROS 节点，ros__parameters 中的参数在节点启动时加载。
+# launch 参数可覆盖同名配置；多数参数不会热更新已创建的对象，修改文件后请重启相应节点。
+# 时间单位 s；速度单位见参数说明；话题相对名称会随 launch 的 namespace 添加前缀。
 
-planner_node:
-  ros__parameters:
-    # Planner timers and output timestamps follow the simulator clock.
-    use_sim_time: true
-    plan_period: 0.05
-    result_poll_period: 0.02
-    prediction_time: 0.2
-    lane_width: 3.5
-    num_lanes: 2
-    routing_reference_topic: routing/reference_line
-    routing_corridor_margin_m: 1.1
-    local_plan_points: 80
-    local_transition_distance_m: 12.0
-    local_collision_margin_m: 0.25
-    local_obstacle_longitudinal_min_m: -5.0
-    local_obstacle_longitudinal_max_m: 65.0
-    local_obstacle_lateral_clearance_m: 2.2
-    local_vehicle_length_m: 4.0
-    local_vehicle_width_m: 2.0
+simulator_node:  # 仿真器：物理推进、车辆参数、场景限速与转向执行器。
+  ros__parameters:  # 本节点的 ROS 参数。
+    use_sim_time: false  # 仿真器使用系统时间推进物理步，通常设为 false，避免等待自己发布的 /clock。
+    scenario: obstacle  # 初始场景：default、demo_grid、obstacle、three_lane、curve、figure_eight、reverse_parking；launch 可覆盖。
+    dynamic_max_substep_s: 0.0025  # 动力学积分的最大子步，单位 s，必须为正；越小积分越精细、计算量越大。
+    steering_profile: ideal  # 转向执行器模式：ideal 为理想响应，assumed 含假设的延迟/惯性/速率限制；launch 可覆盖，非实车标定。
+    physics_dt: 0.05  # 物理/控制模型的离散步长，单位 s，必须为正；控制端应与仿真端一致。
+    command_timeout: 0.25  # 最终控制命令的接收超时，单位 s（本节点使用系统时间）；超时后制动。
+    default_speed_limit_kmh: 40.0  # 未单独分类路段/场景的默认限速，单位 km/h，必须为正。
+    straight_speed_limit_kmh: 50.0  # 直线路段/场景的限速，单位 km/h，必须为正。
+    curve_speed_limit_kmh: 40.0  # 弯道路段/场景的限速，单位 km/h，另受横向加速度约束。
+    intersection_speed_limit_kmh: 25.0  # 交叉口路段/场景的限速，单位 km/h。
+    lane_change_speed_limit_kmh: 40.0  # 换道路段/场景的限速，单位 km/h。
+    parking_speed_limit_kmh: 12.0  # 泊车场景的限速，单位 km/h。
+    target_speed_ratio: 0.85  # 限速转目标速度的比例，取值 (0, 1]；目标速度 = 路段限速 × 此比例。
+    speed_profile_lookahead_m: 20.0  # 预留的速度剖面前瞻距离，单位 m；当前仿真节点未读取该项，实际使用控制节点同名参数。
+    max_lateral_accel_mps2: 2.0  # 弯道速度约束的最大横向加速度，单位 m/s²；传给控制端，用于 v²×曲率限速。
+    publish_clock: true  # 是否发布 /clock；使用仿真时间的其他节点依赖该时钟，通常保持 true。
+    frame_id: map  # 车辆状态等消息的坐标系名称；map 表示地图坐标系。
+    vehicle_a_m: 1.015  # 车辆质心到前轴的距离，单位 m，必须为正；a + b 为轴距。
+    vehicle_b_m: 1.895  # 车辆质心到后轴的距离，单位 m，必须为正。
+    vehicle_mass_kg: 1412.0  # 整车质量，单位 kg，必须为正；用于动力学及横向控制模型。
+    vehicle_cf_n_per_rad: -148970.0  # 前轮侧偏刚度，单位 N/rad；本项目采用负刚度符号约定，必须为负。
+    vehicle_cr_n_per_rad: -82204.0  # 后轮侧偏刚度，单位 N/rad；与前轮一致，必须为负。
+    vehicle_iz_kgm2: 1537.0  # 车辆绕竖直轴的转动惯量，单位 kg·m²，必须为正。
+    vehicle_max_steer_rad: 0.5  # 前轮物理转角的绝对值上限，单位 rad，必须为正；不是归一化方向盘输入。
+    vehicle_max_accel_mps2: 3.0  # 满油门对应的最大加速度，单位 m/s²，必须为正。
+    vehicle_max_decel_mps2: 6.0  # 满刹车对应的最大减速度幅值，单位 m/s²，使用正数。
+    vehicle_width_m: 2.0  # 车辆碰撞几何的宽度，单位 m，必须为正。
+    vehicle_body_overhang_m: 1.0  # 车辆总长度相对轴距增加的长度，单位 m；车长 = a + b + 此项。
+    steering_time_constant_s: 0.15  # assumed 转向执行器的一阶惯性时间常数，单位 s；越大转向响应越慢。
+    steering_delay_s: 0.05  # assumed 转向执行器的传输延迟，单位 s；须为 physics_dt 的非负整数倍。
+    steering_rate_limit_rad_s: 0.6  # assumed 转向执行器的最大转角变化速率，单位 rad/s，必须为正。
 
-controller_node:
-  ros__parameters:
-    # Controller timers, freshness checks and command timestamps follow /clock.
-    use_sim_time: true
-    controller: LQR_controller
-    physics_dt: 0.05
-    target_speed_kmh: 34.0
-    routing_reference_topic: routing/reference_line
-    speed_profile_lookahead_m: 20.0
-    control_period: 0.05
-    state_timeout: 0.25
-    plan_timeout: 1.5
-    output_topic: control_command/cruise
-    actuator_compensation: true
-    lateral_q_weights: [200.0, 1.0, 50.0, 1.0]
-    lateral_r: 100.0
-    dynamic_lateral_r: 300.0
-    lateral_feedback_horizon_s: 0.0
-    lateral_smooth_reference_heading: true
-    lateral_discretization: plant
-    longitudinal_kp: 1.15
-    longitudinal_ki: 0.0
-    longitudinal_kd: 0.55
-    longitudinal_error_threshold_kmh: 1.0
-    longitudinal_max_jerk_mps3: 40.0
-    longitudinal_coupling_gain: 0.5
+planner_node:  # 局部规划：参考线跟踪、障碍物筛选与轨迹碰撞检查。
+  ros__parameters:  # 本节点的 ROS 参数。
+    use_sim_time: true  # 规划定时器及路径时间戳使用 /clock；暂停仿真时规划时间同步暂停。
+    plan_period: 0.05  # 提交局部规划请求的周期，单位 s；0.05 对应 20 Hz。
+    result_poll_period: 0.02  # 轮询异步规划结果的周期，单位 s；越小结果发布延迟越低。
+    prediction_time: 0.2  # 预测自车位置的前视时间，单位 s；用于选择规划起点，不是 MPC 预测时域。
+    lane_width: 3.5  # 车道宽度的初始值，单位 m；接到当前场景上下文后会被场景值覆盖。
+    num_lanes: 2  # 车道数量的初始值；接到当前场景上下文后会被场景值覆盖。
+    routing_reference_topic: routing/reference_line  # 订阅的 Routing 参考线话题，需与 reference_line_node 的输出一致。
+    routing_corridor_margin_m: 1.1  # 可行驶走廊边缘的预留距离，单位 m，非负；越大允许的横向活动范围越小。
+    local_plan_points: 80  # 局部规划参考点截取数量，至少为 2；决定规划前视范围，不是 MPC 预测步数。
+    local_transition_distance_m: 12.0  # 横向偏移/换道的过渡距离，单位 m，必须为正；越大过渡越长。
+    local_collision_margin_m: 0.25  # 局部轨迹碰撞检查的额外安全余量，单位 m，非负。
+    local_obstacle_longitudinal_min_m: -5.0  # 考虑障碍物的纵向位置下界，单位 m，相对自车；负数包含车后区域。
+    local_obstacle_longitudinal_max_m: 65.0  # 考虑障碍物的纵向位置上界，单位 m，相对自车；与下界共同确定筛选范围。
+    local_obstacle_lateral_clearance_m: 2.2  # 障碍物影响候选横向位置的距离阈值，单位 m；在此范围内认为该横向位置受阻。
+    local_vehicle_length_m: 4.0  # 局部轨迹碰撞检查采用的自车长度，单位 m；独立于仿真器车辆几何，应保持一致。
+    local_vehicle_width_m: 2.0  # 局部轨迹碰撞检查采用的自车宽度，单位 m；独立于仿真器车辆几何，应保持一致。
 
-routing_node:
-  ros__parameters:
-    use_sim_time: true
-    map_file: ""
-    map_dir: config/maps
-    request_topic: routing/request
-    route_topic: routing/route
-    service_name: routing/compute_route
-    turn_penalty_s: 2.0
-    lane_change_penalty_s: 1.0
-    u_turn_penalty_s: 30.0
-    sample_spacing_m: 1.0
+controller_node:  # 巡航控制：横向 LQR/MPC 与纵向 PID。
+  ros__parameters:  # 本节点的 ROS 参数。
+    use_sim_time: true  # 控制定时器、状态/路径时效检查及命令时间戳使用 /clock。
+    controller: LQR_controller  # 横向算法：LQR_controller 或 MPC_controller；修改运行参数后需重置场景才重建控制器，纵向默认 PID。
+    physics_dt: 0.05  # 控制模型的初始离散步长，单位 s；新运行时由场景上下文覆盖，须与车辆物理步长一致。
+    target_speed_kmh: 60.0  # 初始/无场景上下文时的目标速度，单位 km/h；正常运行由场景目标、路线限速及曲率约束决定。
+    routing_reference_topic: routing/reference_line  # 订阅的 Routing 参考线话题，需与 reference_line_node 的输出一致。
+    speed_profile_lookahead_m: 20.0  # 沿路线前瞻速度限制和最大曲率的距离，单位 m；用于提前响应低限速与弯道。
+    control_period: 0.05  # 控制定时器检查周期，单位 s；状态回调也触发计算，同一物理时间戳只计算一次。
+    state_timeout: 0.25  # 车辆状态最大允许接收间隔，单位 s（仿真时间）；过期时制动。
+    plan_timeout: 1.5  # 规划路径消息时间戳的最大允许年龄，单位 s（仿真时间）；过期时制动，另受安全节点墙钟超时约束。
+    output_topic: control_command/cruise  # 发布控制候选命令的话题；由 controller_manager 仲裁后才发给车辆。
+    actuator_compensation: true  # 是否在横向模型中考虑场景转向执行器；true 时 assumed 模式使用实际转角和延迟历史。
+    lateral_q_weights: [200.0, 1.0, 50.0, 1.0]  # 横向状态代价对角权重：[横向误差、横向误差变化率、航向误差、航向误差变化率]，各项非负。
+    lateral_r: 100.0  # 理想执行器下的转角代价权重，必须为正；LQR/MPC 共用，越大越抑制转向输入。
+    dynamic_lateral_r: 300.0  # 启用动态执行器补偿时的转角代价权重，必须为正；此时替代 lateral_r。
+    lateral_feedback_horizon_s: 0.0  # 计算路径跟踪误差前的自车状态预览时间，单位 s；0 表示使用当前状态，不是 MPC 预测时域。
+    lateral_smooth_reference_heading: true  # 是否在路径采样点间插值参考航向，减小离散点切线变化带来的控制跳变。
+    lateral_discretization: plant  # 模型离散方法：plant 为仿真子步模型，bilinear 为双线性变换；动态执行器补偿要求 plant。
+    longitudinal_kp: 1.15  # 纵向 PID 比例增益；速度误差在算法内换算为 m/s 后计算加速度。
+    longitudinal_ki: 0.0  # 纵向 PID 积分增益；0 表示关闭积分项。
+    longitudinal_kd: 0.55  # 纵向 PID 微分增益；作用于经滤波的速度误差变化率。
+    longitudinal_error_threshold_kmh: 1.0  # 积分分离的速度误差阈值，单位 km/h；绝对误差超出该值时清空积分误差缓存。
+    longitudinal_max_jerk_mps3: 40.0  # 纵向加速度命令的变化率上限，单位 m/s³；每步最多改变该值 × physics_dt。
+    longitudinal_coupling_gain: 0.5  # 抵消横纵向动力学耦合 r×vy 的比例；0 关闭补偿，1 完全抵消该耦合项。
 
-reference_line_node:
-  ros__parameters:
-    use_sim_time: true
-    map_file: ""
-    map_dir: config/maps
-    route_topic: routing/route
-    reference_topic: routing/reference_line
-    sample_spacing_m: 1.0
-    max_lateral_deviation_m: 0.15
-    join_tolerance_m: 0.25
-    boundary_margin_m: 0.1
-    max_reference_curvature_1pm: 0.15
-    junction_angle_threshold_rad: 0.7
+routing_node:  # 全局 Routing：地图加载和车道级 A* 路线搜索。
+  ros__parameters:  # 本节点的 ROS 参数。
+    use_sim_time: true  # 是否使用 /clock 仿真时间；false 使用系统时间。
+    map_file: ""  # 指定单个 JSON 地图；空字符串时加载 map_dir 下所有 JSON；相对路径以安装包目录为基准。
+    map_dir: config/maps  # 批量加载地图的目录；仅 map_file 为空时使用，相对路径以安装包目录为基准。
+    request_topic: routing/request  # 接收全局路线请求的 ROS 话题。
+    route_topic: routing/route  # 全局路线结果话题；Routing 发布、参考线节点订阅，名称需一致。
+    service_name: routing/compute_route  # 同步计算全局路线的 ROS 服务名称，供外部调用者请求路线。
+    turn_penalty_s: 2.0  # A* 路线代价中的转弯附加时间，单位 s；影响路线选择，不是实际停车等待时间。
+    lane_change_penalty_s: 1.0  # A* 路线代价中的换道附加时间，单位 s。
+    u_turn_penalty_s: 30.0  # A* 路线代价中的掉头附加时间，单位 s；越大越不倾向选择掉头路径。
+    sample_spacing_m: 1.0  # 全局路线几何采样间距，单位 m，必须为正；越小路径点越密集。
 
-simulator_gui:
-  ros__parameters:
-    use_sim_time: true
-    screen_width: 1200
-    screen_height: 800
-    lane_width: 3.5
-    num_lanes: 2
-    target_speed_kmh: 34.0
-    render_fps: 60
-    initial_mode: CRUISE
-    initial_control_source: AUTO
-    mode_publish_period: 1.0
+reference_line_node:  # 参考线生成：路线拼接、采样、拐角圆滑与边界几何。
+  ros__parameters:  # 本节点的 ROS 参数。
+    use_sim_time: true  # 是否使用 /clock 仿真时间；false 使用系统时间。
+    map_file: ""  # 指定单个 JSON 地图；空字符串时加载 map_dir 下所有 JSON；相对路径以安装包目录为基准。
+    map_dir: config/maps  # 批量加载地图的目录；仅 map_file 为空时使用，相对路径以安装包目录为基准。
+    route_topic: routing/route  # 全局路线结果话题；Routing 发布、参考线节点订阅，名称需一致。
+    reference_topic: routing/reference_line  # 参考线话题；参考线节点发布、安全监督节点订阅，名称需一致。
+    sample_spacing_m: 1.0  # 参考线几何采样间距，单位 m，必须为正；影响航向/曲率计算及路径点密度。
+    max_lateral_deviation_m: 0.15  # 预留的参考线平滑横向偏移上限，单位 m，非负；当前流程仅校验/保存，不执行二次平滑。
+    join_tolerance_m: 0.25  # 相邻路线边几何拼接的最大允许间隙，单位 m；超过此值生成参考线失败。
+    boundary_margin_m: 0.1  # 预留的参考线边界安全余量，单位 m，非负；当前生成流程仅校验/保存。
+    max_reference_curvature_1pm: 0.15  # 路口圆角的目标曲率上限，单位 1/m，必须为正；按其倒数选择圆角半径。
+    junction_angle_threshold_rad: 0.7  # 识别需要圆角处理的路径拐角阈值，单位 rad，必须为正。
 
-controller_manager:
-  ros__parameters:
-    use_sim_time: true
-    default_mode: CRUISE
-    default_control_source: AUTO
-    switch_hold_s: 0.5
-    command_timeout: 0.35
-    safety_stop_timeout_s: 0.25
-    update_period: 0.02
+simulator_gui:  # 可视化界面：显示参数、初始控制模式与交互。
+  ros__parameters:  # 本节点的 ROS 参数。
+    use_sim_time: true  # GUI ROS 消息处理使用 /clock；画面绘制仍由自身帧率控制。
+    screen_width: 1200  # GUI 窗口宽度，单位像素。
+    screen_height: 800  # GUI 窗口高度，单位像素。
+    lane_width: 3.5  # GUI 初始显示的车道宽度，单位 m；接到场景上下文后使用场景值。
+    num_lanes: 2  # GUI 初始显示的车道数量；接到场景上下文后使用场景值。
+    target_speed_kmh: 34.0  # GUI 初始显示的目标速度，单位 km/h；接到场景上下文后更新，不直接设定车辆速度。
+    render_fps: 60  # GUI 目标渲染帧率，单位帧/s；不改变物理仿真步长。
+    initial_mode: CRUISE  # GUI 初始请求的控制模式：CRUISE、PARKING、MANUAL 或 EMERGENCY_STOP。
+    initial_control_source: AUTO  # GUI 初始控制来源：AUTO 使用模式对应控制器，MANUAL 使用手动控制候选。
+    mode_publish_period: 1.0  # GUI 周期发布所请求模式的间隔，单位 s（仿真时间）。
 
-safe_stop_node:
-  ros__parameters:
-    use_sim_time: false
-    planned_path_timeout_s: 0.25
-    update_period_s: 0.05
-    reference_topic: routing/reference_line
-    stop_topic: safety/stop_request
+controller_manager:  # 控制仲裁：选取巡航/泊车/手动候选，输出唯一最终命令。
+  ros__parameters:  # 本节点的 ROS 参数。
+    use_sim_time: true  # 候选命令接收年龄按 /clock 计算；切换等待和安全心跳另外使用墙钟时间。
+    default_mode: CRUISE  # 启动时的控制模式：CRUISE、PARKING、MANUAL 或 EMERGENCY_STOP；后续可被模式请求覆盖。
+    default_control_source: AUTO  # 启动时的控制来源：AUTO 或 MANUAL；MANUAL 选择手动候选命令。
+    switch_hold_s: 0.5  # 模式/控制来源切换及新运行开始后的制动等待时间，单位 s（墙钟）。
+    command_timeout: 0.35  # 选中控制器候选命令的最大接收年龄，单位 s（仿真时间）；超时或缺失时制动。
+    safety_stop_timeout_s: 0.25  # 安全监督心跳的最大接收间隔，单位 s（墙钟）；心跳过期或请求停车时制动。
+    update_period: 0.02  # 仲裁及最终控制命令发布周期，单位 s；定时器随 use_sim_time 选择时钟。
 
-parking_controller_node:
-  ros__parameters:
-    use_sim_time: true
-    # hybrid_astar is the default; set to baseline to compare the legacy planner.
-    planner_type: hybrid_astar
-    output_topic: control_command/parking
+safe_stop_node:  # 安全监督：检查当前运行的参考线与局部规划是否就绪、新鲜。
+  ros__parameters:  # 本节点的 ROS 参数。
+    use_sim_time: false  # 安全监督定时器使用系统时间，通常设为 false；暂停/重置仿真时也能检测规划失联。
+    planned_path_timeout_s: 0.25  # 局部规划结果的最大接收间隔，单位 s（墙钟）；缺失、过期或不属于当前运行时请求停车。
+    update_period_s: 0.05  # 检查规划就绪状态并发布安全心跳的周期，单位 s；通常按系统时间运行。
+    reference_topic: routing/reference_line  # 参考线话题；参考线节点发布、安全监督节点订阅，名称需一致。
+    stop_topic: safety/stop_request  # 发布停车请求布尔值的 ROS 话题；需与 controller_manager 订阅的 safety/stop_request 一致。
+
+parking_controller_node:  # 泊车控制：独立规划器及泊车控制候选输出。
+  ros__parameters:  # 本节点的 ROS 参数。
+    use_sim_time: true  # 是否使用 /clock 仿真时间；false 使用系统时间。
+    planner_type: hybrid_astar  # 泊车路径规划算法：hybrid_astar 为默认混合 A*，baseline 为旧版基线规划器。
+    output_topic: control_command/parking  # 发布控制候选命令的话题；由 controller_manager 仲裁后才发给车辆。

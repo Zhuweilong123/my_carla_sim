@@ -76,6 +76,9 @@ class ControllerNode(Node):
         self.declare_parameter("lateral_feedback_horizon_s", 0.0)
         self.declare_parameter("lateral_smooth_reference_heading", True)
         self.declare_parameter("lateral_discretization", "plant")
+        self.declare_parameter("mpc_prediction_steps", 6)
+        self.declare_parameter("mpc_control_steps", 2)
+        self.declare_parameter("mpc_solver", "auto")
         self.declare_parameter("longitudinal_kp", 1.15)
         self.declare_parameter("longitudinal_ki", 0.0)
         self.declare_parameter("longitudinal_kd", 0.55)
@@ -155,6 +158,11 @@ class ControllerNode(Node):
             ),
             discretization=str(
                 self.get_parameter("lateral_discretization").value
+            ),
+            mpc_params=dict(
+                N=int(self.get_parameter("mpc_prediction_steps").value),
+                P=int(self.get_parameter("mpc_control_steps").value),
+                solver=str(self.get_parameter("mpc_solver").value),
             ),
             longitudinal_params=dict(
                 K_P=float(self.get_parameter("longitudinal_kp").value),
@@ -414,15 +422,21 @@ class ControllerNode(Node):
         self.controller.set_target_speed(
             self._target_speed_at(self.state.x, self.state.y)
         )
-        steer, throttle, brake = self.controller.step(
-            self.state.x,
-            self.state.y,
-            self.state.phi,
-            self.state.vx,
-            self.state.vy,
-            self.state.r,
-            actual_steer=self.state.steer,
-        )
+        try:
+            steer, throttle, brake = self.controller.step(
+                self.state.x,
+                self.state.y,
+                self.state.phi,
+                self.state.vx,
+                self.state.vy,
+                self.state.r,
+                actual_steer=self.state.steer,
+            )
+        except (RuntimeError, ValueError) as exc:
+            self.get_logger().error(f"controller failed; braking: {exc}")
+            self.actuator_timing_fault = self.controller.lat.actuator_params.mode == "dynamic"
+            self._publish_command(self.state.steer, 0.0, 1.0)
+            return
         if self.measurement_path is not self.controller.ref_path:
             # Transfer measurement state across local-plan updates separately
             # from the controller's predicted reference state.

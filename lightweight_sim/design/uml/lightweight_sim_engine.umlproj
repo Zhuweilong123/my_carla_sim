@@ -1,7 +1,14 @@
 {
   "version": "1.0",
-  "revision": 68,
+  "revision": 133,
   "name": "LightweightSimEngine",
+  "grid_settings": {
+    "grid_visible": true,
+    "grid_size": 20,
+    "grid_color": "#833a3a",
+    "grid_thickness": 2,
+    "snap_to_grid": true
+  },
   "diagrams": [
     {
       "version": "1.0",
@@ -18,7 +25,7 @@
           "id": "comp_simcore",
           "name": "Simulator Core",
           "x": 3064.0,
-          "y": 359.0,
+          "y": 418.0,
           "width": 522.0,
           "height": 440.0,
           "parent_id": "",
@@ -32,8 +39,8 @@
         {
           "id": "comp_engine",
           "name": "SimulationEngine",
-          "x": 3416.0,
-          "y": 679.0,
+          "x": 3084.0,
+          "y": 620.0,
           "width": 150.0,
           "height": 100.0,
           "parent_id": "comp_simcore",
@@ -43,8 +50,8 @@
         {
           "id": "comp_reverse",
           "name": "reverse_engine.SimulationEngine",
-          "x": 3084.0,
-          "y": 679.0,
+          "x": 3250.0,
+          "y": 620.0,
           "width": 150.0,
           "height": 100.0,
           "parent_id": "comp_simcore",
@@ -54,8 +61,8 @@
         {
           "id": "comp_steeringact",
           "name": "SteeringActuator",
-          "x": 3250.0,
-          "y": 679.0,
+          "x": 3416.0,
+          "y": 620.0,
           "width": 150.0,
           "height": 100.0,
           "parent_id": "comp_simcore",
@@ -65,8 +72,8 @@
         {
           "id": "comp_world",
           "name": "World",
-          "x": 3416.0,
-          "y": 561.0,
+          "x": 3084.0,
+          "y": 738.0,
           "width": 150.0,
           "height": 100.0,
           "parent_id": "comp_simcore",
@@ -76,8 +83,8 @@
         {
           "id": "comp_ego",
           "name": "EgoVehicle",
-          "x": 3084.0,
-          "y": 561.0,
+          "x": 3250.0,
+          "y": 738.0,
           "width": 150.0,
           "height": 100.0,
           "parent_id": "comp_simcore",
@@ -87,8 +94,8 @@
         {
           "id": "comp_obsmgr",
           "name": "ObstacleManager",
-          "x": 3250.0,
-          "y": 561.0,
+          "x": 3416.0,
+          "y": 738.0,
           "width": 150.0,
           "height": 100.0,
           "parent_id": "comp_simcore",
@@ -99,7 +106,7 @@
           "id": "comp_planning",
           "name": "Planning Module",
           "x": 2382.0,
-          "y": 406.0,
+          "y": 465.0,
           "width": 522.0,
           "height": 346.0,
           "parent_id": "",
@@ -114,8 +121,8 @@
         {
           "id": "comp_motionplanner",
           "name": "MotionPlanner",
-          "x": 2734.0,
-          "y": 632.0,
+          "x": 2402.0,
+          "y": 691.0,
           "width": 150.0,
           "height": 100.0,
           "parent_id": "comp_planning",
@@ -125,8 +132,8 @@
         {
           "id": "comp_dpplanner",
           "name": "dp_path_plan (module)",
-          "x": 2402.0,
-          "y": 632.0,
+          "x": 2568.0,
+          "y": 691.0,
           "width": 150.0,
           "height": 100.0,
           "parent_id": "comp_planning",
@@ -136,8 +143,8 @@
         {
           "id": "comp_qpplanner",
           "name": "qp_path_plan (module)",
-          "x": 2568.0,
-          "y": 632.0,
+          "x": 2734.0,
+          "y": 691.0,
           "width": 150.0,
           "height": 100.0,
           "parent_id": "comp_planning",
@@ -150,7 +157,7 @@
           "x": 1700.0,
           "y": 592.0,
           "width": 522.0,
-          "height": 486.0,
+          "height": 604.0,
           "parent_id": "",
           "provided_interfaces": [
             "ControlCommand"
@@ -206,10 +213,43 @@
           "required_interfaces": []
         },
         {
+          "id": "comp_projectedlat",
+          "name": "ProjectedLateralController",
+          "x": 1886.0,
+          "y": 958.0,
+          "width": 150.0,
+          "height": 100.0,
+          "parent_id": "comp_control",
+          "provided_interfaces": [],
+          "required_interfaces": []
+        },
+        {
+          "id": "comp_bicycle",
+          "name": "BicycleLateralModel",
+          "x": 2052.0,
+          "y": 958.0,
+          "width": 150.0,
+          "height": 100.0,
+          "parent_id": "comp_control",
+          "provided_interfaces": [],
+          "required_interfaces": []
+        },
+        {
+          "id": "comp_boxqp",
+          "name": "box_qp (module)",
+          "x": 1720.0,
+          "y": 1076.0,
+          "width": 150.0,
+          "height": 100.0,
+          "parent_id": "comp_control",
+          "provided_interfaces": [],
+          "required_interfaces": []
+        },
+        {
           "id": "comp_ros",
           "name": "ROS 2 Adapter",
           "x": 100.0,
-          "y": 314.0,
+          "y": 373.0,
           "width": 640.0,
           "height": 530.0,
           "parent_id": "",
@@ -227,8 +267,8 @@
         {
           "id": "comp_simnode",
           "name": "SimulatorNode",
-          "x": 452.0,
-          "y": 606.0,
+          "x": 120.0,
+          "y": 665.0,
           "width": 150.0,
           "height": 100.0,
           "parent_id": "comp_ros",
@@ -238,8 +278,8 @@
         {
           "id": "comp_plannernode",
           "name": "PlannerNode",
-          "x": 120.0,
-          "y": 606.0,
+          "x": 286.0,
+          "y": 665.0,
           "width": 150.0,
           "height": 100.0,
           "parent_id": "comp_ros",
@@ -249,8 +289,8 @@
         {
           "id": "comp_controllernode",
           "name": "ControllerNode",
-          "x": 286.0,
-          "y": 606.0,
+          "x": 452.0,
+          "y": 665.0,
           "width": 150.0,
           "height": 100.0,
           "parent_id": "comp_ros",
@@ -260,8 +300,8 @@
         {
           "id": "comp_managernode",
           "name": "ControllerManager",
-          "x": 452.0,
-          "y": 724.0,
+          "x": 120.0,
+          "y": 783.0,
           "width": 150.0,
           "height": 100.0,
           "parent_id": "comp_ros",
@@ -271,8 +311,8 @@
         {
           "id": "comp_safestop",
           "name": "SafeStopNode",
-          "x": 120.0,
-          "y": 724.0,
+          "x": 286.0,
+          "y": 783.0,
           "width": 150.0,
           "height": 100.0,
           "parent_id": "comp_ros",
@@ -282,8 +322,8 @@
         {
           "id": "comp_guinode",
           "name": "GuiNode",
-          "x": 286.0,
-          "y": 724.0,
+          "x": 452.0,
+          "y": 783.0,
           "width": 150.0,
           "height": 100.0,
           "parent_id": "comp_ros",
@@ -294,7 +334,7 @@
           "id": "comp_utils",
           "name": "Algorithm Utilities",
           "x": 3746.0,
-          "y": 381.0,
+          "y": 440.0,
           "width": 522.0,
           "height": 396.0,
           "parent_id": "",
@@ -306,8 +346,8 @@
         {
           "id": "comp_frenet",
           "name": "frenet (module)",
-          "x": 4098.0,
-          "y": 539.0,
+          "x": 3766.0,
+          "y": 598.0,
           "width": 150.0,
           "height": 100.0,
           "parent_id": "comp_utils",
@@ -317,8 +357,8 @@
         {
           "id": "comp_geom",
           "name": "geometry (module)",
-          "x": 3766.0,
-          "y": 539.0,
+          "x": 3932.0,
+          "y": 598.0,
           "width": 150.0,
           "height": 100.0,
           "parent_id": "comp_utils",
@@ -328,8 +368,8 @@
         {
           "id": "comp_quintic",
           "name": "quintic (module)",
-          "x": 3932.0,
-          "y": 539.0,
+          "x": 4098.0,
+          "y": 598.0,
           "width": 150.0,
           "height": 100.0,
           "parent_id": "comp_utils",
@@ -340,7 +380,7 @@
           "id": "comp_refline",
           "name": "reference_line (module)",
           "x": 3766.0,
-          "y": 657.0,
+          "y": 716.0,
           "width": 150.0,
           "height": 100.0,
           "parent_id": "comp_utils",
@@ -351,7 +391,7 @@
           "id": "comp_routeutils",
           "name": "route (module)",
           "x": 3932.0,
-          "y": 657.0,
+          "y": 716.0,
           "width": 150.0,
           "height": 100.0,
           "parent_id": "comp_utils",
@@ -376,7 +416,7 @@
         {
           "id": "comp_routingcore",
           "name": "RoutingCore",
-          "x": 1886.0,
+          "x": 1720.0,
           "y": 284.0,
           "width": 150.0,
           "height": 100.0,
@@ -387,8 +427,8 @@
         {
           "id": "comp_astar",
           "name": "AStarRouter",
-          "x": 1720.0,
-          "y": 402.0,
+          "x": 1886.0,
+          "y": 284.0,
           "width": 150.0,
           "height": 100.0,
           "parent_id": "comp_routing",
@@ -410,7 +450,7 @@
           "id": "comp_routingnode",
           "name": "RoutingNode",
           "x": 1720.0,
-          "y": 284.0,
+          "y": 402.0,
           "width": 150.0,
           "height": 100.0,
           "parent_id": "comp_routing",
@@ -421,7 +461,7 @@
           "id": "comp_reflinepkg",
           "name": "Reference Line",
           "x": 900.0,
-          "y": 150.0,
+          "y": 209.0,
           "width": 640.0,
           "height": 442.0,
           "parent_id": "",
@@ -436,7 +476,7 @@
           "id": "comp_reflinecore",
           "name": "ReferenceLineCore",
           "x": 920.0,
-          "y": 354.0,
+          "y": 413.0,
           "width": 150.0,
           "height": 100.0,
           "parent_id": "comp_reflinepkg",
@@ -447,7 +487,7 @@
           "id": "comp_reflineplan",
           "name": "ReferenceLinePlan",
           "x": 1086.0,
-          "y": 354.0,
+          "y": 413.0,
           "width": 150.0,
           "height": 100.0,
           "parent_id": "comp_reflinepkg",
@@ -458,7 +498,7 @@
           "id": "comp_routeaware",
           "name": "RouteAwareMotionPlanner",
           "x": 1252.0,
-          "y": 354.0,
+          "y": 413.0,
           "width": 150.0,
           "height": 100.0,
           "parent_id": "comp_reflinepkg",
@@ -469,7 +509,7 @@
           "id": "comp_reflinenode",
           "name": "ReferenceLineNode",
           "x": 920.0,
-          "y": 472.0,
+          "y": 531.0,
           "width": 150.0,
           "height": 100.0,
           "parent_id": "comp_reflinepkg",
@@ -480,7 +520,7 @@
           "id": "comp_analysis",
           "name": "Analysis",
           "x": 900.0,
-          "y": 662.0,
+          "y": 721.0,
           "width": 522.0,
           "height": 346.0,
           "parent_id": "",
@@ -496,7 +536,7 @@
           "id": "comp_tracking",
           "name": "TrackingMonitor",
           "x": 920.0,
-          "y": 888.0,
+          "y": 947.0,
           "width": 150.0,
           "height": 100.0,
           "parent_id": "comp_analysis",
@@ -507,7 +547,7 @@
           "id": "comp_oracle",
           "name": "FigureEightOracle",
           "x": 1086.0,
-          "y": 888.0,
+          "y": 947.0,
           "width": 150.0,
           "height": 100.0,
           "parent_id": "comp_analysis",
@@ -518,7 +558,7 @@
           "id": "comp_eval",
           "name": "evaluation (module)",
           "x": 1252.0,
-          "y": 888.0,
+          "y": 947.0,
           "width": 150.0,
           "height": 100.0,
           "parent_id": "comp_analysis",
@@ -675,6 +715,27 @@
           "vertices": null
         },
         {
+          "id": "crel_control_projectedlat",
+          "source": "comp_control",
+          "target": "comp_projectedlat",
+          "type": "delegation",
+          "vertices": null
+        },
+        {
+          "id": "crel_control_bicycle",
+          "source": "comp_control",
+          "target": "comp_bicycle",
+          "type": "delegation",
+          "vertices": null
+        },
+        {
+          "id": "crel_control_boxqp",
+          "source": "comp_control",
+          "target": "comp_boxqp",
+          "type": "delegation",
+          "vertices": null
+        },
+        {
           "id": "crel_ros_simnode",
           "source": "comp_ros",
           "target": "comp_simnode",
@@ -712,12 +773,12 @@
       ],
       "grid_visible": true,
       "grid_size": 20,
-      "grid_color": "#e0e0e0",
-      "grid_thickness": 1,
+      "grid_color": "#833a3a",
+      "grid_thickness": 2,
       "snap_to_grid": true,
       "zoom": 0.85,
-      "pan_x": -121.89999999999986,
-      "pan_y": -155.45
+      "pan_x": -557.8999999999999,
+      "pan_y": -92.39999999999998
     },
     {
       "version": "1.0",
@@ -893,13 +954,15 @@
               "is_abstract": false
             }
           ],
+          "expanded_attributes": false,
+          "expanded_methods": false,
           "position": {
-            "x": 792.0,
+            "x": 735.0,
             "y": 100.0
           },
           "size": {
             "width": 240.0,
-            "height": 210.0
+            "height": 322.0
           },
           "note": "固定步长物理引擎；拥有 World/EgoVehicle/ObstacleManager/SteeringActuator，按子步细化步进并做碰撞、越界与到点判定。is_done 为只读 property（碰撞或到点或离路）。",
           "provided_interfaces": [],
@@ -936,13 +999,15 @@
               "is_abstract": false
             }
           ],
+          "expanded_attributes": false,
+          "expanded_methods": false,
           "position": {
-            "x": 792.0,
-            "y": 973.0
+            "x": 735.0,
+            "y": 506.0
           },
           "size": {
             "width": 240.0,
-            "height": 150.0
+            "height": 275.0
           },
           "note": "simulator/reverse_engine.SimulationEngine：继承基础引擎，支持带符号倒车（泊车）。ROS 仿真节点实际实例化的就是这个子类。",
           "provided_interfaces": [],
@@ -1054,13 +1119,15 @@
               "is_abstract": false
             }
           ],
+          "expanded_attributes": false,
+          "expanded_methods": false,
           "position": {
             "x": 120.0,
-            "y": 973.0
+            "y": 881.0
           },
           "size": {
             "width": 240.0,
-            "height": 190.0
+            "height": 336.0
           },
           "note": "由 RoadDef 生成道路参考线(ref_path)与弧长映射(s_map)；提供车道中心/边界、离路判定与带参考车道索引的横向边界。_world_impl 为遗留实现，world.py 覆盖拼接与参考车道语义。",
           "provided_interfaces": [],
@@ -1166,13 +1233,15 @@
               "is_abstract": false
             }
           ],
+          "expanded_attributes": false,
+          "expanded_methods": false,
           "position": {
-            "x": 456.0,
-            "y": 973.0
+            "x": 530.0,
+            "y": 881.0
           },
           "size": {
             "width": 240.0,
-            "height": 190.0
+            "height": 339.0
           },
           "note": "自车运动学/动力学自行车模型，输出世界系误差状态与四角点。length = wheelbase + body_overhang。",
           "provided_interfaces": [],
@@ -1249,13 +1318,15 @@
               "is_abstract": false
             }
           ],
+          "expanded_attributes": false,
+          "expanded_methods": false,
           "position": {
-            "x": 1128.0,
-            "y": 973.0
+            "x": 940.0,
+            "y": 881.0
           },
           "size": {
             "width": 240.0,
-            "height": 190.0
+            "height": 255.0
           },
           "note": "障碍物集合管理；采用 AABB 预筛 + 旋转矩形 SAT 精确碰撞检测。",
           "provided_interfaces": [],
@@ -1342,13 +1413,15 @@
               "is_abstract": false
             }
           ],
+          "expanded_attributes": false,
+          "expanded_methods": false,
           "position": {
-            "x": 1464.0,
-            "y": 973.0
+            "x": 1350.0,
+            "y": 881.0
           },
           "size": {
             "width": 240.0,
-            "height": 190.0
+            "height": 311.0
           },
           "note": "物理前轮执行器：整数周期传输延迟 + 一阶滞后与速率限制。参数为工程假设而非实车标定。",
           "provided_interfaces": [],
@@ -1423,8 +1496,8 @@
       "grid_thickness": 2,
       "snap_to_grid": true,
       "zoom": 0.7000000000000001,
-      "pan_x": -105.90000000000009,
-      "pan_y": -484.6500000000001
+      "pan_x": -43.000000000000114,
+      "pan_y": -307.50000000000006
     },
     {
       "version": "1.0",
@@ -1530,13 +1603,15 @@
             }
           ],
           "methods": [],
+          "expanded_attributes": false,
+          "expanded_methods": false,
           "position": {
-            "x": 812.0,
-            "y": 100.0
+            "x": 120.0,
+            "y": 1102.0
           },
           "size": {
             "width": 240.0,
-            "height": 190.0
+            "height": 239.0
           },
           "note": "车辆状态 dataclass；speed/speed_kmh/world_velocity/position 为只读 property。",
           "provided_interfaces": [],
@@ -1649,13 +1724,15 @@
               "is_abstract": false
             }
           ],
+          "expanded_attributes": false,
+          "expanded_methods": false,
           "position": {
-            "x": 1306.0,
-            "y": 1116.0
+            "x": 424.0,
+            "y": 409.0
           },
           "size": {
             "width": 240.0,
-            "height": 190.0
+            "height": 252.0
           },
           "note": "车辆物理参数；wheelbase=a+b 与 lateral_tuple=(a,b,m,Cf,Cr,Iz) 为只读 property。__post_init__ 校验正参数与负侧偏刚度约定。",
           "provided_interfaces": [],
@@ -1705,13 +1782,15 @@
               "is_abstract": false
             }
           ],
+          "expanded_attributes": false,
+          "expanded_methods": false,
           "position": {
-            "x": 1484.0,
-            "y": 100.0
+            "x": 424.0,
+            "y": 1102.0
           },
           "size": {
             "width": 240.0,
-            "height": 190.0
+            "height": 212.0
           },
           "note": "参考线点 (x, y, theta, kappa)。",
           "provided_interfaces": [],
@@ -1752,13 +1831,15 @@
             }
           ],
           "methods": [],
+          "expanded_attributes": false,
+          "expanded_methods": false,
           "position": {
-            "x": 1820.0,
-            "y": 100.0
+            "x": 728.0,
+            "y": 1102.0
           },
           "size": {
             "width": 240.0,
-            "height": 190.0
+            "height": 225.0
           },
           "note": "物理前轮转角(rad) + 归一化油门/刹车；gear<0 表示倒车。",
           "provided_interfaces": [],
@@ -1799,13 +1880,15 @@
             }
           ],
           "methods": [],
+          "expanded_attributes": false,
+          "expanded_methods": false,
           "position": {
             "x": 120.0,
-            "y": 100.0
+            "y": 1405.0
           },
           "size": {
             "width": 240.0,
-            "height": 190.0
+            "height": 212.0
           },
           "note": "Frenet 坐标点 (s, l, dl, ddl)。",
           "provided_interfaces": [],
@@ -1883,13 +1966,15 @@
               "is_abstract": false
             }
           ],
+          "expanded_attributes": false,
+          "expanded_methods": false,
           "position": {
-            "x": 2492.0,
-            "y": 100.0
+            "x": 424.0,
+            "y": 1405.0
           },
           "size": {
             "width": 240.0,
-            "height": 190.0
+            "height": 225.0
           },
           "note": "障碍物 dataclass；step 按 heading/speed 平移。",
           "provided_interfaces": [],
@@ -1993,13 +2078,15 @@
             }
           ],
           "methods": [],
+          "expanded_attributes": false,
+          "expanded_methods": false,
           "position": {
-            "x": 2156.0,
-            "y": 100.0
+            "x": 728.0,
+            "y": 1405.0
           },
           "size": {
             "width": 240.0,
-            "height": 190.0
+            "height": 225.0
           },
           "note": "单步诊断日志记录（含 phi/vx/vy 与横向误差 ed、航向误差 ephi）。",
           "provided_interfaces": [],
@@ -2056,13 +2143,15 @@
               "is_abstract": false
             }
           ],
+          "expanded_attributes": false,
+          "expanded_methods": false,
           "position": {
-            "x": 1642.0,
-            "y": 1116.0
+            "x": 728.0,
+            "y": 409.0
           },
           "size": {
             "width": 240.0,
-            "height": 190.0
+            "height": 239.0
           },
           "note": "frozen dataclass；mode ∈ {ideal, dynamic}，delay_steps 要求 delay_s 为 dt 的整数倍。",
           "provided_interfaces": [],
@@ -2292,13 +2381,15 @@
             }
           ],
           "methods": [],
+          "expanded_attributes": false,
+          "expanded_methods": false,
           "position": {
-            "x": 456.0,
+            "x": 414.0,
             "y": 100.0
           },
           "size": {
             "width": 260.0,
-            "height": 210.0
+            "height": 225.0
           },
           "note": "场景配置聚合体：道路、初始位姿、速度剖面、路由/泊车/执行器与控制器选择。",
           "provided_interfaces": [],
@@ -2367,13 +2458,15 @@
             }
           ],
           "methods": [],
+          "expanded_attributes": false,
+          "expanded_methods": false,
           "position": {
-            "x": 970.0,
-            "y": 1116.0
+            "x": 120.0,
+            "y": 409.0
           },
           "size": {
             "width": 240.0,
-            "height": 190.0
+            "height": 254.0
           },
           "note": "道路定义：线段集合 + 可选整图可行驶路网 + 车道数/车道宽/参考车道索引与曲率、路口阈值。",
           "provided_interfaces": [],
@@ -2414,13 +2507,15 @@
             }
           ],
           "methods": [],
+          "expanded_attributes": false,
+          "expanded_methods": false,
           "position": {
-            "x": 1306.0,
-            "y": 1666.0
+            "x": 424.0,
+            "y": 747.0
           },
           "size": {
             "width": 240.0,
-            "height": 190.0
+            "height": 225.0
           },
           "note": "道路片段：straight / arc / waypoints。",
           "provided_interfaces": [],
@@ -2512,13 +2607,15 @@
               "is_abstract": false
             }
           ],
+          "expanded_attributes": false,
+          "expanded_methods": false,
           "position": {
-            "x": 1148.0,
-            "y": 100.0
+            "x": 120.0,
+            "y": 1694.0
           },
           "size": {
             "width": 240.0,
-            "height": 190.0
+            "height": 268.0
           },
           "note": "runtime_config.py 的 frozen dataclass，集中 ROS 节点与仿真核心共享的默认值；DEFAULT_RUNTIME_CONFIG 为单例。",
           "provided_interfaces": [],
@@ -2578,12 +2675,12 @@
       "comp_relations": [],
       "grid_visible": true,
       "grid_size": 20,
-      "grid_color": "#e0e0e0",
-      "grid_thickness": 1,
+      "grid_color": "#833a3a",
+      "grid_thickness": 2,
       "snap_to_grid": true,
-      "zoom": 0.6,
-      "pan_x": 30.899999999999977,
-      "pan_y": -238.60000000000002
+      "zoom": 0.85,
+      "pan_x": -17.888312362395027,
+      "pan_y": -53.141666801089315
     },
     {
       "version": "1.0",
@@ -2712,13 +2809,15 @@
               "is_abstract": false
             }
           ],
+          "expanded_attributes": false,
+          "expanded_methods": false,
           "position": {
-            "x": 194.0,
+            "x": 120.0,
             "y": 100.0
           },
           "size": {
             "width": 260.0,
-            "height": 210.0
+            "height": 341.0
           },
           "note": "异步“最新优先”避障换道规划器：独立 worker 线程 + 单元素请求/响应队列，S 型平滑换道。",
           "provided_interfaces": [],
@@ -2771,13 +2870,15 @@
               "is_abstract": false
             }
           ],
+          "expanded_attributes": false,
+          "expanded_methods": false,
           "position": {
-            "x": 550.0,
+            "x": 444.0,
             "y": 100.0
           },
           "size": {
             "width": 260.0,
-            "height": 190.0
+            "height": 387.0
           },
           "note": "Python 模块 dp_path_plan.py（自由函数集合，非类）。S-L 图动态规划避障（纯 numpy）+ 五次多项式增密。",
           "provided_interfaces": [],
@@ -2814,13 +2915,15 @@
               "is_abstract": false
             }
           ],
+          "expanded_attributes": false,
+          "expanded_methods": false,
           "position": {
-            "x": 906.0,
-            "y": 100.0
+            "x": 120.0,
+            "y": 551.0
           },
           "size": {
             "width": 260.0,
-            "height": 190.0
+            "height": 387.0
           },
           "note": "Python 模块 qp_path_plan.py（自由函数集合，非类）。S-L 二次规划平滑 + 车辆矩形形状约束；无 cvxopt 时回退到凸空间中心线。",
           "provided_interfaces": [],
@@ -2835,12 +2938,12 @@
       "comp_relations": [],
       "grid_visible": true,
       "grid_size": 20,
-      "grid_color": "#e0e0e0",
-      "grid_thickness": 1,
+      "grid_color": "#833a3a",
+      "grid_thickness": 2,
       "snap_to_grid": true,
-      "zoom": 1.0,
-      "pan_x": -134.5,
-      "pan_y": -129.5
+      "zoom": 0.85,
+      "pan_x": 205.3,
+      "pan_y": -107.64999999999998
     },
     {
       "version": "1.0",
@@ -2876,14 +2979,14 @@
             },
             {
               "name": "lat",
-              "type": "LateralLQRController",
+              "type": "LateralController",
               "visibility": "+",
               "default_value": "",
               "is_static": false
             },
             {
               "name": "lon",
-              "type": "LongitudinalPIDController",
+              "type": "LongitudinalController",
               "visibility": "+",
               "default_value": "",
               "is_static": false
@@ -2900,7 +3003,7 @@
             {
               "name": "__init__",
               "return_type": "void",
-              "params": "vehicle_para: tuple | None = None, controller_type: str = \"LQR_controller\", target_speed_kmh: float = 50.0, *, vehicle_params: VehicleParams | None = None, steering_params: SteeringParams | None = None, dt: float = 0.05, actuator_compensation: bool = True, lateral_q=None, lateral_r: float = 100.0, dynamic_lateral_r: float = 300.0, feedback_horizon_s: float = 0.0, smooth_reference_heading: bool = True, discretization: str = \"plant\", longitudinal_params=None",
+              "params": "vehicle_para: tuple | None = None, controller_type: str = \"LQR_controller\", target_speed_kmh: float = 50.0, *, vehicle_params: VehicleParams | None = None, steering_params: SteeringParams | None = None, dt: float = 0.05, actuator_compensation: bool = True, lateral_q=None, lateral_r: float = 100.0, dynamic_lateral_r: float = 300.0, feedback_horizon_s: float = 0.0, smooth_reference_heading: bool = True, discretization: str = \"plant\", longitudinal_params=None, lateral_controller=None, longitudinal_controller=None, mpc_params=None",
               "visibility": "+",
               "is_static": false,
               "is_abstract": false
@@ -2930,15 +3033,17 @@
               "is_abstract": false
             }
           ],
+          "expanded_attributes": false,
+          "expanded_methods": false,
           "position": {
-            "x": 550.0,
+            "x": 242.0,
             "y": 100.0
           },
           "size": {
-            "width": 260.0,
-            "height": 210.0
+            "width": 420.0,
+            "height": 428.0
           },
-          "note": "横纵向统一控制器：横向输出前轮转角，纵向加速度换算为归一化油门/刹车。按 controller_type 选择 LQR 或 MPC 横向控制器。",
+          "note": "横纵向统一控制器：横向输出前轮转角，纵向加速度换算为归一化油门/刹车。按 controller_type 选择 LQR 或 MPC 横向控制器，并支持注入自定义控制器（按 LateralController/LongitudinalController 契约校验类型）。",
           "provided_interfaces": [],
           "required_interfaces": []
         },
@@ -3161,13 +3266,15 @@
               "is_abstract": false
             }
           ],
+          "expanded_attributes": false,
+          "expanded_methods": false,
           "position": {
-            "x": 372.0,
-            "y": 921.0
+            "x": 140.0,
+            "y": 1403.0
           },
           "size": {
             "width": 260.0,
-            "height": 210.0
+            "height": 351.0
           },
           "note": "速度相关自行车模型 DARE 的投影动态 Riccati LQR：Euler 预瞄投影匹配参考线，曲率前馈 + 状态反馈；支持执行器（延迟/滞后）增广。活跃实现链 lat_lqr→_lat_lqr_opt2→_lat_lqr_impl。",
           "provided_interfaces": [],
@@ -3177,26 +3284,151 @@
           "id": "class_latmpc",
           "name": "LateralMPCController",
           "stereotype": "class",
-          "attributes": [],
+          "attributes": [
+            {
+              "name": "vehicle_para",
+              "type": "tuple",
+              "visibility": "+",
+              "default_value": "",
+              "is_static": false
+            },
+            {
+              "name": "N",
+              "type": "int",
+              "visibility": "+",
+              "default_value": "6",
+              "is_static": false
+            },
+            {
+              "name": "P",
+              "type": "int",
+              "visibility": "+",
+              "default_value": "2",
+              "is_static": false
+            },
+            {
+              "name": "Q",
+              "type": "ndarray",
+              "visibility": "+",
+              "default_value": "diag([200,1,50,1])",
+              "is_static": false
+            },
+            {
+              "name": "F",
+              "type": "ndarray",
+              "visibility": "+",
+              "default_value": "= Q",
+              "is_static": false
+            },
+            {
+              "name": "R",
+              "type": "ndarray",
+              "visibility": "+",
+              "default_value": "[[1.0]]",
+              "is_static": false
+            },
+            {
+              "name": "discretization",
+              "type": "str",
+              "visibility": "+",
+              "default_value": "plant",
+              "is_static": false
+            },
+            {
+              "name": "solver",
+              "type": "str",
+              "visibility": "+",
+              "default_value": "auto",
+              "is_static": false
+            },
+            {
+              "name": "max_substep_s",
+              "type": "float",
+              "visibility": "+",
+              "default_value": "",
+              "is_static": false
+            },
+            {
+              "name": "last_error_state",
+              "type": "ndarray",
+              "visibility": "+",
+              "default_value": "zeros(4)",
+              "is_static": false
+            },
+            {
+              "name": "last_solution",
+              "type": "ndarray",
+              "visibility": "+",
+              "default_value": "None",
+              "is_static": false
+            },
+            {
+              "name": "predicted_states",
+              "type": "ndarray",
+              "visibility": "+",
+              "default_value": "None",
+              "is_static": false
+            },
+            {
+              "name": "solver_status",
+              "type": "str",
+              "visibility": "+",
+              "default_value": "not_run",
+              "is_static": false
+            },
+            {
+              "name": "solver_backend",
+              "type": "str",
+              "visibility": "+",
+              "default_value": "None",
+              "is_static": false
+            }
+          ],
           "methods": [
             {
               "name": "__init__",
               "return_type": "void",
-              "params": "vehicle_para: tuple, Q=None, F=None, R: float = 1.0, N: int = 6, P: int = 2, ts: float = 0.05",
+              "params": "vehicle_para: tuple, Q=None, F=None, R: float = 1.0, N: int = 6, P: int = 2, ts: float = 0.05, *, discretization: str = \"plant\", solver: str = \"auto\", max_substep_s: float",
+              "visibility": "+",
+              "is_static": false,
+              "is_abstract": false
+            },
+            {
+              "name": "reset_tracking",
+              "return_type": "void",
+              "params": "",
+              "visibility": "+",
+              "is_static": false,
+              "is_abstract": false
+            },
+            {
+              "name": "prediction_matrices",
+              "return_type": "tuple[ndarray, ndarray, ndarray]",
+              "params": "A: ndarray, B: ndarray, drift: ndarray",
+              "visibility": "+",
+              "is_static": false,
+              "is_abstract": false
+            },
+            {
+              "name": "control_from_error",
+              "return_type": "float",
+              "params": "error_state: ndarray, kappa: float, vx: float",
               "visibility": "+",
               "is_static": false,
               "is_abstract": false
             }
           ],
+          "expanded_attributes": false,
+          "expanded_methods": false,
           "position": {
-            "x": 550.0,
-            "y": 1946.0
+            "x": 464.0,
+            "y": 1403.0
           },
           "size": {
-            "width": 260.0,
-            "height": 150.0
+            "width": 300.0,
+            "height": 366.0
           },
-          "note": "兼容 MPC 的横向控制器：继承 LateralLQRController，暂复用 LQR 反馈（构造参数 N/P/F 不保存），保持接口以待数值 QP 后端。",
+          "note": "有限时域横向 MPC：N 步预测、P 步标量转向增量（末段保持）；曲率与速度在单次求解内视为常量，F 加权终端误差，支持执行器增广与延迟 FIFO。紧凑预测经盒约束 QP（solve_box_qp）求解，无 cvxopt 时回退 NumPy 活跃集后端。",
           "provided_interfaces": [],
           "required_interfaces": []
         },
@@ -3317,15 +3549,511 @@
               "is_abstract": false
             }
           ],
+          "expanded_attributes": false,
+          "expanded_methods": false,
           "position": {
-            "x": 728.0,
-            "y": 921.0
+            "x": 974.0,
+            "y": 1038.0
           },
           "size": {
             "width": 260.0,
-            "height": 190.0
+            "height": 398.0
           },
           "note": "纵向 PID：带微分低通与侧向耦合前馈，误差超阈值清积分抗饱和，加加速度限幅，输出加速度限幅 [-max_decel, max_accel]。",
+          "provided_interfaces": [],
+          "required_interfaces": []
+        },
+        {
+          "id": "class_latctrl",
+          "name": "LateralController",
+          "stereotype": "abstract",
+          "attributes": [
+            {
+              "name": "ts",
+              "type": "float",
+              "visibility": "+",
+              "default_value": "0.05",
+              "is_static": false
+            },
+            {
+              "name": "max_steer",
+              "type": "float",
+              "visibility": "+",
+              "default_value": "0.5",
+              "is_static": false
+            },
+            {
+              "name": "min_index",
+              "type": "int",
+              "visibility": "+",
+              "default_value": "0",
+              "is_static": false
+            },
+            {
+              "name": "actuator_params",
+              "type": "SteeringParams",
+              "visibility": "+",
+              "default_value": "",
+              "is_static": false
+            },
+            {
+              "name": "actual_steer",
+              "type": "float",
+              "visibility": "+",
+              "default_value": "0.0",
+              "is_static": false
+            },
+            {
+              "name": "command_history",
+              "type": "list",
+              "visibility": "+",
+              "default_value": "[]",
+              "is_static": false
+            },
+            {
+              "name": "feedback_horizon_s",
+              "type": "float",
+              "visibility": "+",
+              "default_value": "0.0",
+              "is_static": false
+            },
+            {
+              "name": "smooth_reference_heading",
+              "type": "bool",
+              "visibility": "+",
+              "default_value": "True",
+              "is_static": false
+            }
+          ],
+          "methods": [
+            {
+              "name": "__init__",
+              "return_type": "void",
+              "params": "ts: float = 0.05",
+              "visibility": "+",
+              "is_static": false,
+              "is_abstract": false
+            },
+            {
+              "name": "configure_actuator",
+              "return_type": "void",
+              "params": "params: SteeringParams",
+              "visibility": "+",
+              "is_static": false,
+              "is_abstract": false
+            },
+            {
+              "name": "reset_actuator_history",
+              "return_type": "void",
+              "params": "",
+              "visibility": "+",
+              "is_static": false,
+              "is_abstract": false
+            },
+            {
+              "name": "configure_tracking",
+              "return_type": "void",
+              "params": "*, feedback_horizon_s: float = 0.0, smooth_reference_heading: bool = True",
+              "visibility": "+",
+              "is_static": false,
+              "is_abstract": false
+            },
+            {
+              "name": "set_path",
+              "return_type": "void",
+              "params": "path: list, *, preserve: bool = False",
+              "visibility": "+",
+              "is_static": false,
+              "is_abstract": true
+            },
+            {
+              "name": "reset_tracking",
+              "return_type": "void",
+              "params": "",
+              "visibility": "+",
+              "is_static": false,
+              "is_abstract": true
+            },
+            {
+              "name": "control",
+              "return_type": "float",
+              "params": "x: float, y: float, phi: float, vx: float, vy: float, r: float, ref_path: list",
+              "visibility": "+",
+              "is_static": false,
+              "is_abstract": true
+            }
+          ],
+          "expanded_attributes": false,
+          "expanded_methods": false,
+          "position": {
+            "x": 302.0,
+            "y": 628.0
+          },
+          "size": {
+            "width": 300.0,
+            "height": 311.0
+          },
+          "note": "横向控制器抽象契约（algorithms/controller/base.py）：角度为弧度、ts 为秒；统一执行器（延迟/滞后）配置与复位接口，输出限幅前轮转角。",
+          "provided_interfaces": [],
+          "required_interfaces": []
+        },
+        {
+          "id": "class_lonctrl",
+          "name": "LongitudinalController",
+          "stereotype": "abstract",
+          "attributes": [
+            {
+              "name": "dt",
+              "type": "float",
+              "visibility": "+",
+              "default_value": "0.05",
+              "is_static": false
+            },
+            {
+              "name": "max_accel",
+              "type": "float",
+              "visibility": "+",
+              "default_value": "3.0",
+              "is_static": false
+            },
+            {
+              "name": "max_decel",
+              "type": "float",
+              "visibility": "+",
+              "default_value": "6.0",
+              "is_static": false
+            },
+            {
+              "name": "target_speed",
+              "type": "float",
+              "visibility": "+",
+              "default_value": "50.0",
+              "is_static": false
+            }
+          ],
+          "methods": [
+            {
+              "name": "__init__",
+              "return_type": "void",
+              "params": "dt: float = 0.05, max_accel: float = 3.0, max_decel: float = 6.0",
+              "visibility": "+",
+              "is_static": false,
+              "is_abstract": false
+            },
+            {
+              "name": "set_target",
+              "return_type": "void",
+              "params": "speed_kmh: float",
+              "visibility": "+",
+              "is_static": false,
+              "is_abstract": false
+            },
+            {
+              "name": "control",
+              "return_type": "float",
+              "params": "current_speed_ms: float, coupling_accel: float = 0.0",
+              "visibility": "+",
+              "is_static": false,
+              "is_abstract": true
+            },
+            {
+              "name": "reset",
+              "return_type": "void",
+              "params": "",
+              "visibility": "+",
+              "is_static": false,
+              "is_abstract": true
+            }
+          ],
+          "expanded_attributes": false,
+          "expanded_methods": false,
+          "position": {
+            "x": 954.0,
+            "y": 628.0
+          },
+          "size": {
+            "width": 300.0,
+            "height": 326.0
+          },
+          "note": "纵向控制器抽象契约（algorithms/controller/base.py）：输出物理加速度 m/s²，含可选侧向耦合前馈，控制目标与记忆分离。",
+          "provided_interfaces": [],
+          "required_interfaces": []
+        },
+        {
+          "id": "class_projectedlat",
+          "name": "ProjectedLateralController",
+          "stereotype": "abstract",
+          "attributes": [
+            {
+              "name": "x_pre",
+              "type": "float",
+              "visibility": "+",
+              "default_value": "0.0",
+              "is_static": false
+            },
+            {
+              "name": "y_pre",
+              "type": "float",
+              "visibility": "+",
+              "default_value": "0.0",
+              "is_static": false
+            },
+            {
+              "name": "x_pro",
+              "type": "float",
+              "visibility": "+",
+              "default_value": "0.0",
+              "is_static": false
+            },
+            {
+              "name": "y_pro",
+              "type": "float",
+              "visibility": "+",
+              "default_value": "0.0",
+              "is_static": false
+            },
+            {
+              "name": "last_ed",
+              "type": "float",
+              "visibility": "+",
+              "default_value": "0.0",
+              "is_static": false
+            },
+            {
+              "name": "last_ephi",
+              "type": "float",
+              "visibility": "+",
+              "default_value": "0.0",
+              "is_static": false
+            },
+            {
+              "name": "tracker",
+              "type": "RouteTracker",
+              "visibility": "+",
+              "default_value": "None",
+              "is_static": false
+            },
+            {
+              "name": "route_progress",
+              "type": "float",
+              "visibility": "+",
+              "default_value": "0.0",
+              "is_static": false
+            },
+            {
+              "name": "route_s",
+              "type": "float",
+              "visibility": "+",
+              "default_value": "0.0",
+              "is_static": false
+            },
+            {
+              "name": "last_ref_heading",
+              "type": "float",
+              "visibility": "+",
+              "default_value": "None",
+              "is_static": false
+            },
+            {
+              "name": "_path",
+              "type": "list",
+              "visibility": "-",
+              "default_value": "None",
+              "is_static": false
+            }
+          ],
+          "methods": [
+            {
+              "name": "__init__",
+              "return_type": "void",
+              "params": "ts: float = 0.05",
+              "visibility": "+",
+              "is_static": false,
+              "is_abstract": false
+            },
+            {
+              "name": "reset_tracking",
+              "return_type": "void",
+              "params": "",
+              "visibility": "+",
+              "is_static": false,
+              "is_abstract": false
+            },
+            {
+              "name": "set_path",
+              "return_type": "void",
+              "params": "path: list, *, preserve: bool = False",
+              "visibility": "+",
+              "is_static": false,
+              "is_abstract": false
+            },
+            {
+              "name": "control",
+              "return_type": "float",
+              "params": "x: float, y: float, phi: float, vx: float, vy: float, r: float, ref_path: list",
+              "visibility": "+",
+              "is_static": false,
+              "is_abstract": false
+            },
+            {
+              "name": "control_from_error",
+              "return_type": "float",
+              "params": "error_state: ndarray, kappa: float, vx: float",
+              "visibility": "+",
+              "is_static": false,
+              "is_abstract": true
+            }
+          ],
+          "expanded_attributes": false,
+          "expanded_methods": false,
+          "position": {
+            "x": 302.0,
+            "y": 1023.0
+          },
+          "size": {
+            "width": 300.0,
+            "height": 296.0
+          },
+          "note": "横向算法共享基类：基于 RouteTracker 完成预瞄投影匹配、参考航向平滑与误差状态 [e_d, e_d_dot, e_phi, e_phi_dot] 计算；子类仅实现 control_from_error。",
+          "provided_interfaces": [],
+          "required_interfaces": []
+        },
+        {
+          "id": "class_bicycle",
+          "name": "BicycleLateralModel",
+          "stereotype": "class",
+          "attributes": [
+            {
+              "name": "a",
+              "type": "float",
+              "visibility": "+",
+              "default_value": "",
+              "is_static": false
+            },
+            {
+              "name": "b",
+              "type": "float",
+              "visibility": "+",
+              "default_value": "",
+              "is_static": false
+            },
+            {
+              "name": "m",
+              "type": "float",
+              "visibility": "+",
+              "default_value": "",
+              "is_static": false
+            },
+            {
+              "name": "Cf",
+              "type": "float",
+              "visibility": "+",
+              "default_value": "",
+              "is_static": false
+            },
+            {
+              "name": "Cr",
+              "type": "float",
+              "visibility": "+",
+              "default_value": "",
+              "is_static": false
+            },
+            {
+              "name": "Iz",
+              "type": "float",
+              "visibility": "+",
+              "default_value": "",
+              "is_static": false
+            },
+            {
+              "name": "ts",
+              "type": "float",
+              "visibility": "+",
+              "default_value": "0.05",
+              "is_static": false
+            },
+            {
+              "name": "actuator_params",
+              "type": "SteeringParams",
+              "visibility": "+",
+              "default_value": "",
+              "is_static": false
+            }
+          ],
+          "methods": [
+            {
+              "name": "__init__",
+              "return_type": "void",
+              "params": "vehicle_para: tuple, ts: float = 0.05, actuator_params: SteeringParams | None = None",
+              "visibility": "+",
+              "is_static": false,
+              "is_abstract": false
+            },
+            {
+              "name": "continuous",
+              "return_type": "tuple[ndarray, ndarray]",
+              "params": "vx: float",
+              "visibility": "+",
+              "is_static": false,
+              "is_abstract": false
+            },
+            {
+              "name": "bilinear",
+              "return_type": "tuple[ndarray, ndarray, ndarray]",
+              "params": "vx: float, kappa: float = 0.0",
+              "visibility": "+",
+              "is_static": false,
+              "is_abstract": false
+            },
+            {
+              "name": "plant",
+              "return_type": "tuple[ndarray, ndarray, ndarray]",
+              "params": "vx: float, actuator: bool = False, kappa: float = 0.0, max_substep_s: float | None = None",
+              "visibility": "+",
+              "is_static": false,
+              "is_abstract": false
+            }
+          ],
+          "expanded_attributes": false,
+          "expanded_methods": false,
+          "position": {
+            "x": 120.0,
+            "y": 1853.0
+          },
+          "size": {
+            "width": 300.0,
+            "height": 338.0
+          },
+          "note": "求解器无关的自行车横向模型：continuous 线性化，bilinear/plant 两种离散化，plant 复现仿真器期望输入子步并支持执行器角度/延迟增广。误差坐标 [e_d, e_d_dot, e_phi, e_phi_dot]。",
+          "provided_interfaces": [],
+          "required_interfaces": []
+        },
+        {
+          "id": "class_boxqp",
+          "name": "box_qp (module)",
+          "stereotype": "class",
+          "attributes": [],
+          "methods": [
+            {
+              "name": "solve_box_qp",
+              "return_type": "tuple[ndarray, str]",
+              "params": "H: ndarray, f: ndarray, bound: float, *, backend: str = \"auto\"",
+              "visibility": "+",
+              "is_static": true,
+              "is_abstract": false
+            }
+          ],
+          "expanded_attributes": false,
+          "expanded_methods": false,
+          "position": {
+            "x": 484.0,
+            "y": 1853.0
+          },
+          "size": {
+            "width": 300.0,
+            "height": 241.0
+          },
+          "note": "Python 模块 algorithms/controller/box_qp.py（仅自由函数，无类定义）。求解盒约束正定 QP：优先 cvxopt，缺失时回退 NumPy 原对偶活跃集（非控制器降级）；失败向上抛出。",
           "provided_interfaces": [],
           "required_interfaces": []
         }
@@ -3354,15 +4082,92 @@
           "note": "纵向 PID 控制器"
         },
         {
-          "id": "rel_latmpc_latlqr",
+          "id": "rel_latmpc_projected",
           "source": "class_latmpc",
-          "target": "class_latlqr",
+          "target": "class_projectedlat",
           "type": "inheritance",
           "vertices": null,
           "multiplicity_source": "",
           "multiplicity_target": "",
           "role_name": "",
-          "note": "MPC 兼容控制器继承动态 LQR 控制器"
+          "note": "MPC 与 LQR 共享预瞄投影匹配基类"
+        },
+        {
+          "id": "rel_latlqr_projected",
+          "source": "class_latlqr",
+          "target": "class_projectedlat",
+          "type": "inheritance",
+          "vertices": null,
+          "multiplicity_source": "",
+          "multiplicity_target": "",
+          "role_name": "",
+          "note": "LQR 复用投影匹配基类的 set_path/control"
+        },
+        {
+          "id": "rel_projected_latctrl",
+          "source": "class_projectedlat",
+          "target": "class_latctrl",
+          "type": "inheritance",
+          "vertices": null,
+          "multiplicity_source": "",
+          "multiplicity_target": "",
+          "role_name": "",
+          "note": "投影匹配控制器继承横向抽象接口"
+        },
+        {
+          "id": "rel_lonpid_lonctrl",
+          "source": "class_lonpid",
+          "target": "class_lonctrl",
+          "type": "inheritance",
+          "vertices": null,
+          "multiplicity_source": "",
+          "multiplicity_target": "",
+          "role_name": "",
+          "note": "PID 实现纵向抽象接口"
+        },
+        {
+          "id": "rel_latlqr_bicycle",
+          "source": "class_latlqr",
+          "target": "class_bicycle",
+          "type": "dependency",
+          "vertices": null,
+          "multiplicity_source": "",
+          "multiplicity_target": "",
+          "role_name": "",
+          "note": "LQR 使用自行车横向模型离散化"
+        },
+        {
+          "id": "rel_latmpc_bicycle",
+          "source": "class_latmpc",
+          "target": "class_bicycle",
+          "type": "dependency",
+          "vertices": null,
+          "multiplicity_source": "",
+          "multiplicity_target": "",
+          "role_name": "",
+          "note": "MPC 使用自行车横向模型做预测离散化"
+        },
+        {
+          "id": "rel_latmpc_boxqp",
+          "source": "class_latmpc",
+          "target": "class_boxqp",
+          "type": "dependency",
+          "vertices": null,
+          "multiplicity_source": "",
+          "multiplicity_target": "",
+          "role_name": "",
+          "note": "MPC 调用盒约束 QP 求解器"
+        },
+        {
+          "id": "rel_bicycle_latctrl",
+          "source": "class_bicycle",
+          "target": "class_latctrl",
+          "type": "dependency",
+          "vertices": null,
+          "multiplicity_source": "",
+          "multiplicity_target": "",
+          "role_name": "",
+          "note": "模型执行器参数取自横向接口契约"
         }
       ],
       "lifelines": [],
@@ -3372,12 +4177,12 @@
       "comp_relations": [],
       "grid_visible": true,
       "grid_size": 20,
-      "grid_color": "#e0e0e0",
-      "grid_thickness": 1,
+      "grid_color": "#833a3a",
+      "grid_thickness": 2,
       "snap_to_grid": true,
-      "zoom": 1.2,
-      "pan_x": -256.5,
-      "pan_y": -207.89999999999998
+      "zoom": 1.0,
+      "pan_x": -134.0,
+      "pan_y": -512.0
     },
     {
       "version": "1.0",
@@ -3432,13 +4237,15 @@
               "is_abstract": false
             }
           ],
+          "expanded_attributes": false,
+          "expanded_methods": false,
           "position": {
-            "x": 120.0,
+            "x": 900.0,
             "y": 100.0
           },
           "size": {
             "width": 260.0,
-            "height": 190.0
+            "height": 298.0
           },
           "note": "Python 模块 frenet.py（自由函数集合）。折线投影与 Frenet 变换：匹配点、弧长映射、s/l 及导数。",
           "provided_interfaces": [],
@@ -3459,13 +4266,15 @@
               "is_abstract": false
             }
           ],
+          "expanded_attributes": false,
+          "expanded_methods": false,
           "position": {
-            "x": 476.0,
-            "y": 679.0
+            "x": 120.0,
+            "y": 457.0
           },
           "size": {
             "width": 260.0,
-            "height": 190.0
+            "height": 199.0
           },
           "note": "Python 模块 geometry.py（自由函数集合）。折线航向角与曲率计算。",
           "provided_interfaces": [],
@@ -3494,13 +4303,15 @@
               "is_abstract": false
             }
           ],
+          "expanded_attributes": false,
+          "expanded_methods": false,
           "position": {
-            "x": 476.0,
+            "x": 1224.0,
             "y": 100.0
           },
           "size": {
             "width": 260.0,
-            "height": 190.0
+            "height": 292.0
           },
           "note": "Python 模块 quintic.py（自由函数集合）。五次多项式插值与求导。",
           "provided_interfaces": [],
@@ -3521,13 +4332,15 @@
               "is_abstract": false
             }
           ],
+          "expanded_attributes": false,
+          "expanded_methods": false,
           "position": {
-            "x": 832.0,
+            "x": 120.0,
             "y": 100.0
           },
           "size": {
             "width": 260.0,
-            "height": 190.0
+            "height": 257.0
           },
           "note": "Python 模块 algorithms/utils/reference_line.py（自由函数集合）。参考线平滑（可选 cvxopt QP），输出 (x, y, theta, kappa)。",
           "provided_interfaces": [],
@@ -3605,13 +4418,15 @@
               "is_abstract": false
             }
           ],
+          "expanded_attributes": false,
+          "expanded_methods": false,
           "position": {
-            "x": 654.0,
-            "y": 1144.0
+            "x": 510.0,
+            "y": 868.0
           },
           "size": {
             "width": 260.0,
-            "height": 190.0
+            "height": 254.0
           },
           "note": "frozen dataclass，表示参考线投影结果 (index, ratio, s, x, y, theta, kappa, distance)。",
           "provided_interfaces": [],
@@ -3677,13 +4492,15 @@
               "is_abstract": false
             }
           ],
+          "expanded_attributes": false,
+          "expanded_methods": false,
           "position": {
-            "x": 832.0,
-            "y": 679.0
+            "x": 510.0,
+            "y": 473.0
           },
           "size": {
             "width": 260.0,
-            "height": 190.0
+            "height": 311.0
           },
           "note": "Metric 路线几何：累积弧长、闭合判定与分支连续投影（仅初始化/重规划可全局搜索）。",
           "provided_interfaces": [],
@@ -3734,13 +4551,15 @@
               "is_abstract": false
             }
           ],
+          "expanded_attributes": false,
+          "expanded_methods": false,
           "position": {
-            "x": 1188.0,
+            "x": 510.0,
             "y": 100.0
           },
           "size": {
             "width": 260.0,
-            "height": 190.0
+            "height": 289.0
           },
           "note": "有状态路线跟踪：按行进距离约束搜索窗口，输出连续（不跳分支）投影。wrap_angle 为模块级函数。",
           "provided_interfaces": [],
@@ -3789,12 +4608,12 @@
       "comp_relations": [],
       "grid_visible": true,
       "grid_size": 20,
-      "grid_color": "#e0e0e0",
-      "grid_thickness": 1,
+      "grid_color": "#833a3a",
+      "grid_thickness": 2,
       "snap_to_grid": true,
-      "zoom": 1.0,
-      "pan_x": -578.5,
-      "pan_y": 54.5
+      "zoom": 0.3,
+      "pan_x": 250.64997956091622,
+      "pan_y": 77.66999631929801
     },
     {
       "version": "1.0",
@@ -3879,13 +4698,15 @@
               "is_abstract": false
             }
           ],
+          "expanded_attributes": false,
+          "expanded_methods": false,
           "position": {
-            "x": 782.0,
-            "y": 622.0
+            "x": 120.0,
+            "y": 459.0
           },
           "size": {
             "width": 280.0,
-            "height": 200.0
+            "height": 340.0
           },
           "note": "与传输无关的路由服务：管理多张地图版本并对外提供确定性的 A* 路由请求。",
           "provided_interfaces": [],
@@ -3950,13 +4771,15 @@
               "is_abstract": false
             }
           ],
+          "expanded_attributes": false,
+          "expanded_methods": false,
           "position": {
-            "x": 792.0,
-            "y": 1301.0
+            "x": 130.0,
+            "y": 883.0
           },
           "size": {
             "width": 260.0,
-            "height": 190.0
+            "height": 347.0
           },
           "note": "在有向车道图上的 A* 搜索：边长度为主代价，fastest 用限速，各策略叠加转向/换道代价；支持闭合环与掉头策略。",
           "provided_interfaces": [],
@@ -4001,13 +4824,15 @@
               "is_abstract": false
             }
           ],
+          "expanded_attributes": false,
+          "expanded_methods": false,
           "position": {
-            "x": 812.0,
-            "y": 100.0
+            "x": 120.0,
+            "y": 1530.0
           },
           "size": {
             "width": 260.0,
-            "height": 190.0
+            "height": 268.0
           },
           "note": "Python 模块 map_loader.py（自由函数集合）。加载/校验 JSON 道路地图，补全后继并按拓扑 validate_map。",
           "provided_interfaces": [],
@@ -4067,13 +4892,15 @@
               "is_abstract": false
             }
           ],
+          "expanded_attributes": false,
+          "expanded_methods": false,
           "position": {
-            "x": 456.0,
+            "x": 130.0,
             "y": 100.0
           },
           "size": {
             "width": 260.0,
-            "height": 190.0
+            "height": 259.0
           },
           "note": "ROS 2 节点：加载一张或多张地图，通过 topic 与 service 提供确定性路由。",
           "provided_interfaces": [],
@@ -4107,13 +4934,15 @@
             }
           ],
           "methods": [],
+          "expanded_attributes": false,
+          "expanded_methods": false,
           "position": {
-            "x": 1494.0,
-            "y": 622.0
+            "x": 530.0,
+            "y": 409.0
           },
           "size": {
             "width": 220.0,
-            "height": 150.0
+            "height": 212.0
           },
           "note": "frozen dataclass：二维位姿。",
           "provided_interfaces": [],
@@ -4182,13 +5011,15 @@
             }
           ],
           "methods": [],
+          "expanded_attributes": false,
+          "expanded_methods": false,
           "position": {
-            "x": 1504.0,
+            "x": 530.0,
             "y": 100.0
           },
           "size": {
             "width": 220.0,
-            "height": 150.0
+            "height": 225.0
           },
           "note": "frozen dataclass：一次路由请求（起终位姿、车道与策略）。",
           "provided_interfaces": [],
@@ -4222,13 +5053,15 @@
             }
           ],
           "methods": [],
+          "expanded_attributes": false,
+          "expanded_methods": false,
           "position": {
-            "x": 466.0,
-            "y": 622.0
+            "x": 1184.0,
+            "y": 480.0
           },
           "size": {
             "width": 220.0,
-            "height": 150.0
+            "height": 212.0
           },
           "note": "frozen dataclass：地图拓扑节点。",
           "provided_interfaces": [],
@@ -4339,13 +5172,15 @@
             }
           ],
           "methods": [],
+          "expanded_attributes": false,
+          "expanded_methods": false,
           "position": {
-            "x": 130.0,
-            "y": 622.0
+            "x": 880.0,
+            "y": 480.0
           },
           "size": {
             "width": 240.0,
-            "height": 190.0
+            "height": 239.0
           },
           "note": "frozen dataclass：车道级有向边（几何 + 拓扑 + 限速）。length 为只读 property。",
           "provided_interfaces": [],
@@ -4418,13 +5253,15 @@
               "is_abstract": false
             }
           ],
+          "expanded_attributes": false,
+          "expanded_methods": false,
           "position": {
-            "x": 120.0,
+            "x": 1022.0,
             "y": 100.0
           },
           "size": {
             "width": 240.0,
-            "height": 190.0
+            "height": 296.0
           },
           "note": "frozen dataclass：一张道路地图（节点 + 车道边 + 车道宽/数量）。",
           "provided_interfaces": [],
@@ -4486,13 +5323,15 @@
             }
           ],
           "methods": [],
+          "expanded_attributes": false,
+          "expanded_methods": false,
           "position": {
-            "x": 1158.0,
-            "y": 622.0
+            "x": 530.0,
+            "y": 1188.0
           },
           "size": {
             "width": 240.0,
-            "height": 190.0
+            "height": 212.0
           },
           "note": "frozen dataclass：规划路线中的一段。",
           "provided_interfaces": [],
@@ -4584,13 +5423,15 @@
               "is_abstract": false
             }
           ],
+          "expanded_attributes": false,
+          "expanded_methods": false,
           "position": {
-            "x": 1168.0,
-            "y": 100.0
+            "x": 530.0,
+            "y": 849.0
           },
           "size": {
             "width": 240.0,
-            "height": 190.0
+            "height": 255.0
           },
           "note": "frozen dataclass：路由结果（成功标志、段集合、采样点与总长）。",
           "provided_interfaces": [],
@@ -4625,12 +5466,7 @@
           "source": "class_roadmap",
           "target": "class_laneedge",
           "type": "composition",
-          "vertices": [
-            {
-              "x": 231.0,
-              "y": 590.0
-            }
-          ],
+          "vertices": null,
           "multiplicity_source": "1",
           "multiplicity_target": "1..*",
           "role_name": "edges",
@@ -4677,12 +5513,12 @@
       "comp_relations": [],
       "grid_visible": true,
       "grid_size": 20,
-      "grid_color": "#e0e0e0",
-      "grid_thickness": 1,
+      "grid_color": "#833a3a",
+      "grid_thickness": 2,
       "snap_to_grid": true,
-      "zoom": 1.0,
-      "pan_x": 136.5,
-      "pan_y": -108.0
+      "zoom": 0.3,
+      "pan_x": 214.54999028053606,
+      "pan_y": -51.93000708187327
     },
     {
       "version": "1.0",
@@ -4772,13 +5608,15 @@
               "is_abstract": false
             }
           ],
+          "expanded_attributes": false,
+          "expanded_methods": false,
           "position": {
-            "x": 540.0,
-            "y": 693.0
+            "x": 120.0,
+            "y": 444.0
           },
           "size": {
             "width": 280.0,
-            "height": 200.0
+            "height": 400.0
           },
           "note": "把有序路由边转换为规划器可用的连续车道参考线：采样拼接、角点圆化（曲率受限）、偏移生成车道/可行驶边界。",
           "provided_interfaces": [],
@@ -4919,13 +5757,15 @@
               "is_abstract": false
             }
           ],
+          "expanded_attributes": false,
+          "expanded_methods": false,
           "position": {
-            "x": 550.0,
-            "y": 1329.0
+            "x": 130.0,
+            "y": 944.0
           },
           "size": {
             "width": 260.0,
-            "height": 210.0
+            "height": 270.0
           },
           "note": "frozen dataclass：由一条拓扑路线生成的连续几何参考及左右/可行驶边界。",
           "provided_interfaces": [],
@@ -5004,13 +5844,15 @@
               "is_abstract": false
             }
           ],
+          "expanded_attributes": false,
+          "expanded_methods": false,
           "position": {
-            "x": 728.0,
-            "y": 100.0
+            "x": 570.0,
+            "y": 444.0
           },
           "size": {
             "width": 280.0,
-            "height": 200.0
+            "height": 376.0
           },
           "note": "继承 algorithms.planner.MotionPlanner（跨组件）；用路由车道身份让局部绕行最终回到任务车道，并做候选轨迹矩形安全校验。",
           "provided_interfaces": [],
@@ -5070,13 +5912,15 @@
               "is_abstract": false
             }
           ],
+          "expanded_attributes": false,
+          "expanded_methods": false,
           "position": {
-            "x": 352.0,
+            "x": 120.0,
             "y": 100.0
           },
           "size": {
             "width": 280.0,
-            "height": 200.0
+            "height": 244.0
           },
           "note": "ROS 2 节点：订阅 RoutePlan，发布经地图校验的 ReferenceLine。",
           "provided_interfaces": [],
@@ -5125,12 +5969,12 @@
       "comp_relations": [],
       "grid_visible": true,
       "grid_size": 20,
-      "grid_color": "#e0e0e0",
-      "grid_thickness": 1,
+      "grid_color": "#833a3a",
+      "grid_thickness": 2,
       "snap_to_grid": true,
-      "zoom": 1.0,
-      "pan_x": -111.5,
-      "pan_y": 30.5
+      "zoom": 0.85,
+      "pan_x": 143.25,
+      "pan_y": -353.94999999999993
     },
     {
       "version": "1.0",
@@ -5176,13 +6020,15 @@
               "is_abstract": false
             }
           ],
+          "expanded_attributes": false,
+          "expanded_methods": false,
           "position": {
-            "x": 372.0,
-            "y": 584.0
+            "x": 130.0,
+            "y": 483.0
           },
           "size": {
             "width": 260.0,
-            "height": 190.0
+            "height": 251.0
           },
           "note": "与控制器预测无关的共享测量定义（protocol=route_projection_v2）；输出 ed/ephi/route_s 等指标字典。",
           "provided_interfaces": [],
@@ -5227,13 +6073,15 @@
               "is_abstract": false
             }
           ],
+          "expanded_attributes": false,
+          "expanded_methods": false,
           "position": {
-            "x": 728.0,
-            "y": 584.0
+            "x": 560.0,
+            "y": 483.0
           },
           "size": {
             "width": 260.0,
-            "height": 190.0
+            "height": 254.0
           },
           "note": "独立解析路线预言机：拟合 x=78cos(t), y=42sin(2t) 真值相位，用于分支/圈数校验（不读控制索引）。",
           "provided_interfaces": [],
@@ -5294,13 +6142,15 @@
               "is_abstract": false
             }
           ],
+          "expanded_attributes": false,
+          "expanded_methods": false,
           "position": {
-            "x": 540.0,
+            "x": 120.0,
             "y": 100.0
           },
           "size": {
             "width": 280.0,
-            "height": 200.0
+            "height": 283.0
           },
           "note": "Python 模块 analysis/evaluation.py（自由函数集合）。可复现的八形多圈评估与报告生成（含溯源/归档）。",
           "provided_interfaces": [],
@@ -5338,12 +6188,12 @@
       "comp_relations": [],
       "grid_visible": true,
       "grid_size": 20,
-      "grid_color": "#e0e0e0",
-      "grid_thickness": 1,
+      "grid_color": "#833a3a",
+      "grid_thickness": 2,
       "snap_to_grid": true,
       "zoom": 1.0,
-      "pan_x": -334.5,
-      "pan_y": -172.0
+      "pan_x": 139.5,
+      "pan_y": -202.0
     },
     {
       "version": "1.0",
@@ -5504,13 +6354,15 @@
               "is_abstract": false
             }
           ],
+          "expanded_attributes": false,
+          "expanded_methods": false,
           "position": {
-            "x": 120.0,
+            "x": 530.0,
             "y": 100.0
           },
           "size": {
             "width": 280.0,
-            "height": 230.0
+            "height": 308.0
           },
           "note": "ROS 2 仿真节点：定时步进引擎、发布 vehicle/state、obstacles、sim/status、sim/context 与 /clock，订阅唯一仲裁后的 control_command；支持运行时切换场景。",
           "provided_interfaces": [],
@@ -5645,13 +6497,15 @@
               "is_abstract": false
             }
           ],
+          "expanded_attributes": false,
+          "expanded_methods": false,
           "position": {
-            "x": 496.0,
+            "x": 874.0,
             "y": 100.0
           },
           "size": {
             "width": 280.0,
-            "height": 230.0
+            "height": 293.0
           },
           "note": "ROS 2 规划节点：消费 routing/reference_line、vehicle/state、obstacles 与 sim/context，按 run 激活 RouteAwareMotionPlanner 并锁存发布 planned_path。",
           "provided_interfaces": [],
@@ -5771,13 +6625,15 @@
               "is_abstract": false
             }
           ],
+          "expanded_attributes": false,
+          "expanded_methods": false,
           "position": {
-            "x": 872.0,
-            "y": 100.0
+            "x": 530.0,
+            "y": 472.0
           },
           "size": {
             "width": 280.0,
-            "height": 230.0
+            "height": 295.0
           },
           "note": "ROS 2 控制节点：仅接受当前 run 的 routing reference 与新鲜 planned_path；发布 control_command/cruise 候选命令与 tracking/metrics。",
           "provided_interfaces": [],
@@ -5874,13 +6730,15 @@
               "is_abstract": false
             }
           ],
+          "expanded_attributes": false,
+          "expanded_methods": false,
           "position": {
-            "x": 1248.0,
-            "y": 100.0
+            "x": 874.0,
+            "y": 472.0
           },
           "size": {
             "width": 280.0,
-            "height": 230.0
+            "height": 295.0
           },
           "note": "模式仲裁器（CRUISE/PARKING/MANUAL/EMERGENCY_STOP）：唯一写入 control_command 的节点，防止控制器冲突；缺安全心跳即刹车。",
           "provided_interfaces": [],
@@ -5970,13 +6828,15 @@
               "is_abstract": false
             }
           ],
+          "expanded_attributes": false,
+          "expanded_methods": false,
           "position": {
-            "x": 872.0,
-            "y": 897.0
+            "x": 120.0,
+            "y": 458.0
           },
           "size": {
             "width": 280.0,
-            "height": 230.0
+            "height": 280.0
           },
           "note": "失效即停的规划就绪监督器：仅发布 safety/stop_request（Bool）心跳，本身不发执行器命令，由 ControllerManager 消费。",
           "provided_interfaces": [],
@@ -6076,13 +6936,15 @@
               "is_abstract": false
             }
           ],
+          "expanded_attributes": false,
+          "expanded_methods": false,
           "position": {
-            "x": 1624.0,
+            "x": 120.0,
             "y": 100.0
           },
           "size": {
             "width": 280.0,
-            "height": 230.0
+            "height": 258.0
           },
           "note": "可视化/操作节点（pygame 前端 + ROS 适配）：显示状态/路径/路由，发布手动命令、模式与场景/场景编辑请求。",
           "provided_interfaces": [],
@@ -6109,12 +6971,12 @@
       "comp_relations": [],
       "grid_visible": true,
       "grid_size": 20,
-      "grid_color": "#e0e0e0",
-      "grid_thickness": 1,
+      "grid_color": "#833a3a",
+      "grid_thickness": 2,
       "snap_to_grid": true,
-      "zoom": 0.4,
-      "pan_x": 150.7,
-      "pan_y": 36.30000000000001
+      "zoom": 0.62208,
+      "pan_x": 296.5250013078962,
+      "pan_y": 46.47499847412111
     },
     {
       "version": "1.0",
@@ -6196,7 +7058,7 @@
           "label": "publish routing/request (RouteRequest)",
           "type": "async",
           "order": 1,
-          "y": 190.0,
+          "y": 246.0,
           "note": "每次 run/reset 广播一次任务（起终位姿、地图、闭环绕行）。"
         },
         {
@@ -6206,7 +7068,7 @@
           "label": "publish routing/route (RoutePlan)",
           "type": "async",
           "order": 2,
-          "y": 238.0,
+          "y": 294.0,
           "note": "A* 搜索成功后锁存发布 RoutePlan；失败返回 failure_reason。"
         },
         {
@@ -6216,7 +7078,7 @@
           "label": "publish routing/reference_line",
           "type": "async",
           "order": 3,
-          "y": 286.0,
+          "y": 342.0,
           "note": "ReferenceLineCore 把路由边转成连续参考线与可行驶边界。"
         },
         {
@@ -6226,7 +7088,7 @@
           "label": "step(command, dt)",
           "type": "sync",
           "order": 4,
-          "y": 334.0,
+          "y": 390.0,
           "note": "仿真节点按 physics_dt 调用引擎步进，传入限幅后的控制指令。"
         },
         {
@@ -6236,7 +7098,7 @@
           "label": "substep: steering.advance + ego.step + obstacles.step + collision/offroad/destination check",
           "type": "self",
           "order": 5,
-          "y": 396.0,
+          "y": 452.0,
           "note": "子步推进执行器、自车与障碍物，并做 SAT 碰撞、越界与到点判定。"
         },
         {
@@ -6246,7 +7108,7 @@
           "label": "return VehicleState",
           "type": "return",
           "order": 6,
-          "y": 458.0,
+          "y": 514.0,
           "note": "返回新的 VehicleState。"
         },
         {
@@ -6256,7 +7118,7 @@
           "label": "publish(vehicle/state, obstacles, sim/context)",
           "type": "async",
           "order": 7,
-          "y": 506.0,
+          "y": 562.0,
           "note": "以 sensor_qos 广播状态/障碍物，并锁存 run 上下文。"
         },
         {
@@ -6266,7 +7128,7 @@
           "label": "plan(ego_state, obstacles, pred_loc, vehicle_loc)",
           "type": "sync",
           "order": 8,
-          "y": 554.0,
+          "y": 610.0,
           "note": "最新优先请求：清空旧请求后入队，返回是否被接受。"
         },
         {
@@ -6276,7 +7138,7 @@
           "label": "_plan(pred_loc, vehicle_loc, obstacles)",
           "type": "self",
           "order": 9,
-          "y": 616.0,
+          "y": 672.0,
           "note": "worker 线程选择安全车道并在走廊内生成 S 型平滑换道轨迹。"
         },
         {
@@ -6286,7 +7148,7 @@
           "label": "return local path (poll_result/get_result)",
           "type": "return",
           "order": 10,
-          "y": 678.0,
+          "y": 734.0,
           "note": "异步结果通过响应队列返回，由轮询取回。"
         },
         {
@@ -6296,7 +7158,7 @@
           "label": "publish planned_path",
           "type": "async",
           "order": 11,
-          "y": 726.0,
+          "y": 782.0,
           "note": "锁存发布（带 run/版本编码 sequence）供控制器订阅。"
         },
         {
@@ -6306,7 +7168,7 @@
           "label": "update_ref_path(path, reset=False)",
           "type": "sync",
           "order": 12,
-          "y": 774.0,
+          "y": 830.0,
           "note": "只接受当前 run 的 routing/reference_line 与新鲜 planned_path；缺失时由 safe_stop 请求停车。"
         },
         {
@@ -6316,7 +7178,7 @@
           "label": "step(x, y, phi, vx, vy, r, actual_steer)",
           "type": "sync",
           "order": 13,
-          "y": 822.0,
+          "y": 878.0,
           "note": "控制周期内计算横向转角与纵向油门/刹车。"
         },
         {
@@ -6326,7 +7188,7 @@
           "label": "lat.control(x, y, phi, vx, vy, r, ref_path)",
           "type": "self",
           "order": 14,
-          "y": 884.0,
+          "y": 940.0,
           "note": "动态 Riccati LQR：预瞄投影匹配 + 曲率前馈与状态反馈。"
         },
         {
@@ -6336,7 +7198,7 @@
           "label": "lon.control(speed, coupling_accel)",
           "type": "self",
           "order": 15,
-          "y": 946.0,
+          "y": 1002.0,
           "note": "纵向 PID 跟踪目标车速、抵消侧向耦合并限幅加速度。"
         },
         {
@@ -6346,7 +7208,7 @@
           "label": "return (steer, throttle, brake)",
           "type": "return",
           "order": 16,
-          "y": 1008.0,
+          "y": 1064.0,
           "note": "加速度映射为归一化油门/刹车。"
         },
         {
@@ -6356,7 +7218,7 @@
           "label": "publish control_command/cruise",
           "type": "async",
           "order": 17,
-          "y": 1056.0,
+          "y": 1112.0,
           "note": "控制节点只发布候选命令到私有 topic。"
         },
         {
@@ -6366,7 +7228,7 @@
           "label": "publish control_command (arbitrated)",
           "type": "async",
           "order": 18,
-          "y": 1104.0,
+          "y": 1160.0,
           "note": "仲裁器是唯一写入 control_command 的节点，闭环回到仿真节点。"
         },
         {
@@ -6376,7 +7238,7 @@
           "label": "step(command, dt)",
           "type": "sync",
           "order": 19,
-          "y": 1152.0,
+          "y": 1208.0,
           "note": "命令新鲜（在超时窗口内）时使用收到的控制指令步进。"
         },
         {
@@ -6386,7 +7248,7 @@
           "label": "step(ControlCommand(brake=1.0, gear=0), dt)",
           "type": "sync",
           "order": 20,
-          "y": 1200.0,
+          "y": 1256.0,
           "note": "命令超时（stale）时施加全刹车，保证安全。"
         }
       ],
@@ -6397,8 +7259,8 @@
           "label": "[each physics tick @ 20 Hz]",
           "x": 76.0,
           "width": 506.0,
-          "y_start": 306.0,
-          "y_end": 494.0
+          "y_start": 362.0,
+          "y_end": 550.0
         },
         {
           "id": "frag_loop_plan",
@@ -6406,8 +7268,8 @@
           "label": "[each plan period]",
           "x": 1260.0,
           "width": 542.0,
-          "y_start": 526.0,
-          "y_end": 714.0
+          "y_start": 582.0,
+          "y_end": 770.0
         },
         {
           "id": "frag_loop_ctrl",
@@ -6415,8 +7277,8 @@
           "label": "[each control period @ 20 Hz]",
           "x": 1956.0,
           "width": 488.0,
-          "y_start": 794.0,
-          "y_end": 1044.0
+          "y_start": 850.0,
+          "y_end": 1100.0
         },
         {
           "id": "frag_alt_fresh",
@@ -6424,8 +7286,8 @@
           "label": "[command age <= timeout]",
           "x": 76.0,
           "width": 506.0,
-          "y_start": 1124.0,
-          "y_end": 1224.0
+          "y_start": 1180.0,
+          "y_end": 1292.0
         },
         {
           "id": "frag_alt_stale",
@@ -6433,8 +7295,8 @@
           "label": "[else: command stale]",
           "x": 76.0,
           "width": 506.0,
-          "y_start": 1172.0,
-          "y_end": 1272.0
+          "y_start": 1228.0,
+          "y_end": 1328.0
         },
         {
           "id": "frag_loop_run",
@@ -6442,21 +7304,21 @@
           "label": "[once per run / reset]",
           "x": 76.0,
           "width": 1372.0,
-          "y_start": 162.0,
-          "y_end": 322.0
+          "y_start": 218.0,
+          "y_end": 378.0
         }
       ],
       "components": [],
       "comp_relations": [],
       "grid_visible": true,
       "grid_size": 20,
-      "grid_color": "#e0e0e0",
-      "grid_thickness": 1,
+      "grid_color": "#833a3a",
+      "grid_thickness": 2,
       "snap_to_grid": true,
       "zoom": 0.5,
-      "pan_x": 12.5,
-      "pan_y": 82.5
+      "pan_x": 70.5,
+      "pan_y": 83.5
     }
   ],
-  "active_diagram_index": 1
+  "active_diagram_index": 2
 }

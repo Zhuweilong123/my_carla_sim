@@ -2,8 +2,10 @@
 
 from collections import deque
 
+from .base import LongitudinalController
 
-class LongitudinalPIDController:
+
+class LongitudinalPIDController(LongitudinalController):
     """Speed controller with derivative damping and dynamic coupling rejection."""
 
     def __init__(
@@ -18,16 +20,13 @@ class LongitudinalPIDController:
         max_jerk=40.0,
         coupling_gain=0.5,
     ):
+        super().__init__(dt=dt, max_accel=max_accel, max_decel=max_decel)
         self.K_P = float(K_P)
         self.K_I = float(K_I)
         self.K_D = float(K_D)
-        self.dt = float(dt)
         self.error_threshold = float(error_threshold)
-        self.max_accel = float(max_accel)
-        self.max_decel = float(max_decel)
         self.max_jerk = float(max_jerk)
         self.coupling_gain = float(coupling_gain)
-        self.target_speed = 50.0
         self.error_buffer = deque(maxlen=60)
         self._previous_error = None
         self._filtered_derivative = 0.0
@@ -74,9 +73,6 @@ class LongitudinalPIDController:
         )
         self._previous_accel = accel
         return accel
-
-    def set_target(self, speed_kmh):
-        self.target_speed = float(speed_kmh)
 
     def reset(self):
         self.error_buffer.clear()
