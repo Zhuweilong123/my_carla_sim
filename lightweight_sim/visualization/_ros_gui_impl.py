@@ -172,6 +172,16 @@ class RosGuiView:
             paused=snapshot.status.paused or snapshot.status.done or snapshot.scene_editing,
         ) or snapshot.state
 
+    @staticmethod
+    def _speed_error(snapshot):
+        measured = getattr(snapshot, "tracking_metrics", None)
+        if (snapshot.control_source.upper() != "AUTO" or snapshot.mode.upper() != "CRUISE"
+                or snapshot.status.scenario == "reverse_parking" or not measured
+                or abs(snapshot.state.timestamp-measured.get("timestamp", -1e9)) > 0.25):
+            return None
+        value = measured.get("speed_error_kmh")
+        return value if isinstance(value, (int, float)) and math.isfinite(value) else None
+
     def _init_navigation(self):
         self._mouse_panning = False
 
@@ -351,11 +361,12 @@ class RosGuiView:
             self._draw_text("Waiting for /vehicle/state ...", HUD_WARNING)
         else:
             if snapshot.status.scenario != self._history_scenario:
-                self.hud.ed_history.clear()
-                self.hud.ephi_history.clear()
+                self.hud.clear_history()
                 self._history_scenario = snapshot.status.scenario
             ed, ephi = self._tracking_error(snapshot)
-            self.hud.update_history(ed, ephi)
+            speed_error = self._speed_error(snapshot)
+            if not (snapshot.status.paused or snapshot.status.done or snapshot.scene_editing):
+                self.hud.update_history(ed, ephi, speed_error, snapshot.state.timestamp)
             self.renderer.draw_vehicle(display_state)
             self._draw_scene_edit_world(snapshot)
             self.hud.render(
@@ -375,6 +386,7 @@ class RosGuiView:
                 map_name=f"{snapshot.status.scenario} [ROS 2]",
                 ed=ed,
                 ephi=ephi,
+                speed_error=speed_error,
             )
         self._draw_status(snapshot.status)
         self._draw_mode_controls(snapshot)

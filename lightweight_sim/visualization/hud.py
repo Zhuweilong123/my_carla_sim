@@ -39,15 +39,30 @@ class HUD:
 
         self.ed_history: List[float] = []
         self.ephi_history: List[float] = []
-        self.max_history = 380
+        self.speed_history = []
+        self.history_times = []
+        self.history_window_s = 20.0
+        self.max_history = 401
 
-    def update_history(self, ed: float, ephi: float):
+    def clear_history(self):
+        for series in (self.ed_history, self.ephi_history, self.speed_history, self.history_times):
+            series.clear()
+
+    def update_history(self, ed: float, ephi: float, speed_error=None, timestamp=None):
+        timestamp = float(timestamp) if timestamp is not None else (
+            self.history_times[-1] + 0.05 if self.history_times else 0.0)
+        if self.history_times and timestamp < self.history_times[-1]:
+            self.clear_history()
+        if self.history_times and timestamp == self.history_times[-1]:
+            return
         self.ed_history.append(ed)
         self.ephi_history.append(ephi)
-        if len(self.ed_history) > self.max_history:
-            self.ed_history.pop(0)
-        if len(self.ephi_history) > self.max_history:
-            self.ephi_history.pop(0)
+        self.speed_history.append(speed_error)
+        self.history_times.append(timestamp)
+        while (len(self.history_times) > self.max_history or
+               timestamp-self.history_times[0] > self.history_window_s):
+            for series in (self.ed_history, self.ephi_history, self.speed_history, self.history_times):
+                series.pop(0)
 
     def render(self, state: VehicleState, target_speed: float,
                control_info: dict, auto_mode: bool,
@@ -55,7 +70,7 @@ class HUD:
                collision: bool = False,
                paused: bool = False,
                map_name: str = "Default",
-               ed: float = 0.0, ephi: float = 0.0):
+               ed: float = 0.0, ephi: float = 0.0, speed_error=None):
         """Render the top bar, telemetry cards, graph, and controls."""
         speed_kmh = state.speed_kmh
         steer_deg = math.degrees(state.steer)
@@ -83,7 +98,7 @@ class HUD:
                 right_x, top_y, right_w, 220, control_info, auto_mode,
                 steer_cmd_deg,
             )
-            self._draw_error_graph(right_x, self.h - 218, right_w, 190, ed, ephi)
+            self._draw_error_graph(right_x, self.h - 268, right_w, 240, ed, ephi, speed_error)
         self._draw_controls_hint(18, self.h - 54, 410, 34, auto_mode)
 
         if collision:
@@ -159,9 +174,9 @@ class HUD:
                          f"{steer_cmd_deg:+5.1f}°")
 
     def _draw_error_graph(self, x: int, y: int, w: int, h: int,
-                          ed: float, ephi: float):
+                          ed: float, ephi: float, speed_error=None):
         self._panel(x, y, w, h, "TRACKING ERROR", (180, 130, 255))
-        row_height = (h - 48) // 2
+        row_height = (h - 60) // 3
 
         def draw_series(row_y, label, data, color, scale):
             self._text(label, x + 14, row_y, self.font_small, color)
@@ -173,16 +188,30 @@ class HUD:
             if len(data) < 2:
                 return
             points = []
-            for i, value in enumerate(data):
-                px = graph.left + int(i * (graph.width - 1) / (len(data) - 1))
+            end_time = self.history_times[-1] if self.history_times else 0.0
+            for stamp, value in zip(self.history_times, data):
+                if value is None or not math.isfinite(value):
+                    if len(points) >= 2:
+                        pygame.draw.lines(self.screen, color, False, points, 2)
+                    points = []
+                    continue
+                px = graph.right - 1 - int((end_time-stamp) / self.history_window_s * (graph.width-1))
                 py = graph.centery - int(value * scale)
                 points.append((px, max(graph.top + 2, min(graph.bottom - 2, py))))
-            pygame.draw.lines(self.screen, color, False, points, 2)
+            if len(points) >= 2:
+                pygame.draw.lines(self.screen, color, False, points, 2)
 
         draw_series(y + 40, f"LATERAL  ed {ed:+.3f} m",
                     self.ed_history, HUD_TEXT, 12)
         draw_series(y + 40 + row_height, f"HEADING  ephi {math.degrees(ephi):+.2f}°",
                     self.ephi_history, (255, 202, 74), 28)
+        speed_label = "--" if speed_error is None else f"{speed_error:+.2f}"
+        draw_series(y + 40 + 2*row_height, f"SPEED  ev {speed_label} km/h",
+                    self.speed_history, self.ACCENT, 3)
+        for fraction, label in ((0.0, "-20 s"), (0.5, "-10 s"), (1.0, "0 s")):
+            label_width = self.font_small.size(label)[0]
+            self._text(label, x + 14 + int(fraction*(w-28-label_width)),
+                       y + h - 17, self.font_small, self.MUTED)
 
     def _draw_controls_hint(self, x: int, y: int, w: int, h: int,
                             auto_mode: bool):

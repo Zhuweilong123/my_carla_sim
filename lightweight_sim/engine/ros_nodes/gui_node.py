@@ -122,8 +122,7 @@ class GuiNode(_LegacyGuiNode):
         self.snapshot.planned_path = []
         self.snapshot.tracking_metrics = None
         self.snapshot._tracking_monitor = None
-        self.view.hud.ed_history.clear()
-        self.view.hud.ephi_history.clear()
+        self.view.hud.clear_history()
         for attribute, callback in (
             ("_pending_route", self._on_routing),
             ("_pending_reference_line", self._on_routing_reference),

@@ -65,6 +65,8 @@ Routing is part of the standard simulator launch. The bundled JSON maps are in `
 
 Vehicle pose and heading are interpolated between received states for smooth drawing at the configured render FPS. The camera uses the same displayed pose and time-based following. This adds about one state interval of visual latency (normally 50 ms); telemetry and tracking errors use actual states. Pausing or resetting snaps to the actual pose, and missing messages never cause display extrapolation.
 
+The lower-right panel plots lateral (m), heading (degrees), and speed (km/h) errors on a shared 20-second simulation-time axis. Speed error is the controller's executed reference minus measured speed; manual control, parking, and expired references show `--`. History freezes on pause and clears on reset or scene changes.
+
 GUI rendering requires a Linux display (for WSL2, WSLg). Headless simulation, ROS topics, services, and tests do not require the GUI.
 
 ## Unified cruise and parking simulation

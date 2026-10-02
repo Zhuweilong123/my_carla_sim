@@ -557,7 +557,8 @@ class ControllerNode(Node):
                 reference_accel_mps2=reference_accel, measured_speed_mps=self.state.speed,
                 reference_s=reference_s))))
         else:
-            self.controller.set_target_speed(self._target_speed_at(self.state.x, self.state.y))
+            reference_speed = self._target_speed_at(self.state.x, self.state.y) / 3.6
+            self.controller.set_target_speed(reference_speed * 3.6)
         try:
             steer, throttle, brake = self.controller.step(
                 self.state.x,
@@ -586,7 +587,10 @@ class ControllerNode(Node):
             self.measurement_path = self.controller.ref_path
         measured = self.tracking_monitor.update(self.state)
         measured.update(run_id=self.active_run, path_sequence=self.last_sequence,
-                        reference_kind="planned" if self.planned_path else "global")
+                        reference_kind="planned" if self.planned_path else "global",
+                        reference_speed_mps=reference_speed,
+                        measured_speed_mps=self.state.speed,
+                        speed_error_kmh=(reference_speed-self.state.speed)*3.6)
         self.tracking_pub.publish(String(data=json.dumps(measured)))
         self._publish_command(steer, throttle, brake)
 
