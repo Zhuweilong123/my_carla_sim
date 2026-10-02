@@ -88,7 +88,7 @@ class ControllerNode(Node):
         self.declare_parameter("longitudinal_ki", 0.0)
         self.declare_parameter("longitudinal_kd", 0.55)
         self.declare_parameter("longitudinal_error_threshold_kmh", 1.0)
-        self.declare_parameter("longitudinal_max_jerk_mps3", 40.0)
+        self.declare_parameter("longitudinal_max_jerk_mps3", 6.0)
         self.declare_parameter("longitudinal_coupling_gain", 0.5)
         self.controller = VehicleController(
             vehicle_params=VehicleParams(),
@@ -461,7 +461,8 @@ class ControllerNode(Node):
         self.planned_path, self.plan_time, self.plan_ready = path, path_stamp, True
         self.controller.update_ref_path(path, reset=False)
 
-    def _publish_command(self, steer: float, throttle: float, brake: float) -> None:
+    def _publish_command(self, steer: float, throttle: float, brake: float,
+                         reset_longitudinal: bool = True) -> None:
         # Legacy/direct-writer inputs without plant FIFO feedback still account
         # for a brake/hold command once per physics state, including early exits.
         if (self.active_run is not None and self.state is not None
@@ -480,7 +481,7 @@ class ControllerNode(Node):
         message.brake = float(brake)
         message.gear = 1
         self.command_pub.publish(message)
-        if brake >= .999:
+        if reset_longitudinal and brake >= .999:
             self.controller.lon.reset()
 
     def _on_timer(self) -> None:
@@ -592,7 +593,10 @@ class ControllerNode(Node):
                         measured_speed_mps=self.state.speed,
                         speed_error_kmh=(reference_speed-self.state.speed)*3.6)
         self.tracking_pub.publish(String(data=json.dumps(measured)))
-        self._publish_command(steer, throttle, brake)
+        # Saturation is a normal PID output, not a protective stop. Clearing
+        # its memory at full braking restarts the jerk ramp from zero and
+        # creates repeated -6/-2/-4 acceleration pulses.
+        self._publish_command(steer, throttle, brake, False)
 
 
 def main(args=None) -> None:

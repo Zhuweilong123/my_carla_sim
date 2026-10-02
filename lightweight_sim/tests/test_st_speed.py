@@ -139,6 +139,44 @@ def test_replanning_closed_loop_stops_and_restarts_with_actual_acceleration():
     assert restart.valid and restart.sample(.1)[2] > 0.
 
 
+def test_shipped_pid_tracks_asynchronous_st_replans_with_command_delay():
+    from dataclasses import replace
+    from pathlib import Path
+    import yaml
+    from lightweight_sim.engine.simulator.vehicle import EgoVehicle
+
+    settings = yaml.safe_load((Path(__file__).parents[1]/'config/algorithms.yaml').read_text(
+        encoding='utf-8'))['/**/controller_node']['ros__parameters']
+    pid = LongitudinalPIDController(K_P=settings['longitudinal_kp'],
+        K_I=settings['longitudinal_ki'], K_D=settings['longitudinal_kd'],
+        max_jerk=settings['longitudinal_max_jerk_mps3'])
+    planner, ego = STSpeedPlanner(), EgoVehicle(VehicleState())
+    path = [(float(x), 0., 0., 0.) for x in range(201)]
+    pending, commands, errors = [], [0., 0.], []
+    reference, origin = None, 0.
+    for tick in range(200):
+        state = ego.get_state()
+        if tick % 4 == 0:
+            # Three state intervals for solve/delivery, then two intervals
+            # between candidate control and actual plant execution.
+            result = planner.plan(path, replace(state), target_speed_kmh=40.)
+            assert result.valid
+            pending.append((tick+3, result, state.timestamp))
+        if pending and pending[0][0] <= tick:
+            _, reference, origin = pending.pop(0)
+        command = 0.
+        if reference is not None:
+            _, speed, acceleration = reference.sample(state.timestamp-origin)
+            pid.set_target(speed*3.6)
+            command = pid.control(state.speed, reference_accel=acceleration)
+            errors.append((speed-state.speed)*3.6)
+        commands.append(command)
+        ego.kinematic_step(0., commands.pop(0), .05)
+    assert np.sqrt(np.mean(np.square(errors))) < .5
+    assert max(abs(np.asarray(errors))) < 1.
+    assert ego.get_state().speed > 8.
+
+
 def test_initial_feedback_acceleration_is_preserved_above_comfort_limit():
     result = STSpeedPlanner().plan(straight(), VehicleState(vx=1, accel=2.1))
     assert result.valid, result.status

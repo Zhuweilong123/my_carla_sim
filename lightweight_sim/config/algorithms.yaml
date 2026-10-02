@@ -34,7 +34,7 @@
     longitudinal_ki: 0.0  # 纵向 PID 积分增益；0 表示关闭积分项。
     longitudinal_kd: 0.55  # 纵向 PID 微分增益；ST 前馈模式比较参考与测量加速度，旧模式使用速度误差变化率。
     longitudinal_error_threshold_kmh: 1.0  # 积分分离的速度误差阈值，单位 km/h；绝对误差超出该值时清空积分误差缓存。
-    longitudinal_max_jerk_mps3: 40.0  # 纵向加速度命令的变化率上限，单位 m/s³；每步最多改变该值 × physics_dt。
+    longitudinal_max_jerk_mps3: 6.0  # 纵向 PID 加速度命令变化率上限，单位 m/s³；高于 ST 的 3 以修正误差，限制异步规划/执行延迟下的加减速振荡；保护制动不受此限制。
     longitudinal_coupling_gain: 0.5  # 抵消横纵向动力学耦合 r×vy 的比例；0 关闭补偿，1 完全抵消该耦合项。
 
 /**/routing_node:

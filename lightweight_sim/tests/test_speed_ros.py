@@ -9,7 +9,7 @@ import pytest
 
 rclpy = pytest.importorskip('rclpy')
 from rclpy.parameter import Parameter
-from lightweight_sim_msgs.msg import (Path, PathPoint, SpeedProfile, SpeedPoint,
+from lightweight_sim_msgs.msg import (ControlCommand, Path, PathPoint, SpeedProfile, SpeedPoint,
                                       SimulationStatus, VehicleState, ReferenceLine, RouteSegment)
 from std_msgs.msg import String
 from lightweight_sim.engine.ros_nodes.controller_node import ControllerNode
@@ -65,6 +65,28 @@ def test_controller_activates_only_coherent_pairs_and_invalidates_empty_paths():
         stale.header.stamp.sec -= 2
         node._on_speed(stale)
         assert node.last_sequence == encode_sequence(1, 5)
+    finally:
+        node.destroy_node()
+        rclpy.shutdown()
+
+
+def test_full_pid_braking_preserves_history_but_protective_braking_resets():
+    rclpy.init()
+    node = ControllerNode()
+    try:
+        node.timer.cancel()
+        pid = node.controller.lon
+        pid._previous_accel = -6.
+        pid._previous_error = -1.
+        pid._filtered_derivative = -.5
+        node._publish_command(0., 0., 1., False)
+        assert pid._previous_accel == -6.
+        assert pid._previous_error == -1.
+        assert pid._filtered_derivative == -.5
+        node._publish_command(0., 0., 1.)
+        assert pid._previous_accel == 0.
+        assert pid._previous_error is None
+        assert pid._filtered_derivative == 0.
     finally:
         node.destroy_node()
         rclpy.shutdown()
@@ -146,6 +168,11 @@ def test_installed_speed_planning_graph(tmp_path, scenario, steering_profile):
     observer = rclpy.create_node('speed_acceptance', namespace='st_acceptance')
     tracking, speed_profiles, statuses, diagnostics = [], [], [], []
     paths, states = {}, {}
+    metrics, commands = [], []
+    observer.create_subscription(String, 'tracking/metrics', lambda m: metrics.append(json.loads(m.data)), sensor_data_qos())
+    observer.create_subscription(ControlCommand, 'control_command', lambda m: commands.append(dict(
+        timestamp=m.header.stamp.sec+m.header.stamp.nanosec/1e9,
+        throttle=m.throttle, brake=m.brake)), sensor_data_qos())
     observer.create_subscription(Path, 'planned_path', lambda m: paths.update({m.sequence:
         [[p.x, p.y, p.theta, p.kappa] for p in m.points]}), latched_path_qos())
     observer.create_subscription(VehicleState, 'vehicle/state', lambda m: states.update({
@@ -174,13 +201,19 @@ def test_installed_speed_planning_graph(tmp_path, scenario, steering_profile):
                 if not p.valid and p.status not in seen and stamp in states and p.path_sequence in paths:
                     failures.append(dict(status=p.status, state=states[stamp], path=paths[p.path_sequence]))
                     seen.add(p.status)
-            (tmp_path/'speed.json').write_text(json.dumps(dict(tracking=tracking, diagnostics=diagnostics, failures=failures)))
+            (tmp_path/'speed.json').write_text(json.dumps(dict(tracking=tracking, diagnostics=diagnostics,
+                failures=failures, metrics=metrics, commands=commands, states=states)))
             assert tracking and speed_profiles and statuses, (tmp_path/'launch.log').read_text()
             assert max(t['measured_speed_mps'] for t in tracking) > 2.
             assert statuses[-1].sim_time >= 15.
             assert not any(s.collision or s.offroad for s in statuses)
             if scenario == 'obstacle':
                 assert max(s['x'] for s in states.values()) > 65., 'did not pass scene 2 obstacle'
+                errors = [abs(m['speed_error_kmh']) for m in metrics if m['timestamp'] > 4.]
+                assert errors, 'missing executed-reference speed metrics'
+                assert math.sqrt(sum(e*e for e in errors)/len(errors)) < .6
+                assert sorted(errors)[int(.95*(len(errors)-1))] < 1.
+                assert max(errors) < 2., 'large longitudinal oscillation'
             recent = [t['measured_speed_mps'] for t in tracking[-60:]]
             if scenario == 'default' or statuses[-1].reached:
                 assert statuses[-1].reached

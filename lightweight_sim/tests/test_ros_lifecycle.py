@@ -545,7 +545,7 @@ def test_dynamic_controller_synchronizes_during_plan_stop_and_recovers_with_feed
         node.controller.step = step
         node._on_timer()
         assert observed == [[-.1]]
-        assert not node.actuator_timing_fault and sent[-1] == (.02, .2, 0.)
+        assert not node.actuator_timing_fault and sent[-1] == (.02, .2, 0., False)
         node._on_timer()
         assert len(observed) == 1  # Same state does not advance history twice.
     finally:
