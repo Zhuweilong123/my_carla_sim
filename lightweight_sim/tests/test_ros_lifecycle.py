@@ -291,10 +291,8 @@ def test_ros_tracking_reset_switch_and_stale_plan():
             while not predicate():
                 assert time.monotonic() < deadline, "DDS callback timeout"
                 executor.spin_once(timeout_sec=0.002)
-                # _advance_once is deliberately stepped without publishing
-                # /clock, so ROS timers are frozen; poll the planner's
-                # worker future explicitly as part of this deterministic
-                # test driver.
+                # Timer callbacks are cancelled in this manually stepped graph;
+                # poll the worker explicitly while waiting for DDS delivery.
                 if planner.plan_pending:
                     planner._poll_result()
 
@@ -338,6 +336,10 @@ def test_ros_tracking_reset_switch_and_stale_plan():
             expected = control.controller.lat.last_ed
             if step % 10 == 0:
                 planner._request_plan()
+                # Physics can run much faster than the asynchronous solver in
+                # this test. Keep simulated time fixed until the result arrives
+                # so the driver cannot expire every replacement path itself.
+                spin_until(lambda: not planner.plan_pending)
             tracker = global_monitor.tracker
             state = sim.engine.get_state()
             progress = global_monitor.update(state)["route_s_m"]
@@ -399,6 +401,12 @@ def test_ros_tracking_reset_switch_and_stale_plan():
 @pytest.mark.parametrize("steering_profile", ["ideal", "assumed"])
 def test_installed_launch_routes_and_diagnostics(tmp_path, steering_profile):
     """Exercise separately launched processes and real /clock timers."""
+    from ament_index_python.packages import get_package_share_directory
+    import yaml
+
+    config_path = FilePath(get_package_share_directory("lightweight_sim"))/"config"/"default.yaml"
+    defaults = yaml.safe_load(config_path.read_text(encoding="utf-8"))["/**/simulator_node"]["ros__parameters"]
+    expected_speed = defaults["curve_speed_limit_kmh"] * defaults["target_speed_ratio"]
     rclpy.init()
     observer = rclpy.create_node("p1_acceptance_observer", namespace="p1_acceptance")
     contexts, metrics, statuses = [], [], []
@@ -412,6 +420,15 @@ def test_installed_launch_routes_and_diagnostics(tmp_path, steering_profile):
         time_s=m.header.stamp.sec+m.header.stamp.nanosec/1e9, steer=m.steering_angle,
         throttle=m.throttle, brake=m.brake)), command_qos())
     process = None
+    def diagnostics():
+        status = statuses[-1] if statuses else None
+        return (
+            f"profile={steering_profile}, "
+            f"state_time={states[-1]['timestamp'] if states else None}, "
+            f"metrics_time={metrics[-1]['timestamp'] if metrics else None}, "
+            f"status={status}\n{(tmp_path/'launch.log').read_text()}"
+        )
+
     try:
         with (tmp_path/"launch.log").open("w") as log:
             process = subprocess.Popen(
@@ -422,7 +439,8 @@ def test_installed_launch_routes_and_diagnostics(tmp_path, steering_profile):
             deadline = time.monotonic()+70
             while time.monotonic() < deadline:
                 rclpy.spin_once(observer, timeout_sec=0.05)
-                assert process.poll() is None, (tmp_path/"launch.log").read_text()
+                assert process.poll() is None, diagnostics()
+                assert not any(s.collision or s.offroad or s.done or s.paused for s in statuses), diagnostics()
                 distance_travelled = sum(
                     math.hypot(current["x"] - previous["x"], current["y"] - previous["y"])
                     for previous, current in zip(states, states[1:])
@@ -430,12 +448,11 @@ def test_installed_launch_routes_and_diagnostics(tmp_path, steering_profile):
                 if metrics and metrics[-1]["timestamp"] >= 30 and distance_travelled > 20:
                     break
             assert contexts and metrics and statuses, (tmp_path/"launch.log").read_text()
-            # The figure-eight is a curve-speed scenario: its 40 km/h limit
-            # with the configured 0.85 target ratio gives 34 km/h.
-            assert contexts[-1]["target_speed_kmh"] == pytest.approx(34.0)
+            # Verify the installed configuration, including user speed tuning.
+            assert contexts[-1]["target_speed_kmh"] == pytest.approx(expected_speed)
             assert contexts[-1]["num_lanes"] == 3
             assert contexts[-1]["vehicle_model"] == "dynamic"
-            assert metrics[-1]["timestamp"] >= 30
+            assert metrics[-1]["timestamp"] >= 30, diagnostics()
             assert contexts[-1]["steering_parameters"]["mode"] == ("dynamic" if steering_profile == "assumed" else "ideal")
             assert sum(
                 math.hypot(current["x"] - previous["x"], current["y"] - previous["y"])

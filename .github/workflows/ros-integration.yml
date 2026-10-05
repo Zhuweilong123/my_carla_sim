@@ -75,6 +75,8 @@ jobs:
 
       - name: Run ROS-dependent pytest modules
         shell: bash
+        env:
+          LIGHTWEIGHT_SIM_ROS_ARCHIVE: ${{ github.workspace }}/ros-test-artifacts/acceptance
         run: |
           source /opt/ros/lyrical/setup.bash
           source install/setup.bash
@@ -82,7 +84,15 @@ jobs:
             lightweight_sim/tests/test_controller_manager.py \
             lightweight_sim/tests/test_controller_speed_profile.py \
             lightweight_sim/tests/test_speed_ros.py \
-            lightweight_sim/tests/test_ros_lifecycle.py
+            lightweight_sim/tests/test_ros_lifecycle.py \
+            --basetemp=ros-test-artifacts/pytest
+
+      - name: Upload ROS test diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ros-test-diagnostics
+          path: ros-test-artifacts/
 
       - name: Run ROS 2 launch smoke test
         shell: bash
