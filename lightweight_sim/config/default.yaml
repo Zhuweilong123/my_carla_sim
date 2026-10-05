@@ -9,12 +9,12 @@
     steering_profile: ideal  # 转向执行器模式：ideal 为理想响应，assumed 含假设的延迟/惯性/速率限制；launch 可覆盖，非实车标定。
     physics_dt: 0.05  # 物理/控制模型的离散步长，单位 s，必须为正；控制端应与仿真端一致。
     default_speed_limit_kmh: 40.0  # 未单独分类路段/场景的默认限速，单位 km/h，必须为正。
-    straight_speed_limit_kmh: 50.0  # 直线路段/场景的限速，单位 km/h，必须为正。
+    straight_speed_limit_kmh: 60.0  # 直线路段/场景的限速，单位 km/h，必须为正。
     curve_speed_limit_kmh: 40.0  # 弯道路段/场景的限速，单位 km/h，另受横向加速度约束。
-    intersection_speed_limit_kmh: 25.0  # 交叉口路段/场景的限速，单位 km/h。
+    intersection_speed_limit_kmh: 40.0  # 交叉口路段/场景的限速，单位 km/h。
     lane_change_speed_limit_kmh: 40.0  # 换道路段/场景的限速，单位 km/h。
     parking_speed_limit_kmh: 12.0  # 泊车场景的限速，单位 km/h。
-    target_speed_ratio: 0.85  # 限速转目标速度的比例，取值 (0, 1]；目标速度 = 路段限速 × 此比例。
+    target_speed_ratio: 1.0  # 限速转目标速度的比例，取值 (0, 1]；目标速度 = 路段限速 × 此比例。
     max_lateral_accel_mps2: 2.0  # 弯道速度约束的最大横向加速度，单位 m/s²；传给控制端，用于 v²×曲率限速。
 
 /**/planner_node:
