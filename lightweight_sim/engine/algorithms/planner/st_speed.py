@@ -74,6 +74,204 @@ def _intersects(x, y, heading, length, width, obstacle, margin):
     return True
 
 
+class StSpeedDpSearcher:
+    """Finite-jerk beam DP over the (t, s, v, a) time lattice.
+
+    Owns the search configuration; returns the best (s, v, a) state chain plus
+    its cost as the QP seed, or None with a fail-closed status.
+    """
+
+    def __init__(self, config):
+        self.config = config
+        self.last_status = 'not_started'
+
+    def search(self, *, time, dt, n, stations, caps, upper_s, terminal_stop,
+               v0, a0, accel_bounds, limit):
+        c = self.config
+        states = np.array([[0., v0, a0]])
+        costs = np.zeros(1)
+        layers, parents = [states], []
+        actions = np.linspace(-c.max_jerk, c.max_jerk, 7)
+        action_count = len(actions)+4
+        for step in range(n):
+            # Boundary-reaching jerk actions avoid quantization dead ends when
+            # measured a0 is not an exact multiple of the lattice spacing.
+            lo_a, hi_a = accel_bounds(time[step+1])
+            adaptive = np.clip(np.column_stack(((lo_a-states[:, 2])/dt,
+                                                (hi_a-states[:, 2])/dt,
+                                                -states[:, 2]/dt,
+                                                -states[:, 1]/dt**2-1.5*states[:, 2]/dt)),
+                               -c.max_jerk, c.max_jerk)
+            j = np.column_stack((np.tile(actions, (len(states), 1)), adaptive)).ravel()
+            previous = np.repeat(states, action_count, axis=0)
+            s, v, a = previous.T
+            next_states = np.column_stack((s+v*dt+.5*a*dt**2+j*dt**3/6,
+                                          v+a*dt+.5*j*dt**2, a+j*dt))
+            ns, nv, na = next_states.T
+            mid_v = v+a*dt/2+j*dt**2/8
+            valid = ((ns <= upper_s+1e-6) & (ns >= s-1e-6) & (nv >= -1e-6)
+                     & (mid_v >= -1e-6) & (na <= accel_bounds(time[step+1])[1]+1e-6)
+                     & (na >= accel_bounds(time[step+1])[0]-1e-6)
+                     & (nv >= np.minimum(na, 0.)**2/(2*c.max_jerk)-1e-6)
+                     & (nv <= limit(ns, time[step+1])+.15))
+            new_cost = np.repeat(costs, action_count)+dt*(4*(nv-np.interp(ns, stations, caps))**2
+                                                         +.3*na**2+.1*j**2)
+            if step == n-1 and terminal_stop:
+                new_cost += 100*nv**2 + 5*(ns-upper_s)**2
+            indices = np.flatnonzero(valid)
+            if not len(indices):
+                self.last_status = 'dp_infeasible_'+str(step)
+                return None
+            order = indices[np.argsort(new_cost[indices])]
+            # Keep alternative positions/velocities/accelerations, not merely
+            # many identical histories with the cheapest short-term speed.
+            # Quantization must never discard the fastest braking state: it
+            # can be the only state meeting an overspeed recovery envelope.
+            quantized = np.round(next_states/[.5, .25, .5]).astype(int)
+            low_speed = nv < .5
+            quantized[low_speed] = np.round(next_states[low_speed]/[.5, .02, .05]).astype(int)
+            def key_for(i):
+                return tuple(quantized[i])
+            fastest = int(indices[np.argmin(nv[indices])])
+            selected, seen = [fastest], {key_for(fastest)}
+            for i in order:
+                key = key_for(i)
+                if key not in seen:
+                    seen.add(key)
+                    selected.append(i)
+                    if len(selected) >= c.beam_width:
+                        break
+            indices = np.array(selected)
+            parents.append(indices//action_count)
+            states, costs = next_states[indices], new_cost[indices]
+            layers.append(states)
+        best = int(np.argmin(costs))
+        dp_cost = float(costs[best])
+        indices = [best]
+        for parent in reversed(parents):
+            best = int(parent[best])
+            indices.append(best)
+        seed = np.array([layer[index] for layer, index in zip(layers, reversed(indices))])
+        self.last_status = 'solved'
+        return seed, dp_cost
+
+
+class StSpeedQpSmoother:
+    """Constant-jerk QP smoothing and dense re-validation for the ST speed plan.
+
+    Owns the OSQP backend and the latest fail-closed status; the DP-guided
+    corridor and terminal constraints are assembled in solve().
+    """
+
+    def __init__(self, config, sparse, osqp):
+        self.config = config
+        self.sparse = sparse
+        self.osqp = osqp
+        self.last_status = 'not_started'
+
+    def solve(self, *, time, dt, n, seed, dp_cost, stations, caps, road_caps,
+              upper_s, terminal_stop, stop, v0, a0, accel_bounds, recovery,
+              qp_limit, origin):
+        c, sp, osqp = self.config, self.sparse, self.osqp
+        # Optimize x=[s_0..s_N,v_0..v_N,a_0..a_N,j_0..j_(N-1)].
+        m, size = n+1, 4*n+3
+        weights = np.r_[np.full(m, .4), np.full(m, 8.), np.full(m, .4), np.full(n, .2)]
+        desired_v = np.interp(seed[:, 0], stations, caps)
+        reference = np.r_[seed[:, 0], desired_v, np.zeros(m+n)]
+        if terminal_stop:
+            weights[n] = 200.
+            reference[n] = upper_s
+        rows, lower, upper = [], [], []
+        def constraint(entries, lo, hi):
+            rows.append(entries)
+            lower.append(lo)
+            upper.append(hi)
+        for offset, value in [(0, 0.), (m, v0), (2*m, a0)]:
+            constraint({offset: 1.}, value, value)
+        for i in range(n):
+            j = 3*m+i
+            constraint({i+1: 1., i: -1., m+i: -dt, 2*m+i: -.5*dt**2, j: -dt**3/6}, 0., 0.)
+            constraint({m+i+1: 1., m+i: -1., 2*m+i: -dt, j: -.5*dt**2}, 0., 0.)
+            constraint({2*m+i+1: 1., 2*m+i: -1., j: -dt}, 0., 0.)
+        speed_rows = []
+        # Static ST boundaries are one convex free interval. Do not impose a
+        # narrow DP timing corridor on a terminal stop: DP guides the topology,
+        # while the QP must be free to move its deceleration/arrival time.
+        corridor_low = np.zeros(m)
+        corridor_high = np.minimum(upper_s, seed[:, 0]+(upper_s if stop is not None else 2.))
+        corridor_caps = []
+        for i in range(m):
+            # Bound both adjacent intervals conservatively, so a QP station
+            # shift cannot move a high-speed knot into a lower spatial cap.
+            lo = corridor_low[max(0, i-1)]
+            hi = corridor_high[min(n, i+1)]
+            values = road_caps[(stations >= lo) & (stations <= hi)]
+            corridor_caps.append(min(float(np.interp(lo, stations, road_caps)),
+                                     float(np.interp(hi, stations, road_caps)),
+                                     float(np.min(values)) if len(values) else float('inf')))
+        for i in range(m):
+            constraint({i: 1.}, corridor_low[i], corridor_high[i])
+            speed_rows.append(len(rows))
+            constraint({m+i: 1.}, 0., max(v0, corridor_caps[0]) if i == 0 else
+                       max(corridor_caps[i], float(recovery(time[i]))))
+            constraint({2*m+i: 1.}, *accel_bounds(time[i]))
+        for i in range(n):
+            constraint({3*m+i: 1.}, -c.max_jerk, c.max_jerk)
+        if terminal_stop:
+            constraint({m+n: 1.}, 0., 0.)
+            constraint({2*m+n: 1.}, 0., 0.)
+        ri, ci, values = [], [], []
+        for r, entries in enumerate(rows):
+            for col, value in entries.items():
+                ri.append(r); ci.append(col); values.append(value)
+        matrix = sp.csc_matrix((values, (ri, ci)), shape=(len(rows), size))
+        solver = osqp.OSQP()
+        solver.setup(P=sp.diags(2*weights, format='csc'), q=-2*weights*reference,
+                     A=matrix, l=np.array(lower), u=np.array(upper), verbose=False,
+                     eps_abs=1e-5, eps_rel=1e-5, max_iter=10000,
+                     time_limit=c.qp_time_limit_s, polishing=True)
+        # Station changes alter curvature/route caps. Refine the frozen QP
+        # limits at the optimized stations; never publish unchecked knots.
+        for iteration in range(4):
+            solution = solver.solve(raise_error=False)
+            if solution.x is None or not solution.info.status.lower().startswith('solved'):
+                self.last_status = 'qp_'+solution.info.status.replace(' ', '_')
+                return None
+            z = solution.x
+            residual = matrix@z
+            if np.max(np.maximum(np.array(lower)-residual, residual-np.array(upper))) > 2e-3:
+                self.last_status = 'qp_constraint_violation'
+                return None
+            result = SpeedPlan(time, z[:m], z[m:2*m], z[2*m:3*m], z[3*m:], origin, stop,
+                               'solved', dp_cost)
+            valid = True
+            for i in range(n):
+                samples = list(np.linspace(0., dt, 9))
+                if abs(result.jerk[i]) > 1e-9:
+                    critical = -result.accel[i]/result.jerk[i]
+                    if 0 < critical < dt:
+                        samples.append(critical)
+                for tau in samples:
+                    t = time[i]+tau
+                    s, v, a = result.sample(t)
+                    raw_v = result.speed[i]+result.accel[i]*tau+.5*result.jerk[i]*tau**2
+                    if (raw_v < -.003 or s > upper_s+.003
+                            or not accel_bounds(t)[0]-.003 <= a <= accel_bounds(t)[1]+.003):
+                        self.last_status = 'dense_validation_failed'
+                        return None
+                    if v > qp_limit(s, t)+.12:
+                        valid = False
+            if valid:
+                self.last_status = 'solved'
+                return result
+            for i in range(1, m):
+                upper[speed_rows[i]] = min(upper[speed_rows[i]],
+                    float(qp_limit(result.s[i], time[i])))
+            solver.update(u=np.array(upper))
+        self.last_status = 'spatial_limit_refinement_failed'
+        return None
+
+
 class STSpeedPlanner:
     """First version: static-obstacle/goal ST boundaries; moving conflicts fail closed.
 
@@ -91,6 +289,8 @@ class STSpeedPlanner:
                                'sudo apt install python3-scipy; '
                                'python3 -m pip install --user --break-system-packages "osqp>=1.0"') from exc
         self.sparse, self.osqp = sp, osqp
+        self.dp_searcher = StSpeedDpSearcher(self.config)
+        self.qp_smoother = StSpeedQpSmoother(self.config, sp, osqp)
 
     def plan(self, path, state, obstacles=(), *, vehicle=None, target_speed_kmh=40.,
              max_lateral_accel=2., destination=None, closed_route=False, speed_limits=()):
@@ -201,159 +401,18 @@ class STSpeedPlanner:
             # instead enforces physical stop position/terminal dynamics and
             # actual road caps, allowing its arrival time to move.
             return np.maximum(np.interp(s, stations, road_caps), recovery(t))
-        # State: [s, v, a]. DP edges use the same integrator as the QP.
-        states = np.array([[0., v0, a0]])
-        costs = np.zeros(1)
-        layers, parents = [states], []
-        actions = np.linspace(-c.max_jerk, c.max_jerk, 7)
-        action_count = len(actions)+4
-        for step in range(n):
-            # Boundary-reaching jerk actions avoid quantization dead ends when
-            # measured a0 is not an exact multiple of the lattice spacing.
-            lo_a, hi_a = accel_bounds(time[step+1])
-            adaptive = np.clip(np.column_stack(((lo_a-states[:, 2])/dt,
-                                                (hi_a-states[:, 2])/dt,
-                                                -states[:, 2]/dt,
-                                                -states[:, 1]/dt**2-1.5*states[:, 2]/dt)),
-                               -c.max_jerk, c.max_jerk)
-            j = np.column_stack((np.tile(actions, (len(states), 1)), adaptive)).ravel()
-            previous = np.repeat(states, action_count, axis=0)
-            s, v, a = previous.T
-            next_states = np.column_stack((s+v*dt+.5*a*dt**2+j*dt**3/6,
-                                          v+a*dt+.5*j*dt**2, a+j*dt))
-            ns, nv, na = next_states.T
-            mid_v = v+a*dt/2+j*dt**2/8
-            valid = ((ns <= upper_s+1e-6) & (ns >= s-1e-6) & (nv >= -1e-6)
-                     & (mid_v >= -1e-6) & (na <= accel_bounds(time[step+1])[1]+1e-6)
-                     & (na >= accel_bounds(time[step+1])[0]-1e-6)
-                     & (nv >= np.minimum(na, 0.)**2/(2*c.max_jerk)-1e-6)
-                     & (nv <= limit(ns, time[step+1])+.15))
-            new_cost = np.repeat(costs, action_count)+dt*(4*(nv-np.interp(ns, stations, caps))**2
-                                                         +.3*na**2+.1*j**2)
-            if step == n-1 and terminal_stop:
-                new_cost += 100*nv**2 + 5*(ns-upper_s)**2
-            indices = np.flatnonzero(valid)
-            if not len(indices):
-                return empty('dp_infeasible_'+str(step))
-            order = indices[np.argsort(new_cost[indices])]
-            # Keep alternative positions/velocities/accelerations, not merely
-            # many identical histories with the cheapest short-term speed.
-            # Quantization must never discard the fastest braking state: it
-            # can be the only state meeting an overspeed recovery envelope.
-            quantized = np.round(next_states/[.5, .25, .5]).astype(int)
-            low_speed = nv < .5
-            quantized[low_speed] = np.round(next_states[low_speed]/[.5, .02, .05]).astype(int)
-            def key_for(i):
-                return tuple(quantized[i])
-            fastest = int(indices[np.argmin(nv[indices])])
-            selected, seen = [fastest], {key_for(fastest)}
-            for i in order:
-                key = key_for(i)
-                if key not in seen:
-                    seen.add(key)
-                    selected.append(i)
-                    if len(selected) >= c.beam_width:
-                        break
-            indices = np.array(selected)
-            parents.append(indices//action_count)
-            states, costs = next_states[indices], new_cost[indices]
-            layers.append(states)
-        best = int(np.argmin(costs))
-        dp_cost = float(costs[best])
-        indices = [best]
-        for parent in reversed(parents):
-            best = int(parent[best])
-            indices.append(best)
-        seed = np.array([layer[index] for layer, index in zip(layers, reversed(indices))])
-        # Optimize x=[s_0..s_N,v_0..v_N,a_0..a_N,j_0..j_(N-1)].
-        m, size = n+1, 4*n+3
-        weights = np.r_[np.full(m, .4), np.full(m, 8.), np.full(m, .4), np.full(n, .2)]
-        desired_v = np.interp(seed[:, 0], stations, caps)
-        reference = np.r_[seed[:, 0], desired_v, np.zeros(m+n)]
-        if terminal_stop:
-            weights[n] = 200.
-            reference[n] = upper_s
-        rows, lower, upper = [], [], []
-        def constraint(entries, lo, hi):
-            rows.append(entries)
-            lower.append(lo)
-            upper.append(hi)
-        for offset, value in [(0, 0.), (m, v0), (2*m, a0)]:
-            constraint({offset: 1.}, value, value)
-        for i in range(n):
-            j = 3*m+i
-            constraint({i+1: 1., i: -1., m+i: -dt, 2*m+i: -.5*dt**2, j: -dt**3/6}, 0., 0.)
-            constraint({m+i+1: 1., m+i: -1., 2*m+i: -dt, j: -.5*dt**2}, 0., 0.)
-            constraint({2*m+i+1: 1., 2*m+i: -1., j: -dt}, 0., 0.)
-        speed_rows = []
-        # Static ST boundaries are one convex free interval. Do not impose a
-        # narrow DP timing corridor on a terminal stop: DP guides the topology,
-        # while the QP must be free to move its deceleration/arrival time.
-        corridor_low = np.zeros(m)
-        corridor_high = np.minimum(upper_s, seed[:, 0]+(upper_s if stop is not None else 2.))
-        corridor_caps = []
-        for i in range(m):
-            # Bound both adjacent intervals conservatively, so a QP station
-            # shift cannot move a high-speed knot into a lower spatial cap.
-            lo = corridor_low[max(0, i-1)]
-            hi = corridor_high[min(n, i+1)]
-            values = road_caps[(stations >= lo) & (stations <= hi)]
-            corridor_caps.append(min(float(np.interp(lo, stations, road_caps)),
-                                     float(np.interp(hi, stations, road_caps)),
-                                     float(np.min(values)) if len(values) else float('inf')))
-        for i in range(m):
-            constraint({i: 1.}, corridor_low[i], corridor_high[i])
-            speed_rows.append(len(rows))
-            constraint({m+i: 1.}, 0., max(v0, corridor_caps[0]) if i == 0 else
-                       max(corridor_caps[i], float(recovery(time[i]))))
-            constraint({2*m+i: 1.}, *accel_bounds(time[i]))
-        for i in range(n):
-            constraint({3*m+i: 1.}, -c.max_jerk, c.max_jerk)
-        if terminal_stop:
-            constraint({m+n: 1.}, 0., 0.)
-            constraint({2*m+n: 1.}, 0., 0.)
-        ri, ci, values = [], [], []
-        for r, entries in enumerate(rows):
-            for col, value in entries.items():
-                ri.append(r); ci.append(col); values.append(value)
-        matrix = sp.csc_matrix((values, (ri, ci)), shape=(len(rows), size))
-        solver = osqp.OSQP()
-        solver.setup(P=sp.diags(2*weights, format='csc'), q=-2*weights*reference,
-                     A=matrix, l=np.array(lower), u=np.array(upper), verbose=False,
-                     eps_abs=1e-5, eps_rel=1e-5, max_iter=10000,
-                     time_limit=c.qp_time_limit_s, polishing=True)
-        # Station changes alter curvature/route caps. Refine the frozen QP
-        # limits at the optimized stations; never publish unchecked knots.
-        for iteration in range(4):
-            solution = solver.solve(raise_error=False)
-            if solution.x is None or not solution.info.status.lower().startswith('solved'):
-                return empty('qp_'+solution.info.status.replace(' ', '_'))
-            z = solution.x
-            residual = matrix@z
-            if np.max(np.maximum(np.array(lower)-residual, residual-np.array(upper))) > 2e-3:
-                return empty('qp_constraint_violation')
-            result = SpeedPlan(time, z[:m], z[m:2*m], z[2*m:3*m], z[3*m:], origin, stop,
-                               'solved', dp_cost)
-            valid = True
-            for i in range(n):
-                samples = list(np.linspace(0., dt, 9))
-                if abs(result.jerk[i]) > 1e-9:
-                    critical = -result.accel[i]/result.jerk[i]
-                    if 0 < critical < dt:
-                        samples.append(critical)
-                for tau in samples:
-                    t = time[i]+tau
-                    s, v, a = result.sample(t)
-                    raw_v = result.speed[i]+result.accel[i]*tau+.5*result.jerk[i]*tau**2
-                    if (raw_v < -.003 or s > upper_s+.003
-                            or not accel_bounds(t)[0]-.003 <= a <= accel_bounds(t)[1]+.003):
-                        return empty('dense_validation_failed')
-                    if v > qp_limit(s, t)+.12:
-                        valid = False
-            if valid:
-                return result
-            for i in range(1, m):
-                upper[speed_rows[i]] = min(upper[speed_rows[i]],
-                    float(qp_limit(result.s[i], time[i])))
-            solver.update(u=np.array(upper))
-        return empty('spatial_limit_refinement_failed')
+        # State: [s, v, a]. The beam DP uses the same integrator as the QP.
+        found = self.dp_searcher.search(time=time, dt=dt, n=n, stations=stations, caps=caps,
+                                        upper_s=upper_s, terminal_stop=terminal_stop,
+                                        v0=v0, a0=a0, accel_bounds=accel_bounds, limit=limit)
+        if found is None:
+            return empty(self.dp_searcher.last_status)
+        seed, dp_cost = found
+        solved = self.qp_smoother.solve(time=time, dt=dt, n=n, seed=seed, dp_cost=dp_cost,
+                                        stations=stations, caps=caps, road_caps=road_caps,
+                                        upper_s=upper_s, terminal_stop=terminal_stop, stop=stop,
+                                        v0=v0, a0=a0, accel_bounds=accel_bounds,
+                                        recovery=recovery, qp_limit=qp_limit, origin=origin)
+        if solved is None:
+            return empty(self.qp_smoother.last_status)
+        return solved

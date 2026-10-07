@@ -68,8 +68,11 @@ class ConstantLateral(LateralController):
 
 
 class ConstantLongitudinal(LongitudinalController):
-    def control(self, current_speed_ms, coupling_accel=0.0):
+    def control(self, current_speed_ms, coupling_accel=0.0, *,
+                reference_accel=None, actual_accel=None):
         self.coupling = coupling_accel
+        self.reference_accel = reference_accel
+        self.actual_accel = actual_accel
         return 1.5
 
     def reset(self):
@@ -90,3 +93,17 @@ def test_vehicle_controller_accepts_independent_algorithms():
     assert lon.coupling == pytest.approx(0.2)
     controller.update_ref_path(PATH[5:], reset=False)
     assert lat.preserved
+
+
+@pytest.mark.parametrize('reference_accel,actual_accel', [
+    (None, None), (1.0, None), (None, -6.0), (1.0, -6.0),
+])
+def test_vehicle_controller_forwards_optional_acceleration_inputs(reference_accel, actual_accel):
+    lon = ConstantLongitudinal()
+    controller = VehicleController(lateral_controller=ConstantLateral(), longitudinal_controller=lon)
+    controller.update_ref_path(PATH)
+    assert controller.step(0, 0, 0, 10, 2, .1, reference_accel=reference_accel,
+                           actual_accel=actual_accel) == pytest.approx((.1, .5, 0))
+    assert lon.reference_accel == reference_accel
+    assert lon.actual_accel == actual_accel
+    assert lon.coupling == pytest.approx(.2)

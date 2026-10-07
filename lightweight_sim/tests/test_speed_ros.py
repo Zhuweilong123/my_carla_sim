@@ -6,6 +6,7 @@ import signal
 import subprocess
 import time
 import pytest
+from lightweight_sim.tests.configuration import speed_tracking_limits
 
 rclpy = pytest.importorskip('rclpy')
 from rclpy.parameter import Parameter
@@ -162,11 +163,14 @@ def test_vectorized_route_limit_projection_crosses_closed_route_seam():
 
 @pytest.mark.parametrize('scenario,steering_profile', [
     ('obstacle', 'ideal'), ('figure_eight', 'ideal'), ('figure_eight', 'assumed'), ('default', 'ideal')])
-def test_installed_speed_planning_graph(tmp_path, scenario, steering_profile):
+def test_installed_speed_planning_graph(tmp_path, scenario, steering_profile,
+                                      installed_configuration, acceptance_configuration):
     """Actual separate processes, DDS, simulation clock and standard config."""
     rclpy.init()
     observer = rclpy.create_node('speed_acceptance', namespace='st_acceptance')
     tracking, speed_profiles, statuses, diagnostics = [], [], [], []
+    contexts = []
+    observer.create_subscription(String, 'sim/context', lambda m: contexts.append(json.loads(m.data)), latched_path_qos())
     paths, states = {}, {}
     metrics, commands = [], []
     observer.create_subscription(String, 'tracking/metrics', lambda m: metrics.append(json.loads(m.data)), sensor_data_qos())
@@ -202,18 +206,32 @@ def test_installed_speed_planning_graph(tmp_path, scenario, steering_profile):
                     failures.append(dict(status=p.status, state=states[stamp], path=paths[p.path_sequence]))
                     seen.add(p.status)
             (tmp_path/'speed.json').write_text(json.dumps(dict(tracking=tracking, diagnostics=diagnostics,
-                failures=failures, metrics=metrics, commands=commands, states=states)))
+                failures=failures, metrics=metrics, commands=commands, states=states,
+                contexts=contexts, configuration=installed_configuration,
+                acceptance=acceptance_configuration)))
             assert tracking and speed_profiles and statuses, (tmp_path/'launch.log').read_text()
             assert max(t['measured_speed_mps'] for t in tracking) > 2.
             assert statuses[-1].sim_time >= 15.
             assert not any(s.collision or s.offroad for s in statuses)
+            assert contexts, 'missing simulation context'
+            settings = installed_configuration['simulator_node']
+            kind = contexts[-1]['speed_limit_type']
+            target_speed_kmh = settings[kind+'_speed_limit_kmh'] * settings['target_speed_ratio']
+            assert contexts[-1]['target_speed_kmh'] == pytest.approx(target_speed_kmh)
             if scenario == 'obstacle':
                 assert max(s['x'] for s in states.values()) > 65., 'did not pass scene 2 obstacle'
-                errors = [abs(m['speed_error_kmh']) for m in metrics if m['timestamp'] > 4.]
+                budget = acceptance_configuration['speed_tracking']
+                # The obstacle mission uses straight route segments, whose
+                # limit overrides the scenario's generic fallback speed.
+                route_target_speed_kmh = settings['straight_speed_limit_kmh'] * settings['target_speed_ratio']
+                errors = [abs(m['speed_error_kmh']) for m in metrics
+                          if m['timestamp'] > budget['settling_time_s']]
                 assert errors, 'missing executed-reference speed metrics'
-                assert math.sqrt(sum(e*e for e in errors)/len(errors)) < .6
-                assert sorted(errors)[int(.95*(len(errors)-1))] < 1.
-                assert max(errors) < 2., 'large longitudinal oscillation'
+                measured = dict(rms=math.sqrt(sum(e*e for e in errors)/len(errors)),
+                                p95=sorted(errors)[int(.95*(len(errors)-1))], peak=max(errors))
+                limits = speed_tracking_limits(budget, route_target_speed_kmh)
+                for name, error in measured.items():
+                    assert error < limits[name], (name, error, limits[name], route_target_speed_kmh)
             recent = [t['measured_speed_mps'] for t in tracking[-60:]]
             if scenario == 'default' or statuses[-1].reached:
                 assert statuses[-1].reached

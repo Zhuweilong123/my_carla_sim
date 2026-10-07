@@ -37,10 +37,19 @@ class LongitudinalPIDController(LongitudinalController):
         self._filtered_derivative = 0.0
         self._previous_accel = 0.0
 
-    def control(self, current_speed_ms, coupling_accel=0.0, reference_accel=None):
+    def control(self, current_speed_ms, coupling_accel=0.0, reference_accel=None,
+                actual_accel=None):
         if not all(math.isfinite(float(v)) for v in
                    (current_speed_ms, coupling_accel, reference_accel or 0.)):
             raise ValueError('longitudinal input must be finite')
+        if actual_accel is not None:
+            if not math.isfinite(float(actual_accel)):
+                raise ValueError('measured acceleration must be finite')
+            # A protective stop clears speculative PID memory. Resume the
+            # slew limiter from the plant input, then retain command history
+            # during continuous tracking despite arbitration delivery latency.
+            if self._previous_error is None:
+                self._previous_accel = max(-self.max_decel, min(self.max_accel, float(actual_accel)))
         error_ms = self.target_speed / 3.6 - float(current_speed_ms)
         error_kmh = error_ms * 3.6
         self.error_buffer.append(error_kmh)

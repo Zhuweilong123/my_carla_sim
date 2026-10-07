@@ -570,6 +570,7 @@ class ControllerNode(Node):
                 self.state.r,
                 actual_steer=self.state.steer,
                 reference_accel=reference_accel,
+                actual_accel=self.state.accel if reference_accel is not None else None,
             )
             self._history_command_stamp = self.state.timestamp
         except (RuntimeError, ValueError) as exc:

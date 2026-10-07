@@ -11,9 +11,7 @@ on:
       - "lightweight_sim/engine/**"
       - "lightweight_sim/visualization/**"
       - "lightweight_sim/scripts/ros2_smoke_test.sh"
-      - "lightweight_sim/tests/test_controller_manager.py"
-      - "lightweight_sim/tests/test_controller_speed_profile.py"
-      - "lightweight_sim/tests/test_ros_lifecycle.py"
+      - "lightweight_sim/tests/**"
       - "lightweight_sim_msgs/**"
       - "parking_module/**"
   pull_request:
@@ -26,9 +24,7 @@ on:
       - "lightweight_sim/engine/**"
       - "lightweight_sim/visualization/**"
       - "lightweight_sim/scripts/ros2_smoke_test.sh"
-      - "lightweight_sim/tests/test_controller_manager.py"
-      - "lightweight_sim/tests/test_controller_speed_profile.py"
-      - "lightweight_sim/tests/test_ros_lifecycle.py"
+      - "lightweight_sim/tests/**"
       - "lightweight_sim_msgs/**"
       - "parking_module/**"
   workflow_dispatch:
@@ -80,6 +76,7 @@ jobs:
         run: |
           source /opt/ros/lyrical/setup.bash
           source install/setup.bash
+          mkdir -p ros-test-artifacts
           /tmp/lightweight-sim-ci/bin/python -m pytest -q \
             lightweight_sim/tests/test_controller_manager.py \
             lightweight_sim/tests/test_controller_speed_profile.py \

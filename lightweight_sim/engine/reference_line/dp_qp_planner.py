@@ -5,7 +5,7 @@ import math
 import numpy as np
 
 from .route_aware_planner import CorridorMotionPlanner, BaselinePathPlanner
-from ..algorithms.planner.dp_qp import DP_algorithm, Quadratic_planning, quintic_edge, adaptive_qp_knots, adaptive_dp_knots
+from ..algorithms.planner.dp_qp import LateralDpSearcher, LateralQpSmoother
 from ..algorithms.utils.frenet import find_match_points
 from ..algorithms.utils.geometry import cal_heading_kappa
 
@@ -32,6 +32,13 @@ class DPQPPathPlanner(CorridorMotionPlanner):
         self.dp_lateral_step_m = float(dp_lateral_step_m)
         self.qp_station_step_m = float(qp_station_step_m)
         self.qp_time_limit_s = float(qp_time_limit_s)
+        self.dp_searcher = LateralDpSearcher(
+            station_step_m=self.dp_station_step_m,
+            lateral_step_m=self.dp_lateral_step_m,
+            resolution=min(.5, self.sampling_resolution_m))
+        self.qp_smoother = LateralQpSmoother(
+            station_step_m=self.qp_station_step_m,
+            time_limit_s=self.qp_time_limit_s)
         self.last_qp_diagnostics = {}
         self._previous_profile = None
         self.last_status = 'not_started'
@@ -139,8 +146,8 @@ class DPQPPathPlanner(CorridorMotionPlanner):
                 valid &= np.all((footprint >= lower-1e-5) & (footprint <= upper+1e-5), axis=-1)
             return valid
 
-        stations = adaptive_dp_knots(s[-1], self.dp_station_step_m,
-                                     [os for os, _, _, _ in obstacle_sl])
+        obstacle_stations = [os for os, _, _, _ in obstacle_sl]
+        stations = self.dp_searcher.build_stations(s[-1], obstacle_stations)
         lateral_samples = []
         for station in stations:
             lo, hi = road_bounds(station)
@@ -156,26 +163,19 @@ class DPQPPathPlanner(CorridorMotionPlanner):
                 gap = np.maximum(abs(l-ol)-hl-self.vehicle_width_m/2, .5)
                 cost += 10*np.exp(-((t-os)/(hs+8.))**2)/gap**2
             return cost
-        values = DP_algorithm(stations, lateral_samples, start, preferred, edge_safe,
-                              min(.5, self.sampling_resolution_m), edge_cost=clearance_cost)
+        values = self.dp_searcher.search(stations, lateral_samples, start, preferred,
+                                         edge_safe, edge_cost=clearance_cost)
         if values is None:
             self.last_status = 'dp_infeasible'
             return []
         # Dense DP curve supplies the obstacle side for each convex corridor.
         samples = np.linspace(0., s[-1], max(2, int(np.ceil(s[-1]/min(.5, self.sampling_resolution_m)))+1))
-        dp_l = np.empty(len(samples))
-
-        for i in range(len(stations)-1):
-            mask = (samples >= stations[i]) & (samples <= stations[i+1])
-            initial = values[i]
-            dp_l[mask] = quintic_edge(
-                stations[i+1]-stations[i], initial, values[i+1], samples[mask]-stations[i])[0]
+        dp_l = self.dp_searcher.densify(stations, values, samples)
         lower, upper = convex_bounds(samples, dp_l)
         if np.any(lower > upper):
             self.last_status = 'corridor_infeasible'
             return []
-        knots = adaptive_qp_knots(s[-1], self.qp_station_step_m,
-                                  [os for os, _, _, _ in obstacle_sl])
+        knots = self.qp_smoother.build_knots(s[-1], obstacle_stations)
         target_profile = dp_l
         if self._previous_profile is not None:
             previous_anchor, previous_s, previous_l = self._previous_profile
@@ -184,15 +184,15 @@ class DPQPPathPlanner(CorridorMotionPlanner):
             previous_target = np.interp(relative, previous_s, previous_l)
             weight = 5*np.exp(-samples/12.)
             target_profile = np.where(valid, (dp_l+weight*previous_target)/(1+weight), dp_l)
-        optimized = Quadratic_planning(knots, samples, start, target_profile, lower, upper, preferred,
-                                       road_limits=road_bounds(samples),
-                                       footprint_constraints=[(offset, *convex_bounds(samples, dp_l, offset))
-                                                              for offset in body_offsets],
-                                       half_length=self.vehicle_length_m/2,
-                                       max_slope=slope_limit(samples),
-                                       max_second_derivative=max(.08, abs(ddl0)+.005),
-                                       time_limit_s=self.qp_time_limit_s,
-                                       diagnostics=self.last_qp_diagnostics)
+        optimized = self.qp_smoother.solve(
+            knots, samples, start, target_profile, lower, upper, preferred,
+            road_limits=road_bounds(samples),
+            footprint_constraints=[(offset, *convex_bounds(samples, dp_l, offset))
+                                   for offset in body_offsets],
+            half_length=self.vehicle_length_m/2,
+            max_slope=slope_limit(samples),
+            max_second_derivative=max(.08, abs(ddl0)+.005))
+        self.last_qp_diagnostics = self.qp_smoother.last_diagnostics
         if optimized is None:
             self.last_status = 'qp_failed'
             return []

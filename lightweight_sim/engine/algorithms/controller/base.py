@@ -77,8 +77,14 @@ class LongitudinalController(ABC):
         self.target_speed = value
 
     @abstractmethod
-    def control(self, current_speed_ms, coupling_accel=0.0):
-        """Return acceleration, with an optional lateral coupling input."""
+    def control(self, current_speed_ms, coupling_accel=0.0, *,
+                reference_accel=None, actual_accel=None):
+        """Return acceleration in m/s².
+
+        Implementations accept optional reference acceleration and measured
+        plant acceleration in m/s². None means that input is unavailable;
+        stateless algorithms may ignore acceleration feedback.
+        """
 
     @abstractmethod
     def reset(self):

@@ -192,3 +192,76 @@ def Quadratic_planning(knots, samples, start, dp_l, lower, upper, preferred,
         if diagnostics is not None: diagnostics['status'] = 'constraint_residual'
         return None
     return L@result.x, D@result.x, A@result.x
+
+
+class LateralDpSearcher:
+    """Corridor-lattice DP search and densification for the lateral path.
+
+    Holds the DP sampling configuration; the numeric edge tooling stays in the
+    module functions (quintic_edge, adaptive_dp_knots) that this class calls.
+    """
+
+    def __init__(self, *, station_step_m=8., lateral_step_m=.5, resolution=.5):
+        if (not np.isfinite(station_step_m) or station_step_m <= 0
+                or not np.isfinite(lateral_step_m) or lateral_step_m <= 0
+                or not np.isfinite(resolution) or resolution <= 0):
+            raise ValueError('lateral DP sampling steps must be positive and finite')
+        self.station_step_m = float(station_step_m)
+        self.lateral_step_m = float(lateral_step_m)
+        self.resolution = float(resolution)
+        self.last_status = 'not_started'
+
+    def build_stations(self, length, obstacle_stations=()):
+        """Coarse-far / fine-near / obstacle-refined arc-length columns."""
+        return adaptive_dp_knots(length, self.station_step_m, obstacle_stations)
+
+    def search(self, stations, lateral_samples, start, preferred, edge_is_safe,
+               edge_cost=None):
+        """Exact lattice DP; unreachable terminal states fail closed."""
+        values = DP_algorithm(stations, lateral_samples, start, preferred, edge_is_safe,
+                              self.resolution, edge_cost=edge_cost)
+        self.last_status = 'solved' if values is not None else 'dp_infeasible'
+        return values
+
+    def densify(self, stations, values, samples):
+        """Resample the chosen quintic edges to supply the QP corridor curve."""
+        result = np.empty(len(samples))
+        for i in range(len(stations)-1):
+            mask = (samples >= stations[i]) & (samples <= stations[i+1])
+            result[mask] = quintic_edge(
+                stations[i+1]-stations[i], values[i], values[i+1],
+                samples[mask]-stations[i])[0]
+        return result
+
+
+class LateralQpSmoother:
+    """Sparse C2 state QP smoothing inside the DP corridor.
+
+    Owns the QP station step, OSQP time budget and the latest diagnostics; the
+    problem assembly itself stays in the Quadratic_planning module function.
+    """
+
+    def __init__(self, *, station_step_m=4., time_limit_s=.08):
+        if not np.isfinite(station_step_m) or station_step_m <= 0:
+            raise ValueError('QP station step must be positive and finite')
+        if not np.isfinite(time_limit_s) or time_limit_s <= 0:
+            raise ValueError('QP time limit must be positive and finite')
+        self.station_step_m = float(station_step_m)
+        self.time_limit_s = float(time_limit_s)
+        self.last_diagnostics = {}
+
+    def build_knots(self, length, obstacle_stations=()):
+        """Fine start mesh; obstacle-region refinement."""
+        return adaptive_qp_knots(length, self.station_step_m, obstacle_stations)
+
+    def solve(self, knots, samples, start, dp_l, lower, upper, preferred,
+              road_limits=None, half_length=0., max_slope=None,
+              footprint_constraints=(), max_second_derivative=.08):
+        """Solve the corridor QP; None means no verified path was produced."""
+        self.last_diagnostics = {}
+        return Quadratic_planning(knots, samples, start, dp_l, lower, upper, preferred,
+                                  road_limits=road_limits, half_length=half_length,
+                                  max_slope=max_slope, time_limit_s=self.time_limit_s,
+                                  diagnostics=self.last_diagnostics,
+                                  footprint_constraints=footprint_constraints,
+                                  max_second_derivative=max_second_derivative)

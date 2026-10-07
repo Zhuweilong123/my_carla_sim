@@ -141,7 +141,7 @@ def test_narrowing_drivable_corridor_is_a_hard_constraint():
 
 def test_qp_failure_does_not_switch_to_baseline(monkeypatch):
     import lightweight_sim.engine.reference_line.dp_qp_planner as module
-    monkeypatch.setattr(module, 'Quadratic_planning', lambda *a, **k: None)
+    monkeypatch.setattr(module.LateralQpSmoother, 'solve', lambda *a, **k: None)
     p = planner()
     assert p._plan((0, 0), (0, 0), []) == []
     assert p.last_status == 'qp_failed'

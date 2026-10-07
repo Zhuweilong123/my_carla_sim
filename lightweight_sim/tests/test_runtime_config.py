@@ -1,4 +1,5 @@
 import importlib.util
+import math
 import re
 from pathlib import Path
 
@@ -6,27 +7,7 @@ import pytest
 import yaml
 
 from lightweight_sim.engine.runtime_config import DEFAULT_RUNTIME_CONFIG
-
-
-CONFIG_DIR = Path(__file__).parents[1] / "config"
-CONFIG_FILES = (
-    "system.yaml", "vehicle.yaml", "algorithms.yaml", "baseline.yaml",
-    "compatibility.yaml", "default.yaml",
-)
-
-
-def load_configuration():
-    merged = {}
-    for name in CONFIG_FILES:
-        document = yaml.safe_load((CONFIG_DIR / name).read_text(encoding="utf-8"))
-        for selector, section in document.items():
-            assert selector.startswith('/**/'), f'Namespace-dependent selector: {selector}'
-            node = selector.removeprefix('/**/')
-            target = merged.setdefault(node, {})
-            parameters = section["ros__parameters"]
-            assert not target.keys() & parameters.keys(), f"Duplicate parameters for {node} in {name}"
-            target.update(parameters)
-    return merged
+from lightweight_sim.tests.configuration import CONFIG_DIR, CONFIG_FILES, load_configuration
 
 
 def test_shared_runtime_defaults_match_fixed_step_planning():
@@ -39,27 +20,23 @@ def test_shared_runtime_defaults_match_fixed_step_planning():
     assert runtime.plan_period == pytest.approx(runtime.physics_dt)
 
 
-def test_shared_runtime_speed_defaults_match_ros_configuration():
-    runtime = DEFAULT_RUNTIME_CONFIG
+def test_configured_speed_policy_is_valid():
     parameters = load_configuration()
-
-    shared_parameters = {
-        "default_speed_limit_kmh": runtime.default_speed_limit_kmh,
-        "straight_speed_limit_kmh": runtime.straight_speed_limit_kmh,
-        "curve_speed_limit_kmh": runtime.curve_speed_limit_kmh,
-        "intersection_speed_limit_kmh": runtime.intersection_speed_limit_kmh,
-        "lane_change_speed_limit_kmh": runtime.lane_change_speed_limit_kmh,
-        "parking_speed_limit_kmh": runtime.parking_speed_limit_kmh,
-        "target_speed_ratio": runtime.target_speed_ratio,
-        "speed_profile_lookahead_m": runtime.speed_profile_lookahead_m,
-        "max_lateral_accel_mps2": runtime.max_lateral_accel_mps2,
-        "planned_path_timeout_s": runtime.safe_stop_plan_timeout_s,
-        "safety_stop_timeout_s": runtime.controller_safety_heartbeat_timeout_s,
-    }
-    for name, expected in shared_parameters.items():
-        matches = [values[name] for values in parameters.values() if name in values]
-        assert matches, f"{name} is missing from layered configuration"
-        assert float(matches[0]) == pytest.approx(expected), name
+    # ROS overrides are authoritative; RuntimeConfig supplies missing values.
+    simulator = parameters["simulator_node"]
+    for kind in ("default", "straight", "curve", "intersection", "lane_change", "parking"):
+        value = float(simulator[kind + "_speed_limit_kmh"])
+        assert math.isfinite(value) and value > 0, kind
+    ratio = float(simulator["target_speed_ratio"])
+    assert math.isfinite(ratio) and 0 < ratio <= 1
+    for node, name in (
+        ("simulator_node", "max_lateral_accel_mps2"),
+        ("controller_node", "speed_profile_lookahead_m"),
+        ("safe_stop_node", "planned_path_timeout_s"),
+        ("controller_manager", "safety_stop_timeout_s"),
+    ):
+        value = float(parameters[node][name])
+        assert math.isfinite(value) and value > 0, (node, name)
 
 
 def test_parking_planner_selection_is_configured_for_ros_node():
@@ -163,6 +140,12 @@ def test_control_period_follows_runtime_context_instead_of_fallback(tmp_path, na
     try:
         sim, control = SimulatorNode(), ControllerNode()
         assert sim.engine.physics_dt == .025
+        expected = document['/**/simulator_node']['ros__parameters']
+        assert sim.engine.config.target_speed_ratio == expected['target_speed_ratio']
+        for kind, limit in sim.engine.config.speed_limits.items():
+            assert limit == expected[kind + '_speed_limit_kmh']
+        assert sim.engine.config.target_speed == pytest.approx(
+            sim.engine.config.speed_limit_kmh * expected['target_speed_ratio'])
         assert control.controller.lat.ts == .05  # Initial compatibility value.
         for run in (sim.run_id, sim.run_id+1):
             config = sim.engine.config

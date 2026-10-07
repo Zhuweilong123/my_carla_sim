@@ -81,7 +81,8 @@ class VehicleController:
     def set_target_speed(self, speed_kmh):
         self.lon.set_target(speed_kmh)
 
-    def step(self, x, y, phi, vx, vy, r, *, actual_steer=None, reference_accel=None):
+    def step(self, x, y, phi, vx, vy, r, *, actual_steer=None, reference_accel=None,
+             actual_accel=None):
         if not self.ref_path:
             return 0.0, 0.0, 0.0
         if self.lat.actuator_params.mode == "dynamic":
@@ -90,6 +91,8 @@ class VehicleController:
             self.lat.actual_steer = actual_steer
         steer = self.lat.control(x, y, phi, vx, vy, r, self.ref_path)
         feedforward = {} if reference_accel is None else dict(reference_accel=reference_accel)
+        if actual_accel is not None:
+            feedforward['actual_accel'] = actual_accel
         accel = self.lon.control(
             (vx * vx + vy * vy) ** 0.5,
             coupling_accel=r * vy,

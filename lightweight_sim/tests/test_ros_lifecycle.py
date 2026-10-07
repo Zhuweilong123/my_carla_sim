@@ -399,13 +399,9 @@ def test_ros_tracking_reset_switch_and_stale_plan():
 
 
 @pytest.mark.parametrize("steering_profile", ["ideal", "assumed"])
-def test_installed_launch_routes_and_diagnostics(tmp_path, steering_profile):
+def test_installed_launch_routes_and_diagnostics(tmp_path, steering_profile, installed_configuration):
     """Exercise separately launched processes and real /clock timers."""
-    from ament_index_python.packages import get_package_share_directory
-    import yaml
-
-    config_path = FilePath(get_package_share_directory("lightweight_sim"))/"config"/"default.yaml"
-    defaults = yaml.safe_load(config_path.read_text(encoding="utf-8"))["/**/simulator_node"]["ros__parameters"]
+    defaults = installed_configuration["simulator_node"]
     expected_speed = defaults["curve_speed_limit_kmh"] * defaults["target_speed_ratio"]
     rclpy.init()
     observer = rclpy.create_node("p1_acceptance_observer", namespace="p1_acceptance")
@@ -470,7 +466,8 @@ def test_installed_launch_routes_and_diagnostics(tmp_path, steering_profile):
                 for previous, current in zip(states, states[1:]):
                     elapsed = current["timestamp"]-previous["timestamp"]
                     if elapsed > 0:
-                        assert abs(current["steer"]-previous["steer"])/elapsed <= 0.6+1e-6
+                        rate_limit = defaults["steering_rate_limit_rad_s"]
+                        assert abs(current["steer"]-previous["steer"])/elapsed <= rate_limit+1e-6
             passed = True
     finally:
         if process is not None and process.poll() is None:

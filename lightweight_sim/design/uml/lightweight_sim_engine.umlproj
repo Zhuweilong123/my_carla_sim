@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "revision": 133,
+  "revision": 153,
   "name": "LightweightSimEngine",
   "grid_settings": {
     "grid_visible": true,
@@ -24,10 +24,10 @@
         {
           "id": "comp_simcore",
           "name": "Simulator Core",
-          "x": 3064.0,
-          "y": 418.0,
-          "width": 522.0,
-          "height": 440.0,
+          "x": 2182.0,
+          "y": 458.0,
+          "width": 554.0,
+          "height": 454.0,
           "parent_id": "",
           "provided_interfaces": [
             "VehicleState",
@@ -39,8 +39,8 @@
         {
           "id": "comp_engine",
           "name": "SimulationEngine",
-          "x": 3084.0,
-          "y": 620.0,
+          "x": 2202.0,
+          "y": 660.0,
           "width": 150.0,
           "height": 100.0,
           "parent_id": "comp_simcore",
@@ -50,8 +50,8 @@
         {
           "id": "comp_reverse",
           "name": "reverse_engine.SimulationEngine",
-          "x": 3250.0,
-          "y": 620.0,
+          "x": 2384.0,
+          "y": 660.0,
           "width": 150.0,
           "height": 100.0,
           "parent_id": "comp_simcore",
@@ -61,8 +61,8 @@
         {
           "id": "comp_steeringact",
           "name": "SteeringActuator",
-          "x": 3416.0,
-          "y": 620.0,
+          "x": 2566.0,
+          "y": 660.0,
           "width": 150.0,
           "height": 100.0,
           "parent_id": "comp_simcore",
@@ -72,8 +72,8 @@
         {
           "id": "comp_world",
           "name": "World",
-          "x": 3084.0,
-          "y": 738.0,
+          "x": 2202.0,
+          "y": 792.0,
           "width": 150.0,
           "height": 100.0,
           "parent_id": "comp_simcore",
@@ -83,8 +83,8 @@
         {
           "id": "comp_ego",
           "name": "EgoVehicle",
-          "x": 3250.0,
-          "y": 738.0,
+          "x": 2384.0,
+          "y": 792.0,
           "width": 150.0,
           "height": 100.0,
           "parent_id": "comp_simcore",
@@ -94,8 +94,8 @@
         {
           "id": "comp_obsmgr",
           "name": "ObstacleManager",
-          "x": 3416.0,
-          "y": 738.0,
+          "x": 2566.0,
+          "y": 792.0,
           "width": 150.0,
           "height": 100.0,
           "parent_id": "comp_simcore",
@@ -105,13 +105,14 @@
         {
           "id": "comp_planning",
           "name": "Planning Module",
-          "x": 2382.0,
-          "y": 465.0,
-          "width": 522.0,
-          "height": 346.0,
+          "x": 1488.0,
+          "y": 157.0,
+          "width": 554.0,
+          "height": 500.0,
           "parent_id": "",
           "provided_interfaces": [
-            "PlannedPath"
+            "PlannedPath",
+            "SpeedProfile"
           ],
           "required_interfaces": [
             "VehicleState",
@@ -121,8 +122,8 @@
         {
           "id": "comp_motionplanner",
           "name": "MotionPlanner",
-          "x": 2402.0,
-          "y": 691.0,
+          "x": 1508.0,
+          "y": 405.0,
           "width": 150.0,
           "height": 100.0,
           "parent_id": "comp_planning",
@@ -132,8 +133,8 @@
         {
           "id": "comp_dpplanner",
           "name": "dp_path_plan (module)",
-          "x": 2568.0,
-          "y": 691.0,
+          "x": 1508.0,
+          "y": 537.0,
           "width": 150.0,
           "height": 100.0,
           "parent_id": "comp_planning",
@@ -143,8 +144,8 @@
         {
           "id": "comp_qpplanner",
           "name": "qp_path_plan (module)",
-          "x": 2734.0,
-          "y": 691.0,
+          "x": 1690.0,
+          "y": 537.0,
           "width": 150.0,
           "height": 100.0,
           "parent_id": "comp_planning",
@@ -154,10 +155,10 @@
         {
           "id": "comp_control",
           "name": "Control Module",
-          "x": 1700.0,
-          "y": 592.0,
-          "width": 522.0,
-          "height": 604.0,
+          "x": 794.0,
+          "y": 80.0,
+          "width": 554.0,
+          "height": 654.0,
           "parent_id": "",
           "provided_interfaces": [
             "ControlCommand"
@@ -165,14 +166,15 @@
           "required_interfaces": [
             "PlannedPath",
             "ReferenceLine",
-            "VehicleState"
+            "VehicleState",
+            "SpeedProfile"
           ]
         },
         {
           "id": "comp_vehctrl",
           "name": "VehicleController",
-          "x": 1720.0,
-          "y": 840.0,
+          "x": 814.0,
+          "y": 350.0,
           "width": 150.0,
           "height": 100.0,
           "parent_id": "comp_control",
@@ -182,8 +184,8 @@
         {
           "id": "comp_latlqr",
           "name": "LateralLQRController",
-          "x": 1886.0,
-          "y": 840.0,
+          "x": 996.0,
+          "y": 482.0,
           "width": 150.0,
           "height": 100.0,
           "parent_id": "comp_control",
@@ -193,8 +195,8 @@
         {
           "id": "comp_lonpid",
           "name": "LongitudinalPIDController",
-          "x": 2052.0,
-          "y": 840.0,
+          "x": 1178.0,
+          "y": 482.0,
           "width": 150.0,
           "height": 100.0,
           "parent_id": "comp_control",
@@ -204,8 +206,8 @@
         {
           "id": "comp_latmpc",
           "name": "LateralMPCController",
-          "x": 1720.0,
-          "y": 958.0,
+          "x": 814.0,
+          "y": 614.0,
           "width": 150.0,
           "height": 100.0,
           "parent_id": "comp_control",
@@ -215,8 +217,8 @@
         {
           "id": "comp_projectedlat",
           "name": "ProjectedLateralController",
-          "x": 1886.0,
-          "y": 958.0,
+          "x": 996.0,
+          "y": 350.0,
           "width": 150.0,
           "height": 100.0,
           "parent_id": "comp_control",
@@ -226,8 +228,8 @@
         {
           "id": "comp_bicycle",
           "name": "BicycleLateralModel",
-          "x": 2052.0,
-          "y": 958.0,
+          "x": 1178.0,
+          "y": 350.0,
           "width": 150.0,
           "height": 100.0,
           "parent_id": "comp_control",
@@ -237,8 +239,8 @@
         {
           "id": "comp_boxqp",
           "name": "box_qp (module)",
-          "x": 1720.0,
-          "y": 1076.0,
+          "x": 814.0,
+          "y": 482.0,
           "width": 150.0,
           "height": 100.0,
           "parent_id": "comp_control",
@@ -249,9 +251,9 @@
           "id": "comp_ros",
           "name": "ROS 2 Adapter",
           "x": 100.0,
-          "y": 373.0,
-          "width": 640.0,
-          "height": 530.0,
+          "y": 113.0,
+          "width": 554.0,
+          "height": 698.0,
           "parent_id": "",
           "provided_interfaces": [
             "RouteRequest"
@@ -261,14 +263,15 @@
             "ControlCommand",
             "ReferenceLine",
             "PlannedPath",
-            "TrackingMetrics"
+            "TrackingMetrics",
+            "SpeedProfile"
           ]
         },
         {
           "id": "comp_simnode",
           "name": "SimulatorNode",
           "x": 120.0,
-          "y": 665.0,
+          "y": 427.0,
           "width": 150.0,
           "height": 100.0,
           "parent_id": "comp_ros",
@@ -278,8 +281,8 @@
         {
           "id": "comp_plannernode",
           "name": "PlannerNode",
-          "x": 286.0,
-          "y": 665.0,
+          "x": 484.0,
+          "y": 427.0,
           "width": 150.0,
           "height": 100.0,
           "parent_id": "comp_ros",
@@ -289,8 +292,8 @@
         {
           "id": "comp_controllernode",
           "name": "ControllerNode",
-          "x": 452.0,
-          "y": 665.0,
+          "x": 120.0,
+          "y": 559.0,
           "width": 150.0,
           "height": 100.0,
           "parent_id": "comp_ros",
@@ -300,8 +303,8 @@
         {
           "id": "comp_managernode",
           "name": "ControllerManager",
-          "x": 120.0,
-          "y": 783.0,
+          "x": 302.0,
+          "y": 559.0,
           "width": 150.0,
           "height": 100.0,
           "parent_id": "comp_ros",
@@ -311,8 +314,8 @@
         {
           "id": "comp_safestop",
           "name": "SafeStopNode",
-          "x": 286.0,
-          "y": 783.0,
+          "x": 484.0,
+          "y": 559.0,
           "width": 150.0,
           "height": 100.0,
           "parent_id": "comp_ros",
@@ -322,8 +325,8 @@
         {
           "id": "comp_guinode",
           "name": "GuiNode",
-          "x": 452.0,
-          "y": 783.0,
+          "x": 120.0,
+          "y": 691.0,
           "width": 150.0,
           "height": 100.0,
           "parent_id": "comp_ros",
@@ -333,10 +336,10 @@
         {
           "id": "comp_utils",
           "name": "Algorithm Utilities",
-          "x": 3746.0,
-          "y": 440.0,
-          "width": 522.0,
-          "height": 396.0,
+          "x": 2182.0,
+          "y": 1012.0,
+          "width": 554.0,
+          "height": 410.0,
           "parent_id": "",
           "provided_interfaces": [
             "FrenetGeometry"
@@ -346,8 +349,8 @@
         {
           "id": "comp_frenet",
           "name": "frenet (module)",
-          "x": 3766.0,
-          "y": 598.0,
+          "x": 2202.0,
+          "y": 1170.0,
           "width": 150.0,
           "height": 100.0,
           "parent_id": "comp_utils",
@@ -357,8 +360,8 @@
         {
           "id": "comp_geom",
           "name": "geometry (module)",
-          "x": 3932.0,
-          "y": 598.0,
+          "x": 2384.0,
+          "y": 1170.0,
           "width": 150.0,
           "height": 100.0,
           "parent_id": "comp_utils",
@@ -368,8 +371,8 @@
         {
           "id": "comp_quintic",
           "name": "quintic (module)",
-          "x": 4098.0,
-          "y": 598.0,
+          "x": 2566.0,
+          "y": 1170.0,
           "width": 150.0,
           "height": 100.0,
           "parent_id": "comp_utils",
@@ -379,8 +382,8 @@
         {
           "id": "comp_refline",
           "name": "reference_line (module)",
-          "x": 3766.0,
-          "y": 716.0,
+          "x": 2202.0,
+          "y": 1302.0,
           "width": 150.0,
           "height": 100.0,
           "parent_id": "comp_utils",
@@ -390,8 +393,8 @@
         {
           "id": "comp_routeutils",
           "name": "route (module)",
-          "x": 3932.0,
-          "y": 716.0,
+          "x": 2384.0,
+          "y": 1302.0,
           "width": 150.0,
           "height": 100.0,
           "parent_id": "comp_utils",
@@ -401,10 +404,10 @@
         {
           "id": "comp_routing",
           "name": "Routing",
-          "x": 1700.0,
-          "y": 80.0,
-          "width": 522.0,
-          "height": 442.0,
+          "x": 1488.0,
+          "y": 757.0,
+          "width": 554.0,
+          "height": 456.0,
           "parent_id": "",
           "provided_interfaces": [
             "RoutePlan"
@@ -416,8 +419,8 @@
         {
           "id": "comp_routingcore",
           "name": "RoutingCore",
-          "x": 1720.0,
-          "y": 284.0,
+          "x": 1508.0,
+          "y": 961.0,
           "width": 150.0,
           "height": 100.0,
           "parent_id": "comp_routing",
@@ -427,8 +430,8 @@
         {
           "id": "comp_astar",
           "name": "AStarRouter",
-          "x": 1886.0,
-          "y": 284.0,
+          "x": 1690.0,
+          "y": 961.0,
           "width": 150.0,
           "height": 100.0,
           "parent_id": "comp_routing",
@@ -438,8 +441,8 @@
         {
           "id": "comp_maploader",
           "name": "map_loader (module)",
-          "x": 2052.0,
-          "y": 284.0,
+          "x": 1872.0,
+          "y": 961.0,
           "width": 150.0,
           "height": 100.0,
           "parent_id": "comp_routing",
@@ -449,8 +452,8 @@
         {
           "id": "comp_routingnode",
           "name": "RoutingNode",
-          "x": 1720.0,
-          "y": 402.0,
+          "x": 1508.0,
+          "y": 1093.0,
           "width": 150.0,
           "height": 100.0,
           "parent_id": "comp_routing",
@@ -460,10 +463,10 @@
         {
           "id": "comp_reflinepkg",
           "name": "Reference Line",
-          "x": 900.0,
-          "y": 209.0,
-          "width": 640.0,
-          "height": 442.0,
+          "x": 794.0,
+          "y": 834.0,
+          "width": 554.0,
+          "height": 456.0,
           "parent_id": "",
           "provided_interfaces": [
             "ReferenceLine"
@@ -475,8 +478,8 @@
         {
           "id": "comp_reflinecore",
           "name": "ReferenceLineCore",
-          "x": 920.0,
-          "y": 413.0,
+          "x": 814.0,
+          "y": 1038.0,
           "width": 150.0,
           "height": 100.0,
           "parent_id": "comp_reflinepkg",
@@ -486,8 +489,8 @@
         {
           "id": "comp_reflineplan",
           "name": "ReferenceLinePlan",
-          "x": 1086.0,
-          "y": 413.0,
+          "x": 1178.0,
+          "y": 1038.0,
           "width": 150.0,
           "height": 100.0,
           "parent_id": "comp_reflinepkg",
@@ -497,8 +500,8 @@
         {
           "id": "comp_routeaware",
           "name": "RouteAwareMotionPlanner",
-          "x": 1252.0,
-          "y": 413.0,
+          "x": 814.0,
+          "y": 1170.0,
           "width": 150.0,
           "height": 100.0,
           "parent_id": "comp_reflinepkg",
@@ -508,8 +511,8 @@
         {
           "id": "comp_reflinenode",
           "name": "ReferenceLineNode",
-          "x": 920.0,
-          "y": 531.0,
+          "x": 996.0,
+          "y": 1170.0,
           "width": 150.0,
           "height": 100.0,
           "parent_id": "comp_reflinepkg",
@@ -519,9 +522,9 @@
         {
           "id": "comp_analysis",
           "name": "Analysis",
-          "x": 900.0,
-          "y": 721.0,
-          "width": 522.0,
+          "x": 100.0,
+          "y": 911.0,
+          "width": 554.0,
           "height": 346.0,
           "parent_id": "",
           "provided_interfaces": [
@@ -535,8 +538,8 @@
         {
           "id": "comp_tracking",
           "name": "TrackingMonitor",
-          "x": 920.0,
-          "y": 947.0,
+          "x": 120.0,
+          "y": 1137.0,
           "width": 150.0,
           "height": 100.0,
           "parent_id": "comp_analysis",
@@ -546,8 +549,8 @@
         {
           "id": "comp_oracle",
           "name": "FigureEightOracle",
-          "x": 1086.0,
-          "y": 947.0,
+          "x": 302.0,
+          "y": 1137.0,
           "width": 150.0,
           "height": 100.0,
           "parent_id": "comp_analysis",
@@ -557,11 +560,55 @@
         {
           "id": "comp_eval",
           "name": "evaluation (module)",
-          "x": 1252.0,
-          "y": 947.0,
+          "x": 484.0,
+          "y": 1137.0,
           "width": 150.0,
           "height": 100.0,
           "parent_id": "comp_analysis",
+          "provided_interfaces": [],
+          "required_interfaces": []
+        },
+        {
+          "id": "comp_stspeed",
+          "name": "STSpeedPlanner",
+          "x": 1690.0,
+          "y": 405.0,
+          "width": 150.0,
+          "height": 100.0,
+          "parent_id": "comp_planning",
+          "provided_interfaces": [],
+          "required_interfaces": []
+        },
+        {
+          "id": "comp_speednode",
+          "name": "SpeedPlannerNode",
+          "x": 302.0,
+          "y": 427.0,
+          "width": 150.0,
+          "height": 100.0,
+          "parent_id": "comp_ros",
+          "provided_interfaces": [],
+          "required_interfaces": []
+        },
+        {
+          "id": "comp_dpqp",
+          "name": "dp_qp (module)",
+          "x": 1872.0,
+          "y": 405.0,
+          "width": 150.0,
+          "height": 100.0,
+          "parent_id": "comp_planning",
+          "provided_interfaces": [],
+          "required_interfaces": []
+        },
+        {
+          "id": "comp_dpqpplanner",
+          "name": "DPQPPathPlanner",
+          "x": 996.0,
+          "y": 1038.0,
+          "width": 150.0,
+          "height": 100.0,
+          "parent_id": "comp_reflinepkg",
           "provided_interfaces": [],
           "required_interfaces": []
         }
@@ -769,6 +816,34 @@
           "target": "comp_tracking",
           "type": "delegation",
           "vertices": null
+        },
+        {
+          "id": "crel_planning_stspeed",
+          "source": "comp_planning",
+          "target": "comp_stspeed",
+          "type": "delegation",
+          "vertices": null
+        },
+        {
+          "id": "crel_planning_dpqp",
+          "source": "comp_planning",
+          "target": "comp_dpqp",
+          "type": "delegation",
+          "vertices": null
+        },
+        {
+          "id": "crel_reflinepkg_dpqpplanner",
+          "source": "comp_reflinepkg",
+          "target": "comp_dpqpplanner",
+          "type": "delegation",
+          "vertices": null
+        },
+        {
+          "id": "crel_ros_speednode",
+          "source": "comp_ros",
+          "target": "comp_speednode",
+          "type": "delegation",
+          "vertices": null
         }
       ],
       "grid_visible": true,
@@ -776,9 +851,9 @@
       "grid_color": "#833a3a",
       "grid_thickness": 2,
       "snap_to_grid": true,
-      "zoom": 0.85,
-      "pan_x": -557.8999999999999,
-      "pan_y": -92.39999999999998
+      "zoom": 0.5,
+      "pan_x": 59.0,
+      "pan_y": -139.0
     },
     {
       "version": "1.0",
@@ -1496,8 +1571,8 @@
       "grid_thickness": 2,
       "snap_to_grid": true,
       "zoom": 0.7000000000000001,
-      "pan_x": -43.000000000000114,
-      "pan_y": -307.50000000000006
+      "pan_x": 169.4999999999999,
+      "pan_y": -69.50000000000006
     },
     {
       "version": "1.0",
@@ -2679,8 +2754,8 @@
       "grid_thickness": 2,
       "snap_to_grid": true,
       "zoom": 0.85,
-      "pan_x": -17.888312362395027,
-      "pan_y": -53.141666801089315
+      "pan_x": 305.6,
+      "pan_y": -279.85
     },
     {
       "version": "1.0",
@@ -2812,7 +2887,7 @@
           "expanded_attributes": false,
           "expanded_methods": false,
           "position": {
-            "x": 120.0,
+            "x": 914.0,
             "y": 100.0
           },
           "size": {
@@ -2820,6 +2895,59 @@
             "height": 341.0
           },
           "note": "异步“最新优先”避障换道规划器：独立 worker 线程 + 单元素请求/响应队列，S 型平滑换道。",
+          "provided_interfaces": [],
+          "required_interfaces": []
+        },
+        {
+          "id": "class_dpqp",
+          "name": "dp_qp",
+          "stereotype": "class",
+          "attributes": [],
+          "methods": [
+            {
+              "name": "quintic_edge",
+              "return_type": "Tuple[ndarray, ndarray, ndarray]",
+              "params": "length: float, start: tuple, end, distances: ndarray",
+              "visibility": "+",
+              "is_static": true,
+              "is_abstract": false
+            },
+            {
+              "name": "jerk_matrices",
+              "return_type": "tuple",
+              "params": "knots: ndarray, samples: ndarray, start: tuple",
+              "visibility": "+",
+              "is_static": true,
+              "is_abstract": false
+            },
+            {
+              "name": "adaptive_dp_knots",
+              "return_type": "ndarray",
+              "params": "length: float, coarse_step: float, obstacle_stations=()",
+              "visibility": "+",
+              "is_static": true,
+              "is_abstract": false
+            },
+            {
+              "name": "adaptive_qp_knots",
+              "return_type": "ndarray",
+              "params": "length: float, coarse_step: float, obstacle_stations=()",
+              "visibility": "+",
+              "is_static": true,
+              "is_abstract": false
+            }
+          ],
+          "expanded_attributes": false,
+          "expanded_methods": false,
+          "position": {
+            "x": 1560.0,
+            "y": 100.0
+          },
+          "size": {
+            "width": 340.0,
+            "height": 470.0
+          },
+          "note": "Python 模块 algorithms/planner/dp_qp.py 的纯几何/积分工具（无状态函数）：quintic_edge 生成并求值数值标定的五次多项式边；jerk_matrices 给出常 jerk 三阶精确积分；adaptive_dp_knots/adaptive_qp_knots 生成远端粗、起点前 12m 与障碍物邻域加密的 DP/QP 弧长站点。DP 搜索与 QP 求解分别由 LateralDpSearcher、LateralQpSmoother 承担，二者均调用本模块工具。",
           "provided_interfaces": [],
           "required_interfaces": []
         },
@@ -2873,7 +3001,7 @@
           "expanded_attributes": false,
           "expanded_methods": false,
           "position": {
-            "x": 444.0,
+            "x": 1238.0,
             "y": 100.0
           },
           "size": {
@@ -2918,7 +3046,7 @@
           "expanded_attributes": false,
           "expanded_methods": false,
           "position": {
-            "x": 120.0,
+            "x": 914.0,
             "y": 551.0
           },
           "size": {
@@ -2928,9 +3056,609 @@
           "note": "Python 模块 qp_path_plan.py（自由函数集合，非类）。S-L 二次规划平滑 + 车辆矩形形状约束；无 cvxopt 时回退到凸空间中心线。",
           "provided_interfaces": [],
           "required_interfaces": []
+        },
+        {
+          "id": "class_stspeed",
+          "name": "STSpeedPlanner",
+          "stereotype": "class",
+          "attributes": [
+            {
+              "name": "config",
+              "type": "SpeedConfig",
+              "visibility": "+",
+              "default_value": "",
+              "is_static": false
+            },
+            {
+              "name": "sparse",
+              "type": "module",
+              "visibility": "-",
+              "default_value": "",
+              "is_static": false
+            },
+            {
+              "name": "osqp",
+              "type": "module",
+              "visibility": "-",
+              "default_value": "",
+              "is_static": false
+            },
+            {
+              "name": "dp_searcher",
+              "type": "StSpeedDpSearcher",
+              "visibility": "-",
+              "default_value": "",
+              "is_static": false
+            },
+            {
+              "name": "qp_smoother",
+              "type": "StSpeedQpSmoother",
+              "visibility": "-",
+              "default_value": "",
+              "is_static": false
+            }
+          ],
+          "methods": [
+            {
+              "name": "__init__",
+              "return_type": "void",
+              "params": "config: SpeedConfig | None = None",
+              "visibility": "+",
+              "is_static": false,
+              "is_abstract": false
+            },
+            {
+              "name": "plan",
+              "return_type": "SpeedPlan",
+              "params": "path: list, state: VehicleState, obstacles: tuple = (), *, vehicle: VehicleParams | None = None, target_speed_kmh: float = 40.0, max_lateral_accel: float = 2.0, destination: tuple | None = None, closed_route: bool = False, speed_limits: tuple = ()",
+              "visibility": "+",
+              "is_static": false,
+              "is_abstract": false
+            }
+          ],
+          "expanded_attributes": false,
+          "expanded_methods": false,
+          "position": {
+            "x": 292.0,
+            "y": 100.0
+          },
+          "size": {
+            "width": 320.0,
+            "height": 429.0
+          },
+          "note": "独立 ST 时间-弧长 DP + jerk QP 速度规划器（algorithms/planner/st_speed.py）：消费已确定的几何路径，输出 s(t)/v(t)/a(t)/jerk(t)。编排输入/几何/停车线/制动包络与 fail-closed 校验，实际 DP 束搜索委托 StSpeedDpSearcher、走廊内 QP 平滑与稠密复核委托 StSpeedQpSmoother；沿 0.25 m 采样计算曲率与路段限速上限，静态障碍/真实终点生成停车上界，沿路径移动障碍冲突返回无效参考；不修改几何路径。",
+          "provided_interfaces": [],
+          "required_interfaces": []
+        },
+        {
+          "id": "class_speedconfig",
+          "name": "SpeedConfig",
+          "stereotype": "class",
+          "attributes": [
+            {
+              "name": "horizon_s",
+              "type": "float",
+              "visibility": "+",
+              "default_value": "6.0",
+              "is_static": false
+            },
+            {
+              "name": "time_step_s",
+              "type": "float",
+              "visibility": "+",
+              "default_value": "0.2",
+              "is_static": false
+            },
+            {
+              "name": "max_accel",
+              "type": "float",
+              "visibility": "+",
+              "default_value": "2.0",
+              "is_static": false
+            },
+            {
+              "name": "max_decel",
+              "type": "float",
+              "visibility": "+",
+              "default_value": "3.0",
+              "is_static": false
+            },
+            {
+              "name": "max_jerk",
+              "type": "float",
+              "visibility": "+",
+              "default_value": "3.0",
+              "is_static": false
+            },
+            {
+              "name": "collision_margin_m",
+              "type": "float",
+              "visibility": "+",
+              "default_value": "0.3",
+              "is_static": false
+            },
+            {
+              "name": "stop_gap_m",
+              "type": "float",
+              "visibility": "+",
+              "default_value": "0.5",
+              "is_static": false
+            },
+            {
+              "name": "beam_width",
+              "type": "int",
+              "visibility": "+",
+              "default_value": "96",
+              "is_static": false
+            },
+            {
+              "name": "qp_time_limit_s",
+              "type": "float",
+              "visibility": "+",
+              "default_value": "0.06",
+              "is_static": false
+            }
+          ],
+          "methods": [
+            {
+              "name": "__post_init__",
+              "return_type": "void",
+              "params": "",
+              "visibility": "+",
+              "is_static": false,
+              "is_abstract": false
+            }
+          ],
+          "expanded_attributes": false,
+          "expanded_methods": false,
+          "position": {
+            "x": 120.0,
+            "y": 613.0
+          },
+          "size": {
+            "width": 300.0,
+            "height": 252.0
+          },
+          "note": "速度求解参数 frozen dataclass：horizon、时步、加减速度与 jerk 限幅、碰撞余量、停车余量、beam 宽度与 QP 时限；__post_init__ 校验正参数、horizon 下限与最小 beam 宽度，非法设置抛 ValueError。",
+          "provided_interfaces": [],
+          "required_interfaces": []
+        },
+        {
+          "id": "class_speedplan",
+          "name": "SpeedPlan",
+          "stereotype": "class",
+          "attributes": [
+            {
+              "name": "time",
+              "type": "ndarray",
+              "visibility": "+",
+              "default_value": "",
+              "is_static": false
+            },
+            {
+              "name": "s",
+              "type": "ndarray",
+              "visibility": "+",
+              "default_value": "",
+              "is_static": false
+            },
+            {
+              "name": "speed",
+              "type": "ndarray",
+              "visibility": "+",
+              "default_value": "",
+              "is_static": false
+            },
+            {
+              "name": "accel",
+              "type": "ndarray",
+              "visibility": "+",
+              "default_value": "",
+              "is_static": false
+            },
+            {
+              "name": "jerk",
+              "type": "ndarray",
+              "visibility": "+",
+              "default_value": "",
+              "is_static": false
+            },
+            {
+              "name": "origin_s",
+              "type": "float",
+              "visibility": "+",
+              "default_value": "",
+              "is_static": false
+            },
+            {
+              "name": "stop_s",
+              "type": "float | None",
+              "visibility": "+",
+              "default_value": "None",
+              "is_static": false
+            },
+            {
+              "name": "status",
+              "type": "str",
+              "visibility": "+",
+              "default_value": "solved",
+              "is_static": false
+            },
+            {
+              "name": "dp_cost",
+              "type": "float",
+              "visibility": "+",
+              "default_value": "0.0",
+              "is_static": false
+            },
+            {
+              "name": "valid",
+              "type": "bool",
+              "visibility": "+",
+              "default_value": "",
+              "is_static": false
+            }
+          ],
+          "methods": [
+            {
+              "name": "sample",
+              "return_type": "tuple[float, float, float]",
+              "params": "elapsed: float",
+              "visibility": "+",
+              "is_static": false,
+              "is_abstract": false
+            }
+          ],
+          "expanded_attributes": false,
+          "expanded_methods": false,
+          "position": {
+            "x": 484.0,
+            "y": 613.0
+          },
+          "size": {
+            "width": 300.0,
+            "height": 281.0
+          },
+          "note": "速度轨迹结果 dataclass：相对时间/t/s/v/a/jerk 节点与 origin_s、可选 stop_s、status、dp_cost。valid 为只读 property（status=='solved'）；sample(elapsed) 用优化器相同的常 jerk 积分返回 (s, v, a)。",
+          "provided_interfaces": [],
+          "required_interfaces": []
+        },
+        {
+          "id": "class_lateraldpsearcher",
+          "name": "LateralDpSearcher",
+          "stereotype": "class",
+          "attributes": [
+            {
+              "name": "station_step_m",
+              "type": "float",
+              "visibility": "+",
+              "default_value": "8.0",
+              "is_static": false
+            },
+            {
+              "name": "lateral_step_m",
+              "type": "float",
+              "visibility": "+",
+              "default_value": "0.5",
+              "is_static": false
+            },
+            {
+              "name": "resolution",
+              "type": "float",
+              "visibility": "+",
+              "default_value": "0.5",
+              "is_static": false
+            },
+            {
+              "name": "last_status",
+              "type": "str",
+              "visibility": "+",
+              "default_value": "not_started",
+              "is_static": false
+            }
+          ],
+          "methods": [
+            {
+              "name": "__init__",
+              "return_type": "void",
+              "params": "*, station_step_m: float = 8.0, lateral_step_m: float = 0.5, resolution: float = 0.5",
+              "visibility": "+",
+              "is_static": false,
+              "is_abstract": false
+            },
+            {
+              "name": "build_stations",
+              "return_type": "ndarray",
+              "params": "length: float, obstacle_stations=()",
+              "visibility": "+",
+              "is_static": false,
+              "is_abstract": false
+            },
+            {
+              "name": "search",
+              "return_type": "ndarray | None",
+              "params": "stations: ndarray, lateral_samples: list, start: tuple, preferred: float, edge_is_safe, edge_cost=None",
+              "visibility": "+",
+              "is_static": false,
+              "is_abstract": false
+            },
+            {
+              "name": "densify",
+              "return_type": "ndarray",
+              "params": "stations: ndarray, values: ndarray, samples: ndarray",
+              "visibility": "+",
+              "is_static": false,
+              "is_abstract": false
+            }
+          ],
+          "expanded_attributes": false,
+          "expanded_methods": false,
+          "position": {
+            "x": 1560.0,
+            "y": 613.0
+          },
+          "size": {
+            "width": 340.0,
+            "height": 320.0
+          },
+          "note": "横向路径 DP 搜索类（algorithms/planner/dp_qp.py 内的 LateralDpSearcher）：持有 DP 采样配置与最近状态。build_stations 生成远端粗、起点前 12m 与障碍物邻域加密的弧长列；search 在凸走廊格点上做精确 DP（相邻列五次多项式边、逐状态保留最优父节点，无可行端点返回 None）；densify 用选中的五次多项式重采样出 dp_l 供 QP 走廊使用。纯几何/积分工具仍由 dp_qp 模块函数提供。",
+          "provided_interfaces": [],
+          "required_interfaces": []
+        },
+        {
+          "id": "class_lateralqpsmoother",
+          "name": "LateralQpSmoother",
+          "stereotype": "class",
+          "attributes": [
+            {
+              "name": "station_step_m",
+              "type": "float",
+              "visibility": "+",
+              "default_value": "4.0",
+              "is_static": false
+            },
+            {
+              "name": "time_limit_s",
+              "type": "float",
+              "visibility": "+",
+              "default_value": "0.08",
+              "is_static": false
+            },
+            {
+              "name": "last_diagnostics",
+              "type": "dict",
+              "visibility": "+",
+              "default_value": "{}",
+              "is_static": false
+            }
+          ],
+          "methods": [
+            {
+              "name": "__init__",
+              "return_type": "void",
+              "params": "*, station_step_m: float = 4.0, time_limit_s: float = 0.08",
+              "visibility": "+",
+              "is_static": false,
+              "is_abstract": false
+            },
+            {
+              "name": "build_knots",
+              "return_type": "ndarray",
+              "params": "length: float, obstacle_stations=()",
+              "visibility": "+",
+              "is_static": false,
+              "is_abstract": false
+            },
+            {
+              "name": "solve",
+              "return_type": "Tuple[ndarray, ndarray, ndarray] | None",
+              "params": "knots, samples, start, dp_l, lower, upper, preferred, road_limits=None, half_length=0.0, max_slope=None, footprint_constraints=(), max_second_derivative=0.08",
+              "visibility": "+",
+              "is_static": false,
+              "is_abstract": false
+            }
+          ],
+          "expanded_attributes": false,
+          "expanded_methods": false,
+          "position": {
+            "x": 1920.0,
+            "y": 100.0
+          },
+          "size": {
+            "width": 360.0,
+            "height": 300.0
+          },
+          "note": "横向路径 QP 平滑类（algorithms/planner/dp_qp.py 内的 LateralQpSmoother）：build_knots 生成起点/障碍物区加密的 QP 站点；solve 组装稀疏 C2 状态 QP（变量 x=[l..,dl..,ddl..,j..]，常 jerk 精确积分等式，走廊/坡度/足迹不等式），OSQP 求解并复核约束残差，无解或残差超限返回 None，诊断写入 last_diagnostics。",
+          "provided_interfaces": [],
+          "required_interfaces": []
+        },
+        {
+          "id": "class_stspeeddpsearcher",
+          "name": "StSpeedDpSearcher",
+          "stereotype": "class",
+          "attributes": [
+            {
+              "name": "config",
+              "type": "SpeedConfig",
+              "visibility": "-",
+              "default_value": "",
+              "is_static": false
+            },
+            {
+              "name": "last_status",
+              "type": "str",
+              "visibility": "+",
+              "default_value": "not_started",
+              "is_static": false
+            }
+          ],
+          "methods": [
+            {
+              "name": "__init__",
+              "return_type": "void",
+              "params": "config: SpeedConfig",
+              "visibility": "+",
+              "is_static": false,
+              "is_abstract": false
+            },
+            {
+              "name": "search",
+              "return_type": "Tuple[ndarray, float] | Tuple[None, str]",
+              "params": "*, time: ndarray, dt: float, stations: ndarray, caps: ndarray, upper_s: float, terminal_stop: bool, v0: float, a0: float, accel_bounds, limit",
+              "visibility": "+",
+              "is_static": false,
+              "is_abstract": false
+            }
+          ],
+          "expanded_attributes": false,
+          "expanded_methods": false,
+          "position": {
+            "x": 120.0,
+            "y": 880.0
+          },
+          "size": {
+            "width": 320.0,
+            "height": 240.0
+          },
+          "note": "纵向速度 DP 搜索类（algorithms/planner/st_speed.py 内的 StSpeedDpSearcher）：在 (t,s,v,a) 时间格点上做有限 jerk 束搜索——常 jerk 精确积分、7 档 jerk + 4 个自适应边界动作（到达加速度界/零加速度/两步平稳停车）、按 (s,v,a) 量化去重并强制保留最快制动候选。成功返回 (状态链, dp_cost) 作为 QP 初值，失败返回 (None, 'dp_infeasible_stepN')。",
+          "provided_interfaces": [],
+          "required_interfaces": []
+        },
+        {
+          "id": "class_stspeedqpsmoother",
+          "name": "StSpeedQpSmoother",
+          "stereotype": "class",
+          "attributes": [
+            {
+              "name": "config",
+              "type": "SpeedConfig",
+              "visibility": "-",
+              "default_value": "",
+              "is_static": false
+            },
+            {
+              "name": "sparse",
+              "type": "module",
+              "visibility": "-",
+              "default_value": "",
+              "is_static": false
+            },
+            {
+              "name": "osqp",
+              "type": "module",
+              "visibility": "-",
+              "default_value": "",
+              "is_static": false
+            },
+            {
+              "name": "last_status",
+              "type": "str",
+              "visibility": "+",
+              "default_value": "not_started",
+              "is_static": false
+            }
+          ],
+          "methods": [
+            {
+              "name": "__init__",
+              "return_type": "void",
+              "params": "config: SpeedConfig, sparse, osqp",
+              "visibility": "+",
+              "is_static": false,
+              "is_abstract": false
+            },
+            {
+              "name": "solve",
+              "return_type": "SpeedPlan | Tuple[None, str]",
+              "params": "*, time, dt, stations, caps, road_caps, upper_s, terminal_stop, stop, v0, a0, seed, dp_cost, accel_bounds, recovery, qp_limit, origin",
+              "visibility": "+",
+              "is_static": false,
+              "is_abstract": false
+            }
+          ],
+          "expanded_attributes": false,
+          "expanded_methods": false,
+          "position": {
+            "x": 460.0,
+            "y": 880.0
+          },
+          "size": {
+            "width": 340.0,
+            "height": 240.0
+          },
+          "note": "纵向速度 QP 平滑类（algorithms/planner/st_speed.py 内的 StSpeedQpSmoother）：以 DP 状态链为初值组装 x=[s,v,a,j] 常 jerk 积分 QP（期望速度加权跟踪、走廊/速度/加速度/jerk/终端停车约束），OSQP 求解 + 约束残差复核 + 稠密复核与 ≤4 次速度上界迭代精化；任一失败返回 (None, 错误码)，绝不产出未验证轨迹。",
+          "provided_interfaces": [],
+          "required_interfaces": []
         }
       ],
-      "relations": [],
+      "relations": [
+        {
+          "id": "rel_stspeed_speedconfig",
+          "source": "class_stspeed",
+          "target": "class_speedconfig",
+          "type": "composition",
+          "vertices": null,
+          "multiplicity_source": "1",
+          "multiplicity_target": "1",
+          "role_name": "config",
+          "note": "速度规划器持有求解参数"
+        },
+        {
+          "id": "rel_stspeed_speedplan",
+          "source": "class_stspeed",
+          "target": "class_speedplan",
+          "type": "dependency",
+          "vertices": null,
+          "multiplicity_source": "",
+          "multiplicity_target": "",
+          "role_name": "",
+          "note": "plan 生成并返回速度轨迹"
+        },
+        {
+          "id": "rel_stspeed_dpsearcher",
+          "source": "class_stspeed",
+          "target": "class_stspeeddpsearcher",
+          "type": "composition",
+          "vertices": null,
+          "multiplicity_source": "1",
+          "multiplicity_target": "1",
+          "role_name": "dp_searcher",
+          "note": "速度规划器委托有限 jerk 束搜索"
+        },
+        {
+          "id": "rel_stspeed_qpsmoother",
+          "source": "class_stspeed",
+          "target": "class_stspeedqpsmoother",
+          "type": "composition",
+          "vertices": null,
+          "multiplicity_source": "1",
+          "multiplicity_target": "1",
+          "role_name": "qp_smoother",
+          "note": "速度规划器委托走廊内 QP 平滑与稠密复核"
+        },
+        {
+          "id": "rel_lateraldp_dpqp",
+          "source": "class_lateraldpsearcher",
+          "target": "class_dpqp",
+          "type": "dependency",
+          "vertices": null,
+          "multiplicity_source": "",
+          "multiplicity_target": "",
+          "role_name": "",
+          "note": "搜索类调用模块的纯几何/积分工具（quintic_edge、adaptive_dp_knots）"
+        },
+        {
+          "id": "rel_lateralqp_dpqp",
+          "source": "class_lateralqpsmoother",
+          "target": "class_dpqp",
+          "type": "dependency",
+          "vertices": null,
+          "multiplicity_source": "",
+          "multiplicity_target": "",
+          "role_name": "",
+          "note": "平滑类调用模块的 QP 站点工具（adaptive_qp_knots）"
+        }
+      ],
       "lifelines": [],
       "messages": [],
       "fragments": [],
@@ -2942,8 +3670,8 @@
       "grid_thickness": 2,
       "snap_to_grid": true,
       "zoom": 0.85,
-      "pan_x": 205.3,
-      "pan_y": -107.64999999999998
+      "pan_x": 80.35000000000002,
+      "pan_y": -112.64999999999998
     },
     {
       "version": "1.0",
@@ -4181,8 +4909,8 @@
       "grid_thickness": 2,
       "snap_to_grid": true,
       "zoom": 1.0,
-      "pan_x": -134.0,
-      "pan_y": -512.0
+      "pan_x": 83.5,
+      "pan_y": -1611.0
     },
     {
       "version": "1.0",
@@ -4611,9 +5339,9 @@
       "grid_color": "#833a3a",
       "grid_thickness": 2,
       "snap_to_grid": true,
-      "zoom": 0.3,
-      "pan_x": 250.64997956091622,
-      "pan_y": 77.66999631929801
+      "zoom": 0.6,
+      "pan_x": 246.80002176820358,
+      "pan_y": 125.80000206707737
     },
     {
       "version": "1.0",
@@ -5517,8 +6245,8 @@
       "grid_thickness": 2,
       "snap_to_grid": true,
       "zoom": 0.3,
-      "pan_x": 214.54999028053606,
-      "pan_y": -51.93000708187327
+      "pan_x": 517.4,
+      "pan_y": 24.80000000000001
     },
     {
       "version": "1.0",
@@ -5526,6 +6254,233 @@
       "diagram_type": "class",
       "component_id": "comp_reflinepkg",
       "classes": [
+        {
+          "id": "class_corridormotionplanner",
+          "name": "CorridorMotionPlanner",
+          "stereotype": "abstract",
+          "attributes": [
+            {
+              "name": "reference_lane_index",
+              "type": "int",
+              "visibility": "+",
+              "default_value": "",
+              "is_static": false
+            },
+            {
+              "name": "target_lane",
+              "type": "int",
+              "visibility": "+",
+              "default_value": "",
+              "is_static": false
+            },
+            {
+              "name": "drivable_left_boundary",
+              "type": "tuple",
+              "visibility": "+",
+              "default_value": "",
+              "is_static": false
+            },
+            {
+              "name": "drivable_right_boundary",
+              "type": "tuple",
+              "visibility": "+",
+              "default_value": "",
+              "is_static": false
+            },
+            {
+              "name": "corridor_margin_m",
+              "type": "float",
+              "visibility": "+",
+              "default_value": "1.1",
+              "is_static": false
+            },
+            {
+              "name": "collision_margin_m",
+              "type": "float",
+              "visibility": "+",
+              "default_value": "0.25",
+              "is_static": false
+            },
+            {
+              "name": "vehicle_length_m",
+              "type": "float",
+              "visibility": "+",
+              "default_value": "",
+              "is_static": false
+            },
+            {
+              "name": "vehicle_width_m",
+              "type": "float",
+              "visibility": "+",
+              "default_value": "",
+              "is_static": false
+            }
+          ],
+          "methods": [
+            {
+              "name": "__init__",
+              "return_type": "void",
+              "params": "global_frenet_path, *, lane_width: float, num_lanes: int, reference_lane_index: int, target_lane: int, drivable_left_boundary=(), drivable_right_boundary=(), corridor_margin_m: float = 1.1, transition_distance_m: float = ..., collision_margin_m: float = 0.25, vehicle_length_m: float = ..., vehicle_width_m: float = ...",
+              "visibility": "+",
+              "is_static": false,
+              "is_abstract": false
+            },
+            {
+              "name": "_build_candidate",
+              "return_type": "list",
+              "params": "ref, indices, l0, target",
+              "visibility": "#",
+              "is_static": false,
+              "is_abstract": false
+            },
+            {
+              "name": "_trajectory_is_safe",
+              "return_type": "bool",
+              "params": "candidate_path: list, obstacles: list",
+              "visibility": "#",
+              "is_static": false,
+              "is_abstract": false
+            },
+            {
+              "name": "_corridor_bounds",
+              "return_type": "Tuple[float, float]",
+              "params": "index: int, reference: tuple",
+              "visibility": "#",
+              "is_static": false,
+              "is_abstract": false
+            },
+            {
+              "name": "_plan",
+              "return_type": "list",
+              "params": "pred_loc: tuple, vehicle_loc: tuple, obstacles: list",
+              "visibility": "#",
+              "is_static": false,
+              "is_abstract": true
+            }
+          ],
+          "expanded_attributes": false,
+          "expanded_methods": false,
+          "position": {
+            "x": 752.0,
+            "y": 100.0
+          },
+          "size": {
+            "width": 320.0,
+            "height": 429.0
+          },
+          "note": "继承 algorithms.planner.MotionPlanner（跨组件，本包侧基类）。用路由车道身份构造可行驶凸走廊，并提供分离轴矩形安全校验与转向候选构造，使局部绕行最终回到任务车道。",
+          "provided_interfaces": [],
+          "required_interfaces": []
+        },
+        {
+          "id": "class_dpqpplanner",
+          "name": "DPQPPathPlanner",
+          "stereotype": "class",
+          "attributes": [
+            {
+              "name": "dp_station_step_m",
+              "type": "float",
+              "visibility": "+",
+              "default_value": "8.0",
+              "is_static": false
+            },
+            {
+              "name": "dp_lateral_step_m",
+              "type": "float",
+              "visibility": "+",
+              "default_value": "0.5",
+              "is_static": false
+            },
+            {
+              "name": "qp_station_step_m",
+              "type": "float",
+              "visibility": "+",
+              "default_value": "4.0",
+              "is_static": false
+            },
+            {
+              "name": "qp_time_limit_s",
+              "type": "float",
+              "visibility": "+",
+              "default_value": "0.08",
+              "is_static": false
+            },
+            {
+              "name": "last_qp_diagnostics",
+              "type": "dict",
+              "visibility": "+",
+              "default_value": "{}",
+              "is_static": false
+            },
+            {
+              "name": "_previous_profile",
+              "type": "tuple",
+              "visibility": "-",
+              "default_value": "None",
+              "is_static": false
+            },
+            {
+              "name": "last_status",
+              "type": "str",
+              "visibility": "+",
+              "default_value": "not_started",
+              "is_static": false
+            },
+            {
+              "name": "dp_searcher",
+              "type": "LateralDpSearcher",
+              "visibility": "-",
+              "default_value": "",
+              "is_static": false
+            },
+            {
+              "name": "qp_smoother",
+              "type": "LateralQpSmoother",
+              "visibility": "-",
+              "default_value": "",
+              "is_static": false
+            }
+          ],
+          "methods": [
+            {
+              "name": "__init__",
+              "return_type": "void",
+              "params": "*args, dp_station_step_m=8.0, dp_lateral_step_m=0.5, qp_station_step_m=4.0, qp_time_limit_s=0.08, **kwargs",
+              "visibility": "+",
+              "is_static": false,
+              "is_abstract": false
+            },
+            {
+              "name": "_plan",
+              "return_type": "list",
+              "params": "pred_loc: tuple, vehicle_loc: tuple, obstacles: list",
+              "visibility": "-",
+              "is_static": false,
+              "is_abstract": false
+            },
+            {
+              "name": "validate_path",
+              "return_type": "bool",
+              "params": "path: list, obstacles: list",
+              "visibility": "+",
+              "is_static": false,
+              "is_abstract": false
+            }
+          ],
+          "expanded_attributes": false,
+          "expanded_methods": false,
+          "position": {
+            "x": 914.0,
+            "y": 613.0
+          },
+          "size": {
+            "width": 340.0,
+            "height": 365.0
+          },
+          "note": "默认本地规划算法（create_local_planner('dp_qp')）：投影起点与障碍并构造 DP 与 QP 共享的凸走廊；组合 LateralDpSearcher 得绕障拓扑、LateralQpSmoother 做 C2 稀疏 QP（二者复用 dp_qp 模块的纯几何/积分工具）；Frenet->XY 后做 SAT/越界复核；任一步失败返回空并置 last_status（dp_infeasible/qp_failed/corridor_infeasible/validation_failed/body_outside_road）。",
+          "provided_interfaces": [],
+          "required_interfaces": []
+        },
         {
           "id": "class_reflinecore",
           "name": "ReferenceLineCore",
@@ -5612,7 +6567,7 @@
           "expanded_methods": false,
           "position": {
             "x": 120.0,
-            "y": 444.0
+            "y": 1089.0
           },
           "size": {
             "width": 280.0,
@@ -5761,7 +6716,7 @@
           "expanded_methods": false,
           "position": {
             "x": 130.0,
-            "y": 944.0
+            "y": 1589.0
           },
           "size": {
             "width": 260.0,
@@ -5848,7 +6803,7 @@
           "expanded_methods": false,
           "position": {
             "x": 570.0,
-            "y": 444.0
+            "y": 613.0
           },
           "size": {
             "width": 280.0,
@@ -5929,6 +6884,28 @@
       ],
       "relations": [
         {
+          "id": "rel_dpqpplanner_corridor",
+          "source": "class_dpqpplanner",
+          "target": "class_corridormotionplanner",
+          "type": "inheritance",
+          "vertices": null,
+          "multiplicity_source": "",
+          "multiplicity_target": "",
+          "role_name": "",
+          "note": "DP+QP 路径规划器是走廊规划器的具体实现"
+        },
+        {
+          "id": "rel_routeaware_corridor",
+          "source": "class_routeaware",
+          "target": "class_corridormotionplanner",
+          "type": "inheritance",
+          "vertices": null,
+          "multiplicity_source": "",
+          "multiplicity_target": "",
+          "role_name": "",
+          "note": "RouteAwareMotionPlanner 为 BaselinePathPlanner 的兼容别名，继承走廊规划器"
+        },
+        {
           "id": "rel_reflinecore_plan",
           "source": "class_reflinecore",
           "target": "class_reflineplan",
@@ -5973,8 +6950,8 @@
       "grid_thickness": 2,
       "snap_to_grid": true,
       "zoom": 0.85,
-      "pan_x": 143.25,
-      "pan_y": -353.94999999999993
+      "pan_x": 355.75,
+      "pan_y": 19.050000000000068
     },
     {
       "version": "1.0",
@@ -6202,6 +7179,156 @@
       "component_id": "comp_ros",
       "classes": [
         {
+          "id": "class_speedplannernode",
+          "name": "SpeedPlannerNode",
+          "stereotype": "class",
+          "attributes": [
+            {
+              "name": "planner",
+              "type": "STSpeedPlanner",
+              "visibility": "-",
+              "default_value": "",
+              "is_static": false
+            },
+            {
+              "name": "route_context",
+              "type": "dict",
+              "visibility": "-",
+              "default_value": "None",
+              "is_static": false
+            },
+            {
+              "name": "state",
+              "type": "VehicleState",
+              "visibility": "-",
+              "default_value": "None",
+              "is_static": false
+            },
+            {
+              "name": "path",
+              "type": "list",
+              "visibility": "-",
+              "default_value": "None",
+              "is_static": false
+            },
+            {
+              "name": "reference",
+              "type": "ReferenceLine",
+              "visibility": "-",
+              "default_value": "None",
+              "is_static": false
+            },
+            {
+              "name": "obstacles",
+              "type": "List[Obstacle]",
+              "visibility": "-",
+              "default_value": "",
+              "is_static": false
+            },
+            {
+              "name": "worker",
+              "type": "ThreadPoolExecutor",
+              "visibility": "-",
+              "default_value": "",
+              "is_static": false
+            },
+            {
+              "name": "future",
+              "type": "Future",
+              "visibility": "-",
+              "default_value": "None",
+              "is_static": false
+            }
+          ],
+          "methods": [
+            {
+              "name": "__init__",
+              "return_type": "void",
+              "params": "",
+              "visibility": "+",
+              "is_static": false,
+              "is_abstract": false
+            },
+            {
+              "name": "_on_context",
+              "return_type": "void",
+              "params": "message: String",
+              "visibility": "-",
+              "is_static": false,
+              "is_abstract": false
+            },
+            {
+              "name": "_on_reference",
+              "return_type": "void",
+              "params": "message: ReferenceLine",
+              "visibility": "-",
+              "is_static": false,
+              "is_abstract": false
+            },
+            {
+              "name": "_on_state",
+              "return_type": "void",
+              "params": "message: VehicleState",
+              "visibility": "-",
+              "is_static": false,
+              "is_abstract": false
+            },
+            {
+              "name": "_on_obstacles",
+              "return_type": "void",
+              "params": "message: ObstacleArray",
+              "visibility": "-",
+              "is_static": false,
+              "is_abstract": false
+            },
+            {
+              "name": "_on_path",
+              "return_type": "void",
+              "params": "message: Path",
+              "visibility": "-",
+              "is_static": false,
+              "is_abstract": false
+            },
+            {
+              "name": "_request",
+              "return_type": "void",
+              "params": "",
+              "visibility": "-",
+              "is_static": false,
+              "is_abstract": false
+            },
+            {
+              "name": "_poll",
+              "return_type": "void",
+              "params": "",
+              "visibility": "-",
+              "is_static": false,
+              "is_abstract": false
+            },
+            {
+              "name": "_publish",
+              "return_type": "void",
+              "params": "result, run, sequence, stamp, status",
+              "visibility": "-",
+              "is_static": false,
+              "is_abstract": false
+            }
+          ],
+          "expanded_attributes": false,
+          "expanded_methods": false,
+          "position": {
+            "x": 120.0,
+            "y": 100.0
+          },
+          "size": {
+            "width": 300.0,
+            "height": 307.0
+          },
+          "note": "ROS 2 速度规划节点：订阅 planned_path/vehicle/state/obstacles/routing/reference_line 与 sim/context，经单线程 worker 异步调用 STSpeedPlanner.plan，锁存发布 speed_profile 与 speed/diagnostics。",
+          "provided_interfaces": [],
+          "required_interfaces": []
+        },
+        {
           "id": "class_simnode",
           "name": "SimulatorNode",
           "stereotype": "class",
@@ -6357,7 +7484,7 @@
           "expanded_attributes": false,
           "expanded_methods": false,
           "position": {
-            "x": 530.0,
+            "x": 960.0,
             "y": 100.0
           },
           "size": {
@@ -6500,8 +7627,8 @@
           "expanded_attributes": false,
           "expanded_methods": false,
           "position": {
-            "x": 874.0,
-            "y": 100.0
+            "x": 130.0,
+            "y": 507.0
           },
           "size": {
             "width": 280.0,
@@ -6628,8 +7755,8 @@
           "expanded_attributes": false,
           "expanded_methods": false,
           "position": {
-            "x": 530.0,
-            "y": 472.0
+            "x": 1304.0,
+            "y": 100.0
           },
           "size": {
             "width": 280.0,
@@ -6733,7 +7860,7 @@
           "expanded_attributes": false,
           "expanded_methods": false,
           "position": {
-            "x": 874.0,
+            "x": 960.0,
             "y": 472.0
           },
           "size": {
@@ -6831,7 +7958,7 @@
           "expanded_attributes": false,
           "expanded_methods": false,
           "position": {
-            "x": 120.0,
+            "x": 550.0,
             "y": 458.0
           },
           "size": {
@@ -6939,7 +8066,7 @@
           "expanded_attributes": false,
           "expanded_methods": false,
           "position": {
-            "x": 120.0,
+            "x": 550.0,
             "y": 100.0
           },
           "size": {
@@ -6952,6 +8079,17 @@
         }
       ],
       "relations": [
+        {
+          "id": "rel_speednode_plannernode",
+          "source": "class_speedplannernode",
+          "target": "class_plannernode",
+          "type": "dependency",
+          "vertices": null,
+          "multiplicity_source": "",
+          "multiplicity_target": "",
+          "role_name": "",
+          "note": "SpeedPlannerNode 消费 PlannerNode 发布的 planned_path，输出 speed_profile（同为 ROS 适配节点）"
+        },
         {
           "id": "rel_guinode_safestop",
           "source": "class_guinode",
@@ -6974,9 +8112,9 @@
       "grid_color": "#833a3a",
       "grid_thickness": 2,
       "snap_to_grid": true,
-      "zoom": 0.62208,
-      "pan_x": 296.5250013078962,
-      "pan_y": 46.47499847412111
+      "zoom": 0.85,
+      "pan_x": 205.80000000000007,
+      "pan_y": -48.0
     },
     {
       "version": "1.0",
@@ -7250,6 +8388,16 @@
           "order": 20,
           "y": 1256.0,
           "note": "命令超时（stale）时施加全刹车，保证安全。"
+        },
+        {
+          "id": "msg_1791194784390_0iz0wg",
+          "from_lifeline": "life_simnode",
+          "to_lifeline": "life_engine",
+          "label": "message()",
+          "type": "sync",
+          "order": 21,
+          "y": 1294.0,
+          "note": ""
         }
       ],
       "fragments": [
@@ -7258,8 +8406,8 @@
           "type": "loop",
           "label": "[each physics tick @ 20 Hz]",
           "x": 76.0,
-          "width": 506.0,
-          "y_start": 362.0,
+          "width": 520.0,
+          "y_start": 370.0,
           "y_end": 550.0
         },
         {
@@ -7287,7 +8435,7 @@
           "x": 76.0,
           "width": 506.0,
           "y_start": 1180.0,
-          "y_end": 1292.0
+          "y_end": 1330.0
         },
         {
           "id": "frag_alt_stale",
@@ -7296,16 +8444,16 @@
           "x": 76.0,
           "width": 506.0,
           "y_start": 1228.0,
-          "y_end": 1328.0
+          "y_end": 1330.0
         },
         {
           "id": "frag_loop_run",
           "type": "loop",
           "label": "[once per run / reset]",
           "x": 76.0,
-          "width": 1372.0,
-          "y_start": 218.0,
-          "y_end": 378.0
+          "width": 1380.0,
+          "y_start": 218.00000000000068,
+          "y_end": 358.0000000000007
         }
       ],
       "components": [],
@@ -7315,10 +8463,574 @@
       "grid_color": "#833a3a",
       "grid_thickness": 2,
       "snap_to_grid": true,
-      "zoom": 0.5,
-      "pan_x": 70.5,
-      "pan_y": 83.5
+      "zoom": 0.3,
+      "pan_x": 270.34870671361705,
+      "pan_y": 38.862679137019484
+    },
+    {
+      "version": "1.0",
+      "name": "Horizontal Path DP + QP Flow",
+      "diagram_type": "sequence",
+      "component_id": "",
+      "classes": [],
+      "relations": [],
+      "lifelines": [
+        {
+          "id": "life_horiz_planner",
+          "name": "planner: DPQPPathPlanner",
+          "class_ref": "class_dpqpplanner",
+          "x": 120.0,
+          "activations": []
+        },
+        {
+          "id": "life_horiz_dp",
+          "name": "dp: LateralDpSearcher",
+          "class_ref": "class_lateraldpsearcher",
+          "x": 460.0,
+          "activations": []
+        },
+        {
+          "id": "life_horiz_qp",
+          "name": "qp: LateralQpSmoother",
+          "class_ref": "class_lateralqpsmoother",
+          "x": 800.0,
+          "activations": []
+        },
+        {
+          "id": "life_horiz_osqp",
+          "name": "osqp: OSQP",
+          "class_ref": "",
+          "x": 1140.0,
+          "activations": []
+        }
+      ],
+      "messages": [
+        {
+          "id": "msg_horiz_project",
+          "from_lifeline": "life_horiz_planner",
+          "to_lifeline": "life_horiz_planner",
+          "label": "project ego to reference; Frenet start (l0, dl0, ddl0)",
+          "type": "self",
+          "order": 1,
+          "y": 200.0,
+          "note": "把车辆投影到全局/局部参考线，得到规划起点横向偏移及其对弧长的一二阶导。"
+        },
+        {
+          "id": "msg_horiz_corridor",
+          "from_lifeline": "life_horiz_planner",
+          "to_lifeline": "life_horiz_planner",
+          "label": "road_bounds + convex_bounds(t, l, offset)",
+          "type": "self",
+          "order": 2,
+          "y": 256.0,
+          "note": "按可行驶边界与障碍半长/半宽叠加安全裕度，生成 DP 与 QP 共享的凸走廊。"
+        },
+        {
+          "id": "msg_horiz_dp_call",
+          "from_lifeline": "life_horiz_planner",
+          "to_lifeline": "life_horiz_dp",
+          "label": "searcher.search(stations, lateral_samples, start, preferred, edge_safe, edge_cost)",
+          "type": "sync",
+          "order": 3,
+          "y": 316.0,
+          "note": "在弧长-横向格点上做精确 DP：DP 负责找可行拓扑，非连续空间全局最优。"
+        },
+        {
+          "id": "msg_horiz_dp_edge",
+          "from_lifeline": "life_horiz_dp",
+          "to_lifeline": "life_horiz_dp",
+          "label": "quintic_edge(ds, prev, target, samples) -> l, dl, ddl",
+          "type": "self",
+          "order": 4,
+          "y": 372.0,
+          "note": "相邻列用五次多项式连接，横向斜率采样 {-0.2, 0, 0.2}（末列固定为 0）。"
+        },
+        {
+          "id": "msg_horiz_dp_safe",
+          "from_lifeline": "life_horiz_dp",
+          "to_lifeline": "life_horiz_dp",
+          "label": "edge_is_safe: 5-point body offsets within convex corridor",
+          "type": "self",
+          "order": 5,
+          "y": 438.0,
+          "note": "沿边以 <=0.5 m 求值，校验车身 5 点足迹与 |dl|<=tan(0.35)；不安全边代价置无穷。"
+        },
+        {
+          "id": "msg_horiz_dp_cost",
+          "from_lifeline": "life_horiz_dp",
+          "to_lifeline": "life_horiz_dp",
+          "label": "cost = C(parent) + ds*mean((l-pref)^2 + 20*dl^2 + 100*ddl^2) + clearance",
+          "type": "self",
+          "order": 6,
+          "y": 500.0,
+          "note": "递推 C(B)=min_A[C(A)+cost(A->B)]，每个状态只保留最优父节点（精确 DP 剪枝）。"
+        },
+        {
+          "id": "msg_horiz_dp_fail",
+          "from_lifeline": "life_horiz_dp",
+          "to_lifeline": "life_horiz_planner",
+          "label": "return None -> dp_infeasible",
+          "type": "return",
+          "order": 7,
+          "y": 572.0,
+          "note": "某列无可行端点或无可达状态时返回 None，规划失败关闭。"
+        },
+        {
+          "id": "msg_horiz_dp_ret",
+          "from_lifeline": "life_horiz_dp",
+          "to_lifeline": "life_horiz_planner",
+          "label": "return best state chain (argmin + backtrack)",
+          "type": "return",
+          "order": 8,
+          "y": 622.0,
+          "note": "终点取最低代价，沿父指针回溯得到状态链。"
+        },
+        {
+          "id": "msg_horiz_dense",
+          "from_lifeline": "life_horiz_planner",
+          "to_lifeline": "life_horiz_dp",
+          "label": "searcher.densify(stations, values, samples) -> dp_l; convex_bounds -> lower/upper",
+          "type": "sync",
+          "order": 9,
+          "y": 678.0,
+          "note": "用选中的五次多项式增密得 dp_l，并据此构造 QP 走廊与障碍侧向。"
+        },
+        {
+          "id": "msg_horiz_qp_call",
+          "from_lifeline": "life_horiz_planner",
+          "to_lifeline": "life_horiz_qp",
+          "label": "smoother.solve(knots, samples, start, target_profile, lower, upper, road_limits, footprint_constraints, max_slope)",
+          "type": "sync",
+          "order": 10,
+          "y": 738.0,
+          "note": "凸 QP：平方代价 + 线性等式/不等式；失败返回 None，绝不产出未验证路径。"
+        },
+        {
+          "id": "msg_horiz_qp_build",
+          "from_lifeline": "life_horiz_qp",
+          "to_lifeline": "life_horiz_qp",
+          "label": "H = 10.1*L^T L + 20*D^T D + 100*A^T A + 10*J^T diag(h) J; q = -L^T(10*dp_l + 0.1*pref)",
+          "type": "self",
+          "order": 11,
+          "y": 794.0,
+          "note": "变量 x=[l_0.., dl.., ddl.., j..]，把分段常 jerk 也作为决策变量。"
+        },
+        {
+          "id": "msg_horiz_qp_constr",
+          "from_lifeline": "life_horiz_qp",
+          "to_lifeline": "life_horiz_qp",
+          "label": "E(state integration)=0; initial=start; lower<=L<=upper; |D|<=tan(0.35); road & footprint; |A|<=max_ddl",
+          "type": "self",
+          "order": 12,
+          "y": 866.0,
+          "note": "常 jerk 精确积分作等式约束，避免长时域三阶积分病态；走廊/坡度/足迹作不等式。"
+        },
+        {
+          "id": "msg_horiz_qp_solve",
+          "from_lifeline": "life_horiz_qp",
+          "to_lifeline": "life_horiz_osqp",
+          "label": "setup(P, q, C, l, u) + warm_start(dp_l seed); solve()",
+          "type": "sync",
+          "order": 13,
+          "y": 936.0,
+          "note": "OSQP 迭代/时间上限、polishing，raise_error=False 后判状态码。"
+        },
+        {
+          "id": "msg_horiz_osqp_ret",
+          "from_lifeline": "life_horiz_osqp",
+          "to_lifeline": "life_horiz_qp",
+          "label": "return x, info.status",
+          "type": "return",
+          "order": 14,
+          "y": 986.0,
+          "note": "返回解与求解状态。"
+        },
+        {
+          "id": "msg_horiz_qp_check",
+          "from_lifeline": "life_horiz_qp",
+          "to_lifeline": "life_horiz_qp",
+          "label": "status in {solved, solved inaccurate} and Cx within [l,u]+/-1e-5",
+          "type": "self",
+          "order": 15,
+          "y": 1052.0,
+          "note": "约束残差复核；越界或非有限解判为失败。"
+        },
+        {
+          "id": "msg_horiz_qp_fail",
+          "from_lifeline": "life_horiz_qp",
+          "to_lifeline": "life_horiz_planner",
+          "label": "return None -> qp_failed",
+          "type": "return",
+          "order": 16,
+          "y": 1108.0,
+          "note": "求解失败/边界非法/残差超限都返回 None。"
+        },
+        {
+          "id": "msg_horiz_qp_ret",
+          "from_lifeline": "life_horiz_qp",
+          "to_lifeline": "life_horiz_planner",
+          "label": "return l, dl, ddl",
+          "type": "return",
+          "order": 17,
+          "y": 1158.0,
+          "note": "返回优化后的横向偏移及其导数。"
+        },
+        {
+          "id": "msg_horiz_xy",
+          "from_lifeline": "life_horiz_planner",
+          "to_lifeline": "life_horiz_planner",
+          "label": "Frenet->XY (x, y, theta, kappa); handover boundary exact match",
+          "type": "self",
+          "order": 18,
+          "y": 1214.0,
+          "note": "SL 转 XY 并求 heading/曲率；交接段保持已承诺边界精确一致。"
+        },
+        {
+          "id": "msg_horiz_validate",
+          "from_lifeline": "life_horiz_planner",
+          "to_lifeline": "life_horiz_planner",
+          "label": "edge_safe recheck + SAT _trajectory_is_safe + body-corner road check",
+          "type": "self",
+          "order": 19,
+          "y": 1280.0,
+          "note": "对结果做几何复核：走廊、矩形 SAT 碰撞、车身四角是否越出道路。"
+        },
+        {
+          "id": "msg_horiz_valid_fail",
+          "from_lifeline": "life_horiz_planner",
+          "to_lifeline": "life_horiz_planner",
+          "label": "return [] (validation_failed / body_outside_road)",
+          "type": "self",
+          "order": 20,
+          "y": 1330.0,
+          "note": "任一复核失败即丢弃结果，不发布。"
+        },
+        {
+          "id": "msg_horiz_ok",
+          "from_lifeline": "life_horiz_planner",
+          "to_lifeline": "life_horiz_planner",
+          "label": "store _previous_profile; status=solved; return points",
+          "type": "self",
+          "order": 21,
+          "y": 1380.0,
+          "note": "记录本轮剖面用于下轮时间平滑；成功返回路径点。"
+        }
+      ],
+      "fragments": [
+        {
+          "id": "frag_horiz_dp_loop",
+          "type": "loop",
+          "label": "[for each station column]",
+          "x": 90.0,
+          "width": 620.0,
+          "y_start": 352.0,
+          "y_end": 522.0
+        },
+        {
+          "id": "frag_horiz_dp_alt",
+          "type": "alt",
+          "label": "[else: no reachable state]",
+          "x": 90.0,
+          "width": 620.0,
+          "y_start": 558.0,
+          "y_end": 648.0
+        },
+        {
+          "id": "frag_horiz_qp_alt",
+          "type": "alt",
+          "label": "[else: solve failed / residual over limit]",
+          "x": 90.0,
+          "width": 1000.0,
+          "y_start": 1040.0,
+          "y_end": 1124.0
+        },
+        {
+          "id": "frag_horiz_val_alt",
+          "type": "alt",
+          "label": "[else: validation failed]",
+          "x": 90.0,
+          "width": 1000.0,
+          "y_start": 1266.0,
+          "y_end": 1344.0
+        }
+      ],
+      "components": [],
+      "comp_relations": [],
+      "grid_visible": true,
+      "grid_size": 20,
+      "grid_color": "#833a3a",
+      "grid_thickness": 2,
+      "snap_to_grid": true,
+      "zoom": 0.55,
+      "pan_x": 0.0,
+      "pan_y": 0.0
+    },
+    {
+      "version": "1.0",
+      "name": "Longitudinal Speed DP + QP Flow",
+      "diagram_type": "sequence",
+      "component_id": "",
+      "classes": [],
+      "relations": [],
+      "lifelines": [
+        {
+          "id": "life_long_node",
+          "name": "node: SpeedPlannerNode",
+          "class_ref": "class_speedplannernode",
+          "x": 120.0,
+          "activations": []
+        },
+        {
+          "id": "life_long_planner",
+          "name": "planner: STSpeedPlanner",
+          "class_ref": "class_stspeed",
+          "x": 480.0,
+          "activations": []
+        },
+        {
+          "id": "life_long_dp",
+          "name": "dp: StSpeedDpSearcher",
+          "class_ref": "class_stspeeddpsearcher",
+          "x": 840.0,
+          "activations": []
+        },
+        {
+          "id": "life_long_qp",
+          "name": "qp: StSpeedQpSmoother",
+          "class_ref": "class_stspeedqpsmoother",
+          "x": 1200.0,
+          "activations": []
+        },
+        {
+          "id": "life_long_osqp",
+          "name": "osqp: OSQP",
+          "class_ref": "",
+          "x": 1560.0,
+          "activations": []
+        }
+      ],
+      "messages": [
+        {
+          "id": "msg_long_req",
+          "from_lifeline": "life_long_node",
+          "to_lifeline": "life_long_planner",
+          "label": "plan(path, state, obstacles, vehicle, target_speed_kmh, max_lateral_accel, destination, closed_route, speed_limits)",
+          "type": "sync",
+          "order": 1,
+          "y": 200.0,
+          "note": "消费已确定的几何路径，输出 s(t)/v(t)/a(t)/jerk(t)。"
+        },
+        {
+          "id": "msg_long_input",
+          "from_lifeline": "life_long_planner",
+          "to_lifeline": "life_long_planner",
+          "label": "validate input; reverse_motion / invalid_input / path_exhausted early-out",
+          "type": "self",
+          "order": 2,
+          "y": 270.0,
+          "note": "非法输入或倒车直接返回空参考（fail-closed）。"
+        },
+        {
+          "id": "msg_long_geom",
+          "from_lifeline": "life_long_planner",
+          "to_lifeline": "life_long_planner",
+          "label": "RouteGeometry.project -> origin_s; sample 0.25 m curvature/route caps",
+          "type": "self",
+          "order": 3,
+          "y": 336.0,
+          "note": "沿路径 0.25 m 计算曲率限速 sqrt(a_lat/kappa)、路段限速与终点。"
+        },
+        {
+          "id": "msg_long_obs",
+          "from_lifeline": "life_long_planner",
+          "to_lifeline": "life_long_planner",
+          "label": "SAT _intersects -> stop line; moving conflict -> unsupported_moving_conflict",
+          "type": "self",
+          "order": 4,
+          "y": 402.0,
+          "note": "静态障碍取 min(s)-stop_gap 作为停车线；移动障碍冲突返回无效参考。"
+        },
+        {
+          "id": "msg_long_env",
+          "from_lifeline": "life_long_planner",
+          "to_lifeline": "life_long_planner",
+          "label": "back-propagate braking envelope caps[i]<-min(caps[i], sqrt(caps[i+1]^2+decel*dS)); overspeed recovery",
+          "type": "self",
+          "order": 5,
+          "y": 468.0,
+          "note": "先反向传播制动包络，再加超速恢复包络，防止束搜索丢失制动解。"
+        },
+        {
+          "id": "msg_long_dp_call",
+          "from_lifeline": "life_long_planner",
+          "to_lifeline": "life_long_dp",
+          "label": "beam DP over (t, s, v, a) time lattice",
+          "type": "sync",
+          "order": 6,
+          "y": 528.0,
+          "note": "DP 在时间格点搜索速度曲线，jerk 对时间求导。"
+        },
+        {
+          "id": "msg_long_dp_step",
+          "from_lifeline": "life_long_dp",
+          "to_lifeline": "life_long_dp",
+          "label": "constant-jerk integrate (s,v,a); v>=0, s<=upper_s, accel bounds, brake consistency",
+          "type": "self",
+          "order": 7,
+          "y": 584.0,
+          "note": "7 档 jerk 加 4 个自适应边界动作（到达加速度界、零加速度、两步平稳停车）。"
+        },
+        {
+          "id": "msg_long_dp_beam",
+          "from_lifeline": "life_long_dp",
+          "to_lifeline": "life_long_dp",
+          "label": "quantize (s,v,a), dedupe distinct states, keep fastest-brake; beam_width=96",
+          "type": "self",
+          "order": 8,
+          "y": 650.0,
+          "note": "按 (s,v,a) 量化键去重保留不同状态，低速区细分，强制保留最快制动候选。"
+        },
+        {
+          "id": "msg_long_dp_fail",
+          "from_lifeline": "life_long_dp",
+          "to_lifeline": "life_long_planner",
+          "label": "return empty -> dp_infeasible_stepN",
+          "type": "return",
+          "order": 9,
+          "y": 712.0,
+          "note": "某层无有效转移即返回空，规划失败关闭。"
+        },
+        {
+          "id": "msg_long_dp_ret",
+          "from_lifeline": "life_long_dp",
+          "to_lifeline": "life_long_planner",
+          "label": "return best (s,v,a) chain as QP seed",
+          "type": "return",
+          "order": 10,
+          "y": 762.0,
+          "note": "按代价 argmin 回溯得到状态链，作为 QP 初值与可行走廊。"
+        },
+        {
+          "id": "msg_long_qp_call",
+          "from_lifeline": "life_long_planner",
+          "to_lifeline": "life_long_qp",
+          "label": "build x=[s,v,a,j]; weights + constant-jerk equalities + corridor/speed/accel/jerk/terminal constraints",
+          "type": "sync",
+          "order": 11,
+          "y": 822.0,
+          "note": "代价加权跟踪期望速度；终端停车时 s、v 加大权重并约束 v_N=a_N=0。"
+        },
+        {
+          "id": "msg_long_qp_solve",
+          "from_lifeline": "life_long_qp",
+          "to_lifeline": "life_long_osqp",
+          "label": "setup(P=diag(2w), q=-2w*ref, A, l, u); solve()",
+          "type": "sync",
+          "order": 12,
+          "y": 888.0,
+          "note": "带迭代精化上限的 OSQP 求解。"
+        },
+        {
+          "id": "msg_long_osqp_ret",
+          "from_lifeline": "life_long_osqp",
+          "to_lifeline": "life_long_qp",
+          "label": "return z, info.status",
+          "type": "return",
+          "order": 13,
+          "y": 938.0,
+          "note": "返回解与状态。"
+        },
+        {
+          "id": "msg_long_qp_check",
+          "from_lifeline": "life_long_qp",
+          "to_lifeline": "life_long_qp",
+          "label": "max(A z - [l,u]) <= 2e-3 else qp_constraint_violation",
+          "type": "self",
+          "order": 14,
+          "y": 994.0,
+          "note": "约束残差复核，超限判失败。"
+        },
+        {
+          "id": "msg_long_qp_fail",
+          "from_lifeline": "life_long_qp",
+          "to_lifeline": "life_long_planner",
+          "label": "return empty -> qp_<status>",
+          "type": "return",
+          "order": 15,
+          "y": 1054.0,
+          "note": "求解失败即返回空错误码，绝不发布未验证轨迹。"
+        },
+        {
+          "id": "msg_long_dense",
+          "from_lifeline": "life_long_planner",
+          "to_lifeline": "life_long_planner",
+          "label": "dense re-validation (9 samples/interval + accel zero-crossing): v>=0, s<=upper_s, accel bounds, v<=qp_limit+0.12",
+          "type": "self",
+          "order": 16,
+          "y": 1110.0,
+          "note": "对加速度过零/停车临界点额外采样复核。"
+        },
+        {
+          "id": "msg_long_refine",
+          "from_lifeline": "life_long_planner",
+          "to_lifeline": "life_long_planner",
+          "label": "if invalid: tighten speed upper bounds and re-solve (<=4) else spatial_limit_refinement_failed",
+          "type": "self",
+          "order": 17,
+          "y": 1182.0,
+          "note": "按优化后站点重算曲率/限速并 update，迭代精化。"
+        },
+        {
+          "id": "msg_long_ret",
+          "from_lifeline": "life_long_planner",
+          "to_lifeline": "life_long_node",
+          "label": "return SpeedPlan(time, s, v, a, jerk, origin_s, stop_s, 'solved', dp_cost)",
+          "type": "return",
+          "order": 18,
+          "y": 1242.0,
+          "note": "仅在残差与稠密校验通过时返回 valid 的速度规划。"
+        }
+      ],
+      "fragments": [
+        {
+          "id": "frag_long_dp_loop",
+          "type": "loop",
+          "label": "[for each time step]",
+          "x": 450.0,
+          "width": 620.0,
+          "y_start": 560.0,
+          "y_end": 672.0
+        },
+        {
+          "id": "frag_long_dp_alt",
+          "type": "alt",
+          "label": "[else: no feasible transition]",
+          "x": 450.0,
+          "width": 620.0,
+          "y_start": 700.0,
+          "y_end": 760.0
+        },
+        {
+          "id": "frag_long_qp_alt",
+          "type": "alt",
+          "label": "[else: solve / dense validation failed]",
+          "x": 450.0,
+          "width": 940.0,
+          "y_start": 1044.0,
+          "y_end": 1196.0
+        }
+      ],
+      "components": [],
+      "comp_relations": [],
+      "grid_visible": true,
+      "grid_size": 20,
+      "grid_color": "#833a3a",
+      "grid_thickness": 2,
+      "snap_to_grid": true,
+      "zoom": 0.46954316484149544,
+      "pan_x": 128.21571999423912,
+      "pan_y": 164.65480979769671
     }
   ],
-  "active_diagram_index": 2
+  "active_diagram_index": 0
 }
