@@ -9,6 +9,8 @@ rosidl_generate_interfaces(${PROJECT_NAME}
   "msg/VehicleState.msg"
   "msg/PathPoint.msg"
   "msg/Path.msg"
+  "msg/SpeedPoint.msg"
+  "msg/SpeedProfile.msg"
   "msg/Obstacle.msg"
   "msg/ObstacleArray.msg"
   "msg/ControlCommand.msg"

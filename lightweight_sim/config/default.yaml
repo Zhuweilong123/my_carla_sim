@@ -1,148 +1,48 @@
-simulator_node:
-  ros__parameters:
-    # Shared defaults are defined in engine/runtime_config.py.
-    # The simulator owns /clock and uses a wall timer to advance fixed-step physics.
-    use_sim_time: false
-    scenario: obstacle
-    dynamic_max_substep_s: 0.0025
-    # Opt in with launch steering_profile:=assumed; not real-vehicle calibration.
-    steering_profile: ideal
-    physics_dt: 0.05
-    command_timeout: 0.25
-    default_speed_limit_kmh: 40.0
-    straight_speed_limit_kmh: 50.0
-    curve_speed_limit_kmh: 40.0
-    intersection_speed_limit_kmh: 25.0
-    lane_change_speed_limit_kmh: 40.0
-    parking_speed_limit_kmh: 12.0
-    target_speed_ratio: 0.85
-    speed_profile_lookahead_m: 20.0
-    max_lateral_accel_mps2: 2.0
-    publish_clock: true
-    frame_id: map
-    vehicle_a_m: 1.015
-    vehicle_b_m: 1.895
-    vehicle_mass_kg: 1412.0
-    vehicle_cf_n_per_rad: -148970.0
-    vehicle_cr_n_per_rad: -82204.0
-    vehicle_iz_kgm2: 1537.0
-    vehicle_max_steer_rad: 0.5
-    vehicle_max_accel_mps2: 3.0
-    vehicle_max_decel_mps2: 6.0
-    vehicle_width_m: 2.0
-    vehicle_body_overhang_m: 1.0
-    steering_time_constant_s: 0.15
-    steering_delay_s: 0.05
-    steering_rate_limit_rad_s: 0.6
+# 常用配置：场景、算法选择、速度策略、地图和 GUI。
+# 其余配置见本目录 README.md；标准 launch 自动加载全部配置文件。
+# scenario / steering_profile 的 launch 默认值读取本文件，命令行可覆盖。
+# 修改安装前的源码配置后需重新构建并重启节点。
 
-planner_node:
+/**/simulator_node:
   ros__parameters:
-    # Planner timers and output timestamps follow the simulator clock.
-    use_sim_time: true
-    plan_period: 0.05
-    result_poll_period: 0.02
-    prediction_time: 0.2
-    lane_width: 3.5
-    num_lanes: 2
-    routing_reference_topic: routing/reference_line
-    routing_corridor_margin_m: 1.1
-    local_plan_points: 80
-    local_transition_distance_m: 12.0
-    local_collision_margin_m: 0.25
-    local_obstacle_longitudinal_min_m: -5.0
-    local_obstacle_longitudinal_max_m: 65.0
-    local_obstacle_lateral_clearance_m: 2.2
-    local_vehicle_length_m: 4.0
-    local_vehicle_width_m: 2.0
+    scenario: obstacle  # 初始场景：default、demo_grid、obstacle、three_lane、curve、figure_eight、reverse_parking；launch 可覆盖。
+    steering_profile: ideal  # 转向执行器模式：ideal 为理想响应，assumed 含假设的延迟/惯性/速率限制；launch 可覆盖，非实车标定。
+    physics_dt: 0.05  # 物理/控制模型的离散步长，单位 s，必须为正；控制端应与仿真端一致。
+    default_speed_limit_kmh: 40.0  # 未单独分类路段/场景的默认限速，单位 km/h，必须为正。
+    straight_speed_limit_kmh: 60.0  # 直线路段/场景的限速，单位 km/h，必须为正。
+    curve_speed_limit_kmh: 40.0  # 弯道路段/场景的限速，单位 km/h，另受横向加速度约束。
+    intersection_speed_limit_kmh: 40.0  # 交叉口路段/场景的限速，单位 km/h。
+    lane_change_speed_limit_kmh: 40.0  # 换道路段/场景的限速，单位 km/h。
+    parking_speed_limit_kmh: 12.0  # 泊车场景的限速，单位 km/h。
+    target_speed_ratio: 1.0  # 限速转目标速度的比例，取值 (0, 1]；目标速度 = 路段限速 × 此比例。
+    max_lateral_accel_mps2: 2.0  # 弯道速度约束的最大横向加速度，单位 m/s²；传给控制端，用于 v²×曲率限速。
 
-controller_node:
+/**/planner_node:
   ros__parameters:
-    # Controller timers, freshness checks and command timestamps follow /clock.
-    use_sim_time: true
-    controller: LQR_controller
-    physics_dt: 0.05
-    target_speed_kmh: 34.0
-    routing_reference_topic: routing/reference_line
-    speed_profile_lookahead_m: 20.0
-    control_period: 0.05
-    state_timeout: 0.25
-    plan_timeout: 1.5
-    output_topic: control_command/cruise
-    actuator_compensation: true
-    lateral_q_weights: [200.0, 1.0, 50.0, 1.0]
-    lateral_r: 100.0
-    dynamic_lateral_r: 300.0
-    lateral_feedback_horizon_s: 0.0
-    lateral_smooth_reference_heading: true
-    lateral_discretization: plant
-    longitudinal_kp: 1.15
-    longitudinal_ki: 0.0
-    longitudinal_kd: 0.55
-    longitudinal_error_threshold_kmh: 1.0
-    longitudinal_max_jerk_mps3: 40.0
-    longitudinal_coupling_gain: 0.5
+    local_planner_algorithm: dp_qp  # 局部算法：dp_qp 为正式 DP+QP；baseline 为原车道候选五次多项式对比算法。
 
-routing_node:
+/**/controller_node:
   ros__parameters:
-    use_sim_time: true
-    map_file: ""
-    map_dir: config/maps
-    request_topic: routing/request
-    route_topic: routing/route
-    service_name: routing/compute_route
-    turn_penalty_s: 2.0
-    lane_change_penalty_s: 1.0
-    u_turn_penalty_s: 30.0
-    sample_spacing_m: 1.0
+    controller: LQR_controller  # 横向算法：LQR_controller 或 MPC_controller；修改运行参数后需重置场景才重建控制器，纵向默认 PID。
 
-reference_line_node:
+/**/routing_node:
   ros__parameters:
-    use_sim_time: true
-    map_file: ""
-    map_dir: config/maps
-    route_topic: routing/route
-    reference_topic: routing/reference_line
-    sample_spacing_m: 1.0
-    max_lateral_deviation_m: 0.15
-    join_tolerance_m: 0.25
-    boundary_margin_m: 0.1
-    max_reference_curvature_1pm: 0.15
-    junction_angle_threshold_rad: 0.7
+    map_file: ""  # 指定单个 JSON 地图；空字符串时加载 map_dir 下所有 JSON；相对路径以安装包目录为基准。
+    map_dir: config/maps  # 批量加载地图的目录；仅 map_file 为空时使用，相对路径以安装包目录为基准。
 
-simulator_gui:
+/**/reference_line_node:
   ros__parameters:
-    use_sim_time: true
-    screen_width: 1200
-    screen_height: 800
-    lane_width: 3.5
-    num_lanes: 2
-    target_speed_kmh: 34.0
-    render_fps: 60
-    initial_mode: CRUISE
-    initial_control_source: AUTO
-    mode_publish_period: 1.0
+    map_file: ""  # 指定单个 JSON 地图；空字符串时加载 map_dir 下所有 JSON；相对路径以安装包目录为基准。
+    map_dir: config/maps  # 批量加载地图的目录；仅 map_file 为空时使用，相对路径以安装包目录为基准。
 
-controller_manager:
+/**/simulator_gui:
   ros__parameters:
-    use_sim_time: true
-    default_mode: CRUISE
-    default_control_source: AUTO
-    switch_hold_s: 0.5
-    command_timeout: 0.35
-    safety_stop_timeout_s: 0.25
-    update_period: 0.02
+    screen_width: 1200  # GUI 窗口宽度，单位像素。
+    screen_height: 800  # GUI 窗口高度，单位像素。
+    render_fps: 60  # GUI 目标渲染帧率，单位帧/s；不改变物理仿真步长。
+    initial_mode: CRUISE  # GUI 初始请求的控制模式：CRUISE、PARKING、MANUAL 或 EMERGENCY_STOP。
+    initial_control_source: AUTO  # GUI 初始控制来源：AUTO 使用模式对应控制器，MANUAL 使用手动控制候选。
 
-safe_stop_node:
+/**/parking_controller_node:
   ros__parameters:
-    use_sim_time: false
-    planned_path_timeout_s: 0.25
-    update_period_s: 0.05
-    reference_topic: routing/reference_line
-    stop_topic: safety/stop_request
-
-parking_controller_node:
-  ros__parameters:
-    use_sim_time: true
-    # hybrid_astar is the default; set to baseline to compare the legacy planner.
-    planner_type: hybrid_astar
-    output_topic: control_command/parking
+    planner_type: hybrid_astar  # 泊车路径规划算法：hybrid_astar 为默认混合 A*，baseline 为旧版基线规划器。

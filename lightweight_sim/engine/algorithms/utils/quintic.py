@@ -52,3 +52,70 @@ def evaluate_quintic(coeffi: List[float], s: np.ndarray):
            20 * coeffi[5] * s**3)
     dddl = 6 * coeffi[3] + 24 * coeffi[4] * s + 60 * coeffi[5] * s**2
     return l, dl, ddl, dddl
+
+
+def quintic_transition(ratio):
+    """Zero-slope/zero-second-derivative blend on [0, 1].
+
+    This is the normalized quintic solution for a spatial lateral transition;
+    it does not claim minimum temporal jerk for varying vehicle speed.
+    """
+    u = np.clip(ratio, 0.0, 1.0)
+    return u**3 * (10.0 + u * (-15.0 + 6.0*u))
+
+
+def sample_quintic_path(reference, start_l, target_l, transition_distance_m,
+                        sampling_resolution_m=0.5, *, lateral_bounds=None):
+    """Densify a reference-relative quintic lateral path in local arc length.
+
+    Keep reference vertices and the exact transition endpoint. Subdivide each
+    reference segment to the requested maximum longitudinal spacing, evaluate
+    the quintic at every sample and interpolate the corridor bounds there.
+    Headings/curvatures are recomputed from the resulting Cartesian points.
+    """
+    import math
+    from .geometry import cal_heading_kappa
+
+    if (not math.isfinite(transition_distance_m) or transition_distance_m <= 0
+            or not math.isfinite(sampling_resolution_m) or sampling_resolution_m <= 0):
+        raise ValueError('transition distance and sampling resolution must be positive and finite')
+    if lateral_bounds is not None and len(lateral_bounds) != len(reference):
+        raise ValueError('corridor bounds must match reference points')
+    if not reference:
+        return []
+    xy = []
+
+    def append_sample(first, second, fraction, distance, left_index, right_index):
+        heading_delta = math.atan2(math.sin(second[2]-first[2]), math.cos(second[2]-first[2]))
+        heading = first[2]+fraction*heading_delta
+        lateral = start_l+(target_l-start_l)*float(quintic_transition(distance/transition_distance_m))
+        if lateral_bounds is not None:
+            lower = (1-fraction)*lateral_bounds[left_index][0]+fraction*lateral_bounds[right_index][0]
+            upper = (1-fraction)*lateral_bounds[left_index][1]+fraction*lateral_bounds[right_index][1]
+            if lower > upper:
+                raise ValueError('invalid drivable corridor bounds')
+            lateral = max(lower, min(upper, lateral))
+        x = first[0]+fraction*(second[0]-first[0])-lateral*math.sin(heading)
+        y = first[1]+fraction*(second[1]-first[1])+lateral*math.cos(heading)
+        if not xy or math.hypot(x-xy[-1][0], y-xy[-1][1]) > 1e-9:
+            xy.append((x, y))
+
+    append_sample(reference[0], reference[0], 0.0, 0.0, 0, 0)
+    travelled = 0.0
+    for index, (first, second) in enumerate(zip(reference[:-1], reference[1:])):
+        length = math.hypot(second[0]-first[0], second[1]-first[1])
+        if length <= 1e-9:
+            continue
+        steps = max(1, math.ceil(length/sampling_resolution_m))
+        fractions = [step/steps for step in range(1, steps+1)]
+        if travelled < transition_distance_m < travelled+length:
+            endpoint = (transition_distance_m-travelled)/length
+            if all(abs(fraction-endpoint) > 1e-12 for fraction in fractions):
+                fractions.append(endpoint)
+                fractions.sort()
+        for fraction in fractions:
+            append_sample(first, second, fraction, travelled+fraction*length, index, index+1)
+        travelled += length
+    headings, curvatures = cal_heading_kappa(xy)
+    return [(x, y, heading, curvature)
+            for (x, y), heading, curvature in zip(xy, headings, curvatures)]

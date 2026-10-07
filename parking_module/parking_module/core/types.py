@@ -101,6 +101,7 @@ class ParkingConfig:
             self.approach_deceleration,
             self.reverse_speed,
             self.sample_step,
+            self.max_steer,
             self.position_tolerance,
             self.staging_tolerance,
             self.heading_tolerance,

@@ -1,0 +1,11 @@
+# 仅服务于 local_planner_algorithm=baseline 的对比算法参数。
+# 当前 dp_qp 模式不使用这些值决定路径；仍加载以支持切换算法。
+# 两个 local_obstacle_longitudinal_* 当前比较参考点索引差，非实际弧长米数。
+
+/**/planner_node:
+  ros__parameters:
+    prediction_time: 0.2  # baseline 预测位置前视时间，单位 s；DP+QP 改用当前执行路径与接管延迟预测。
+    local_transition_distance_m: 12.0  # 横向偏移/换道的过渡距离，单位 m，必须为正；越大过渡越长。
+    local_obstacle_longitudinal_min_m: -5.0  # baseline 参考点索引差阈值；1 m 采样时才近似米数。
+    local_obstacle_longitudinal_max_m: 65.0  # baseline 参考点索引差阈值；1 m 采样时才近似米数。
+    local_obstacle_lateral_clearance_m: 2.2  # 障碍物影响候选横向位置的距离阈值，单位 m；在此范围内认为该横向位置受阻。

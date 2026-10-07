@@ -69,7 +69,7 @@ The ROS 2 adapter selects the planner from
 `lightweight_sim/config/default.yaml`:
 
 ```yaml
-parking_controller_node:
+/**/parking_controller_node:
   ros__parameters:
     planner_type: hybrid_astar  # or baseline
 ```

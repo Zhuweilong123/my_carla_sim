@@ -122,14 +122,6 @@ class SimulatorNode(Node):
             select_parking_slot(config, int(self.get_parameter("parking_slot_id").value))
         attach_map_road_network(config)
         config.physics_dt = self.physics_dt
-        config.dynamic_max_substep_s = float(
-            self.get_parameter("dynamic_max_substep_s").value
-        )
-        if (
-            not math.isfinite(config.dynamic_max_substep_s)
-            or config.dynamic_max_substep_s <= 0.0
-        ):
-            raise ValueError("dynamic_max_substep_s must be positive and finite")
         self._apply_runtime_parameters(config)
         self.engine = SimulationEngine(config)
         self.command = ControlCommand()
@@ -160,6 +152,12 @@ class SimulatorNode(Node):
         )
 
     def _apply_runtime_parameters(self, config) -> None:
+        config.dynamic_max_substep_s = float(
+            self.get_parameter("dynamic_max_substep_s").value
+        )
+        if (not math.isfinite(config.dynamic_max_substep_s)
+                or config.dynamic_max_substep_s <= 0.0):
+            raise ValueError("dynamic_max_substep_s must be positive and finite")
         speed_limits = {
             "default": float(self.get_parameter("default_speed_limit_kmh").value),
             "straight": float(self.get_parameter("straight_speed_limit_kmh").value),
@@ -383,6 +381,8 @@ class SimulatorNode(Node):
         message.yaw_rate = state.r
         message.steering_angle = state.steer
         message.acceleration = state.accel
+        message.steering_history_valid = True
+        message.steering_delay_queue = self.engine.steering.history_snapshot(self.physics_dt)
         self.state_pub.publish(message)
 
         obstacles = ObstacleArray()

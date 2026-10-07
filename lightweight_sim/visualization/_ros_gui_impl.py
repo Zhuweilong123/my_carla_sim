@@ -12,9 +12,11 @@ from .colors import GRID, HUD_TEXT, HUD_WARNING, LANE_DASH, ROAD_EDGE, ROAD_SURF
 from .hud import HUD
 from .pygame_compat import configure_display_driver, patch_sysfont_for_python314
 from .renderer import Camera, Renderer
+from .state_interpolation import VehicleStateInterpolator
 
 
-REFERENCE_LINE_PATH = (35, 195, 255)
+# Muted coral keeps the reference visible without competing with the local plan.
+REFERENCE_LINE_PATH = (198, 126, 116)
 ROUTING_PATH = (220, 90, 255)
 ROUTING_LANE_FILL = (165, 60, 220, 48)
 ROUTING_LANE_EDGE = (220, 120, 255)
@@ -151,6 +153,37 @@ class RosGuiView:
         self.started_at = time.monotonic()
         self._history_scenario = ""
         self._camera_scenario = ""
+        self._init_navigation()
+        self._init_display_state()
+
+    def _init_display_state(self):
+        self._display_states = VehicleStateInterpolator()
+        self._last_render_time = None
+
+    def update_display_state(self, state):
+        self._display_states.push(state)
+
+    def reset_display_state(self):
+        self._display_states.reset()
+        self._camera_scenario = None
+
+    def _display_vehicle_state(self, snapshot):
+        return self._display_states.sample(
+            paused=snapshot.status.paused or snapshot.status.done or snapshot.scene_editing,
+        ) or snapshot.state
+
+    @staticmethod
+    def _speed_error(snapshot):
+        measured = getattr(snapshot, "tracking_metrics", None)
+        if (snapshot.control_source.upper() != "AUTO" or snapshot.mode.upper() != "CRUISE"
+                or snapshot.status.scenario == "reverse_parking" or not measured
+                or abs(snapshot.state.timestamp-measured.get("timestamp", -1e9)) > 0.25):
+            return None
+        value = measured.get("speed_error_kmh")
+        return value if isinstance(value, (int, float)) and math.isfinite(value) else None
+
+    def _init_navigation(self):
+        self._mouse_panning = False
 
     @staticmethod
     def _tracking_error(snapshot: GuiSnapshot) -> Tuple[float, float]:
@@ -198,6 +231,8 @@ class RosGuiView:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 actions.append(GuiAction("quit"))
+            elif event.type == pygame.WINDOWFOCUSLOST:
+                self._init_navigation()
             elif event.type == pygame.KEYDOWN:
                 actions.append(GuiAction("key_down", event.key))
                 if event.key == pygame.K_ESCAPE:
@@ -212,22 +247,52 @@ class RosGuiView:
                     self.camera.zoom(0.1)
                 elif event.key == pygame.K_MINUS:
                     self.camera.zoom(-0.1)
+                elif event.key == pygame.K_f:
+                    # Recenter on the next state-bearing frame, then follow.
+                    self._camera_scenario = None
             elif event.type == pygame.KEYUP:
                 actions.append(GuiAction("key_up", event.key))
             elif event.type == pygame.MOUSEWHEEL:
-                self.camera.zoom(0.1 if event.y > 0 else -0.1)
-            elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
-                actions.append(GuiAction("mouse_click", event.pos))
+                dx = getattr(event, "precise_x", event.x)
+                dy = getattr(event, "precise_y", event.y)
+                if getattr(event, "flipped", False):
+                    dx, dy = -dx, -dy
+                if pygame.key.get_mods() & pygame.KMOD_CTRL:
+                    if dy:
+                        self.camera.zoom(max(-0.5, min(0.5, dy * 0.1)))
+                else:
+                    self.camera.pan(dx * 32, dy * 32)
+            elif event.type in (pygame.MOUSEBUTTONDOWN, pygame.MOUSEBUTTONUP, pygame.MOUSEMOTION):
+                if event.type == pygame.MOUSEBUTTONDOWN:
+                    if event.button == 2:
+                        self._mouse_panning = True
+                    elif event.button == 1:
+                        actions.append(GuiAction("mouse_click", event.pos))
+                elif event.type == pygame.MOUSEBUTTONUP and event.button == 2:
+                    self._mouse_panning = False
+                elif event.type == pygame.MOUSEMOTION and self._mouse_panning:
+                    self.camera.pan(*event.rel)
         return actions
 
     def render(self, snapshot: GuiSnapshot) -> None:
-        if snapshot.state is not None:
+        now = time.monotonic()
+        frame_dt = (
+            1.0 / max(1, self.render_fps) if self._last_render_time is None
+            else max(0.0, min(0.25, now - self._last_render_time))
+        )
+        self._last_render_time = now
+        display_state = self._display_vehicle_state(snapshot) if snapshot.state is not None else None
+        if display_state is not None:
             if snapshot.status.scenario != self._camera_scenario:
-                self.camera.cx = snapshot.state.x
-                self.camera.cy = snapshot.state.y
+                self.camera.cx = display_state.x
+                self.camera.cy = display_state.y
+                self.camera.follow_enabled = True
                 self._camera_scenario = snapshot.status.scenario
-            else:
-                self.camera.follow(snapshot.state.x, snapshot.state.y, smooth=0.2)
+            elif self.camera.follow_enabled:
+                self.camera.follow(
+                    display_state.x, display_state.y,
+                    smooth=-math.expm1(-frame_dt / 0.075),
+                )
 
         self.renderer.clear()
         self.renderer.draw_grid()
@@ -252,7 +317,7 @@ class RosGuiView:
             self.renderer.draw_path(
                 [(p.x, p.y, p.theta, p.kappa) for p in active_reference],
                 color=REFERENCE_LINE_PATH,
-                width=3,
+                width=2,
             )
         if snapshot.routing_path or snapshot.reference_line_path:
             for boundary in (
@@ -287,7 +352,7 @@ class RosGuiView:
             self.renderer.draw_path(
                 snapshot.planned_path,
                 color=LOCAL_PLANNED_PATH,
-                width=2,
+                width=3,
             )
         self.renderer.draw_obstacles(snapshot.obstacles)
 
@@ -296,12 +361,13 @@ class RosGuiView:
             self._draw_text("Waiting for /vehicle/state ...", HUD_WARNING)
         else:
             if snapshot.status.scenario != self._history_scenario:
-                self.hud.ed_history.clear()
-                self.hud.ephi_history.clear()
+                self.hud.clear_history()
                 self._history_scenario = snapshot.status.scenario
             ed, ephi = self._tracking_error(snapshot)
-            self.hud.update_history(ed, ephi)
-            self.renderer.draw_vehicle(snapshot.state)
+            speed_error = self._speed_error(snapshot)
+            if not (snapshot.status.paused or snapshot.status.done or snapshot.scene_editing):
+                self.hud.update_history(ed, ephi, speed_error, snapshot.state.timestamp)
+            self.renderer.draw_vehicle(display_state)
             self._draw_scene_edit_world(snapshot)
             self.hud.render(
                 state=snapshot.state,
@@ -320,6 +386,7 @@ class RosGuiView:
                 map_name=f"{snapshot.status.scenario} [ROS 2]",
                 ed=ed,
                 ephi=ephi,
+                speed_error=speed_error,
             )
         self._draw_status(snapshot.status)
         self._draw_mode_controls(snapshot)

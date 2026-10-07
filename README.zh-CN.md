@@ -12,7 +12,7 @@ Vehicle Motion 是一个轻量级二维车辆仿真与 ROS 2 规划控制工作�
 - 独立的 `parking_module` ROS 2 包，默认使用 Hybrid A* 倒车入库规划器，同时保留基线规划器用于对比，并提供控制器适配节点。
 - 回归测试与拆分后的 GitHub Actions：每次 push/PR 运行无 ROS 的 Python 测试；相关改动或手动触发时运行 ROS 构建、集成测试和 launch smoke test。
 
-默认仿真与控制周期为 0.05 秒（20 Hz）。车辆、规划器、Routing、控制器、GUI 和安全相关参数主要配置在 `lightweight_sim/config/default.yaml`；共享时序默认值位于 `lightweight_sim/engine/runtime_config.py`。设计文档统一位于 `lightweight_sim/`：[设计总览](lightweight_sim/design/DESIGN.md)、[算法说明](lightweight_sim/design/ALGORITHMS.md)、[ROS 2 架构](lightweight_sim/design/ROS2.md)、[Routing](lightweight_sim/design/ROUTING.md) 和[参考线](lightweight_sim/design/REFERENCE_LINE.md)。
+默认仿真与控制周期为 0.05 秒（20 Hz）。常用设置在 `lightweight_sim/config/default.yaml`；车辆、算法、系统接口与备用参数分层配置，详见[配置说明](lightweight_sim/config/README.md)。共享时序默认值位于 `lightweight_sim/engine/runtime_config.py`。设计文档统一位于 `lightweight_sim/`：[设计总览](lightweight_sim/design/DESIGN.md)、[算法说明](lightweight_sim/design/ALGORITHMS.md)、[ROS 2 架构](lightweight_sim/design/ROS2.md)、[Routing](lightweight_sim/design/ROUTING.md) 和[参考线](lightweight_sim/design/REFERENCE_LINE.md)。
 
 ## 构建与启动（ROS 2 / WSL2）
 
@@ -57,9 +57,15 @@ GUI 使用数字键 `1`–`7` 切换场景：
 - 点击 `CRUISE`、`PARKING` 或 `E-STOP` 选择任务；点击控制来源按钮或按 `Q` 切换 `AUTO`/`MANUAL`。
 - `C`、`K`、`E` 分别切换巡航、泊车和紧急停车；`1`–`7` 切换场景。
 - 手动模式下，`W/S` 或上下方向键控制前进/倒车，`A/D` 或左右方向键控制转向，`SPACE` 为制动。
-- `P` 暂停/继续，`R` 重置，鼠标滚轮或 `+`/`-` 缩放，`ESC` 关闭 GUI。
+- `P` 暂停/继续，`R` 重置，`ESC` 关闭 GUI。
+- 触摸板双指上下/左右滑动平移地图，也可按住鼠标中键拖动。平移后暂停自动跟随；按 `F` 回到车辆中心并恢复跟随，切换场景也会恢复跟随。
+- `Ctrl + 滚动` 或 `+`/`-` 缩放。普通鼠标滚轮也用于平移，因为 WSLg 可能将触摸板和滚轮输入映射为相同事件。
 - 点击 `EDIT SCENE` 可暂停仿真并编辑自车初始位置和障碍物。选择 `EGO` 后点击地图设置车辆位置，按 `[`/`]` 调整朝向；`ADD` 添加矩形障碍物，`MOVE` 移动障碍物，`DELETE` 删除障碍物。选中障碍物后可用 `ROT +/-` 或 `SIZE +/-` 调整，点击 `APPLY` 应用并重置场景。场景会保持暂停，按 `E`、`P` 或点击 `RESUME` 后继续；`CANCEL` 放弃本次编辑。
 - 倒车入库场景可通过车位按钮或 `F1`–`F3` 选择三个车位之一。仿真开始后如需换位，请先暂停；选择新车位会从场景初始位置重新开始。
+
+车辆位置和朝向在相邻状态间按时间插值，相机使用同一显示位置并按经过时间平滑跟随。显示延迟约一个状态周期（通常 50 ms）；遥测和跟踪误差仍使用真实状态。暂停/重置时显示真实位置，消息中断时不外推未知运动。
+
+右下角误差面板显示横向误差（m）、航向误差（°）和速度误差（km/h），共用最近 20 秒的仿真时间轴。速度误差为控制器当前执行的目标速度减去实际速度；手动、泊车或参考数据过期时显示 `--`。暂停时历史冻结，重置或切换场景时清空。
 
 GUI 需要 Linux 图形显示环境（WSL2 下可使用 WSLg）。无头仿真、ROS 话题/服务和测试不依赖 GUI。
 
@@ -83,7 +89,7 @@ ros2 launch lightweight_sim lightweight_sim.launch.py \
 在 `lightweight_sim/config/default.yaml` 中切换泊车算法：
 
 ```yaml
-parking_controller_node:
+/**/parking_controller_node:
   ros__parameters:
     planner_type: hybrid_astar  # 或 baseline
 ```

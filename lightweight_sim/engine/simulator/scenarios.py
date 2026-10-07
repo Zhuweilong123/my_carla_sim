@@ -36,7 +36,7 @@ def figure_eight_three_lane() -> ScenarioConfig:
         ego_start_x=half_length,
         ego_start_y=0.0,
         ego_start_phi=math.pi / 2.0,
-        ego_start_speed=6.0,
+        ego_start_speed=0.0,
         speed_limit_type="curve",
         controller="LQR_controller",
         vehicle_model="dynamic",

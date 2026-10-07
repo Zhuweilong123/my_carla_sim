@@ -49,15 +49,29 @@ def group_metrics(rows):
 
 
 def provenance():
+    # Git discovery stops at filesystem boundaries in container workspaces.
+    # Find the checkout explicitly; .git can also be a worktree pointer file.
+    git_root = next((path for path in (ROOT, *ROOT.parents)
+                     if (path/".git").exists()), ROOT)
+    git_errors = {}
     def git(*args):
-        return subprocess.check_output(["git", *args], cwd=ROOT, text=True).strip()
+        try:
+            return subprocess.check_output(["git", *args], cwd=git_root,
+                text=True, stderr=subprocess.PIPE, timeout=5).strip()
+        except (OSError, subprocess.SubprocessError) as exc:
+            # Source archives and installed packages may have no Git metadata.
+            # Preserve that fact without losing the measured acceptance data.
+            git_errors[" ".join(args)] = (getattr(exc, "stderr", None) or str(exc)).strip()
+            return None
     hashes = {}
     for directory in ("engine", "visualization", "scripts", "config"):
         for path in sorted((ROOT/directory).rglob("*")):
             if path.is_file() and path.suffix in (".py", ".yaml", ".sh"):
                 hashes[path.relative_to(ROOT).as_posix()] = hashlib.sha256(path.read_bytes()).hexdigest()
-    return dict(git_commit=git("rev-parse", "HEAD"),
-                working_tree_status=git("status", "--short"),
+    commit = git("rev-parse", "HEAD")
+    status = git("status", "--short")
+    return dict(git_commit=commit,
+                working_tree_status=status, git_errors=git_errors,
                 source_sha256=hashes,
                 source_tree_sha256=hashlib.sha256(json.dumps(hashes, sort_keys=True).encode()).hexdigest(),
                 python=platform.python_version(), numpy=np.__version__, platform=platform.platform())
@@ -111,6 +125,7 @@ def run_evaluation(output_dir, label, *, laps=10, duration=None, speed=50.0,
     if prefix.with_suffix(".json").exists():
         raise FileExistsError(f"archive already exists: {prefix}")
     config = make_scenario("figure_eight")
+    config.physics_dt = dt
     config.target_speed, config.vehicle_model = speed, vehicle_model
     config.steering = steering_params or SteeringParams()
     config.ego_start_x -= lateral_offset  # Left normal at the initial +y tangent.

@@ -9,7 +9,7 @@ class EgoVehicle:
     def __init__(self, state: VehicleState, params: Optional[VehicleParams] = None):
         self._state = state
         self.params = params or VehicleParams()
-        self.length = self.params.wheelbase + self.params.body_overhang
+        self.length = self.params.length
         self.width = self.params.width
         self._prev_state: Optional[VehicleState] = None
         self.allow_reverse = False

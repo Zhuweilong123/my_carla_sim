@@ -21,6 +21,15 @@ class Camera:
         self.scale: float = 6.0     # 像素/米 (默认6px/m)
         self.min_scale = 2.0
         self.max_scale = 20.0
+        self.follow_enabled = True
+
+    def pan(self, dx: float, dy: float):
+        """Move map content by screen pixels and leave vehicle-follow mode."""
+        if dx == 0 and dy == 0:
+            return
+        self.cx -= dx / self.scale
+        self.cy += dy / self.scale
+        self.follow_enabled = False
 
     def world_to_screen(self, wx: float, wy: float) -> Tuple[int, int]:
         sx = int((wx - self.cx) * self.scale + self.w / 2)

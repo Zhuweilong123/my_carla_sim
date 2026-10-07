@@ -19,6 +19,8 @@ def message_to_state(message: RosVehicleState) -> VehicleState:
         steer=message.steering_angle,
         accel=message.acceleration,
         timestamp=message.header.stamp.sec + message.header.stamp.nanosec * 1e-9,
+        steering_delay_queue=(list(message.steering_delay_queue)
+                              if message.steering_history_valid else None),
     )
 
 

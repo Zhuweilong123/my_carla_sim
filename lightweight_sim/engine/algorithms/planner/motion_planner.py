@@ -9,6 +9,7 @@ import time
 
 from ...simulator.logging_utils import get_run_logger
 from ..utils.frenet import find_match_points
+from ..utils.quintic import sample_quintic_path
 from ...runtime_config import DEFAULT_RUNTIME_CONFIG
 
 
@@ -22,6 +23,7 @@ class MotionPlanner:
         horizon_points=80,
         corridor_margin_m=1.1,
         transition_distance_m=DEFAULT_RUNTIME_CONFIG.local_transition_distance_m,
+        sampling_resolution_m=DEFAULT_RUNTIME_CONFIG.local_path_sampling_resolution_m,
         obstacle_longitudinal_min_m=-5.0,
         obstacle_longitudinal_max_m=65.0,
         obstacle_lateral_clearance_m=2.2,
@@ -32,6 +34,7 @@ class MotionPlanner:
         self.horizon_points = int(horizon_points)
         self.corridor_margin_m = float(corridor_margin_m)
         self.transition_distance_m = float(transition_distance_m)
+        self.sampling_resolution_m = float(sampling_resolution_m)
         self.obstacle_longitudinal_min_m = float(obstacle_longitudinal_min_m)
         self.obstacle_longitudinal_max_m = float(obstacle_longitudinal_max_m)
         self.obstacle_lateral_clearance_m = float(obstacle_lateral_clearance_m)
@@ -41,6 +44,8 @@ class MotionPlanner:
             raise ValueError("corridor margin must be non-negative")
         if self.transition_distance_m <= 0.0:
             raise ValueError("transition distance must be positive")
+        if not math.isfinite(self.sampling_resolution_m) or self.sampling_resolution_m <= 0.0:
+            raise ValueError("sampling resolution must be positive and finite")
         self._requests = queue.Queue(maxsize=1)
         self._responses = queue.Queue(maxsize=1)
         self._thread = None
@@ -89,6 +94,7 @@ class MotionPlanner:
         vehicle_a=(0, 0),
         pred_loc=None,
         vehicle_loc=None,
+        handover_state=False,
     ):
         del vehicle_v, vehicle_a
         if not self._running or not self.global_path:
@@ -113,7 +119,8 @@ class MotionPlanner:
             (o.x, o.y, o.length, o.width, o.speed, o.heading)
             for o in obstacles
         ]
-        data = (request_id, pred_loc, vehicle_loc, obstacle_data)
+        data = (request_id, pred_loc, vehicle_loc, obstacle_data,
+                (ego_state.phi, ego_state.vx, ego_state.vy, ego_state.r), bool(handover_state))
         try:
             self._requests.put_nowait(data)
             obstacle_summary = ";".join(
@@ -155,10 +162,17 @@ class MotionPlanner:
             if data is None:
                 break
 
-            request_id, pred_loc, vehicle_loc, obstacles = data
+            request_id, pred_loc, vehicle_loc, obstacles, self._planning_state, self._planning_handover = data
             started = time.perf_counter()
             try:
                 path = self._plan(pred_loc, vehicle_loc, obstacles)
+                if not path:
+                    self.logger.warning(
+                        "local plan unavailable; id=%d status=%s qp=%s ego=(%.3f,%.3f) state=%s",
+                        request_id, getattr(self, "last_status", "no_feasible_path"),
+                        getattr(self, "last_qp_diagnostics", {}),
+                        vehicle_loc[0], vehicle_loc[1], self._planning_state,
+                    )
                 while True:
                     try:
                         self._responses.get_nowait()
@@ -183,10 +197,11 @@ class MotionPlanner:
         if len(path) < 2:
             return []
 
-        idx, _ = find_match_points([pred_loc], path, True, 0)
+        idx, projections = find_match_points([pred_loc], path, True, 0)
         start = max(0, int(idx[0]))
         horizon = min(len(path), start + self.horizon_points)
-        ref = path[start:horizon]
+        ref = list(path[start:horizon])
+        ref[0] = projections[0]
         theta = ref[0][2]
         normal = (-math.sin(theta), math.cos(theta))
         l0 = normal[0] * (vehicle_loc[0] - ref[0][0]) + normal[1] * (
@@ -234,28 +249,7 @@ class MotionPlanner:
             key=lambda candidate: abs(candidate - l0),
         )
 
-        # Complete a lane change within a bounded longitudinal distance.
-        # The previous index-based profile could take about 100 m on the
-        # downsampled three-lane road and was restarted at every replan.
-        result = []
-        travelled = 0.0
-        for index, point in enumerate(ref):
-            if index > 0:
-                previous = ref[index - 1]
-                travelled += math.hypot(
-                    point[0] - previous[0],
-                    point[1] - previous[1],
-                )
-            ratio = max(0.0, min(1.0, travelled / self.transition_distance_m))
-            smooth = ratio * ratio * (3 - 2 * ratio)
-            lateral = l0 + (target - l0) * smooth
-            normal = (-math.sin(point[2]), math.cos(point[2]))
-            result.append(
-                (
-                    point[0] + lateral * normal[0],
-                    point[1] + lateral * normal[1],
-                    point[2],
-                    point[3],
-                )
-            )
-        return result
+        return sample_quintic_path(
+            ref, l0, target, self.transition_distance_m, self.sampling_resolution_m,
+            lateral_bounds=[(-usable, usable)]*len(ref),
+        )

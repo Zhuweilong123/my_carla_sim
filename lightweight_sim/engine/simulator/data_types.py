@@ -32,6 +32,7 @@ class VehicleState:
     steer: float = 0.0
     accel: float = 0.0
     timestamp: float = 0.0
+    steering_delay_queue: Optional[List[float]] = None
     @property
     def speed(self) -> float:
         return math.hypot(self.vx, self.vy)
@@ -81,6 +82,9 @@ class VehicleParams:
     @property
     def wheelbase(self) -> float:
         return self.a + self.b
+    @property
+    def length(self) -> float:
+        return self.wheelbase + self.body_overhang
 
 @dataclass
 class ControlCommand:
@@ -132,7 +136,7 @@ class ScenarioConfig:
     ego_start_x: float = 20.0
     ego_start_y: float = 0.0
     ego_start_phi: float = 0.0
-    ego_start_speed: float = 10.0
+    ego_start_speed: float = 0.0
     target_speed: float = 50.0
     speed_limit_type: str = "straight"
     speed_limit_kmh: float = 40.0

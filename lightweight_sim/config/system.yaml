@@ -1,0 +1,81 @@
+# 系统接口、调度周期与超时；不同节点的超时不能互相替代。
+# 标准 launch 固定各节点 use_sim_time；本文件也支持单独启动节点。
+# 修改话题名称时要同时修改通信两端；部分接口名称固定在代码中。
+
+/**/simulator_node:
+  ros__parameters:
+    use_sim_time: false  # 仿真器使用系统时间推进物理步，通常设为 false，避免等待自己发布的 /clock。
+    command_timeout: 0.25  # 最终控制命令的接收超时，单位 s（本节点使用系统时间）；超时后制动。
+    publish_clock: true  # 是否发布 /clock；使用仿真时间的其他节点依赖该时钟，通常保持 true。
+    frame_id: map  # 车辆状态等消息的坐标系名称；map 表示地图坐标系。
+
+/**/planner_node:
+  ros__parameters:
+    use_sim_time: true  # 规划定时器及路径时间戳使用 /clock；暂停仿真时规划时间同步暂停。
+    plan_period: 0.05  # 提交局部规划请求的周期，单位 s；0.05 对应 20 Hz。
+    result_poll_period: 0.02  # 轮询异步规划结果的周期，单位 s；越小结果发布延迟越低。
+    routing_reference_topic: routing/reference_line  # 订阅的 Routing 参考线话题，需与 reference_line_node 的输出一致。
+
+/**/controller_node:
+  ros__parameters:
+    speed_planning_enabled: true  # 使用独立 ST 速度规划；关闭时恢复旧的标量目标速度控制。
+    speed_profile_timeout_s: 0.6  # 速度参考起始状态的最大年龄，单位仿真 s；超过则制动。
+    use_sim_time: true  # 控制定时器、状态/路径时效检查及命令时间戳使用 /clock。
+    routing_reference_topic: routing/reference_line  # 订阅的 Routing 参考线话题，需与 reference_line_node 的输出一致。
+    control_period: 0.05  # 控制定时器检查周期，单位 s；状态回调也触发计算，同一物理时间戳只计算一次。
+    state_timeout: 0.25  # 车辆状态最大允许接收间隔，单位 s（仿真时间）；过期时制动。
+    plan_timeout: 1.5  # 规划路径消息时间戳的最大允许年龄，单位 s（仿真时间）；过期时制动，另受安全节点墙钟超时约束。
+    output_topic: control_command/cruise  # 发布控制候选命令的话题；由 controller_manager 仲裁后才发给车辆。
+
+/**/routing_node:
+  ros__parameters:
+    use_sim_time: true  # 是否使用 /clock 仿真时间；false 使用系统时间。
+    request_topic: routing/request  # 接收全局路线请求的 ROS 话题。
+    route_topic: routing/route  # 全局路线结果话题；Routing 发布、参考线节点订阅，名称需一致。
+    service_name: routing/compute_route  # 同步计算全局路线的 ROS 服务名称，供外部调用者请求路线。
+
+/**/reference_line_node:
+  ros__parameters:
+    use_sim_time: true  # 是否使用 /clock 仿真时间；false 使用系统时间。
+    route_topic: routing/route  # 全局路线结果话题；Routing 发布、参考线节点订阅，名称需一致。
+    reference_topic: routing/reference_line  # 参考线话题；参考线节点发布、安全监督节点订阅，名称需一致。
+
+/**/simulator_gui:
+  ros__parameters:
+    use_sim_time: true  # GUI ROS 消息处理使用 /clock；画面绘制仍由自身帧率控制。
+    mode_publish_period: 1.0  # GUI 周期发布所请求模式的间隔，单位 s（仿真时间）。
+
+/**/controller_manager:
+  ros__parameters:
+    use_sim_time: true  # 候选命令接收年龄按 /clock 计算；切换等待和安全心跳另外使用墙钟时间。
+    default_mode: CRUISE  # 启动时的控制模式：CRUISE、PARKING、MANUAL 或 EMERGENCY_STOP；后续可被模式请求覆盖。
+    default_control_source: AUTO  # 启动时的控制来源：AUTO 或 MANUAL；MANUAL 选择手动候选命令。
+    switch_hold_s: 0.5  # 模式/控制来源切换及新运行开始后的制动等待时间，单位 s（墙钟）。
+    command_timeout: 0.35  # 选中控制器候选命令的最大接收年龄，单位 s（仿真时间）；超时或缺失时制动。
+    safety_stop_timeout_s: 0.25  # 安全监督心跳的最大接收间隔，单位 s（墙钟）；心跳过期或请求停车时制动。
+    update_period: 0.02  # 仲裁及最终控制命令发布周期，单位 s；定时器随 use_sim_time 选择时钟。
+
+/**/safe_stop_node:
+  ros__parameters:
+    require_speed_plan: true  # 巡航需路径、速度规划同时就绪；倒车泊车使用自己的控制器。
+    speed_plan_timeout_s: 0.6  # 速度规划心跳最大接收间隔，单位墙钟 s。
+    use_sim_time: false  # 安全监督定时器使用系统时间，通常设为 false；暂停/重置仿真时也能检测规划失联。
+    planned_path_timeout_s: 0.25  # 局部规划结果的最大接收间隔，单位 s（墙钟）；缺失、过期或不属于当前运行时请求停车。
+    update_period_s: 0.05  # 检查规划就绪状态并发布安全心跳的周期，单位 s；通常按系统时间运行。
+    reference_topic: routing/reference_line  # 参考线话题；参考线节点发布、安全监督节点订阅，名称需一致。
+    stop_topic: safety/stop_request  # 发布停车请求布尔值的 ROS 话题；需与 controller_manager 订阅的 safety/stop_request 一致。
+
+/**/parking_controller_node:
+  ros__parameters:
+    use_sim_time: true  # 是否使用 /clock 仿真时间；false 使用系统时间。
+    output_topic: control_command/parking  # 发布控制候选命令的话题；由 controller_manager 仲裁后才发给车辆。
+
+/**/speed_planner_node:
+  ros__parameters:
+    use_sim_time: true  # 速度轨迹时间与车辆状态、控制器统一使用 /clock。
+    plan_period: 0.1  # 提交 ST 规划的周期，单位 s；单工作线程忙时跳过，不堆积请求。
+    result_poll_period: 0.02  # 检查异步结果的周期，单位 s。
+    state_timeout: 0.25  # 车辆状态和障碍物观测的最大年龄，单位仿真 s。
+    path_timeout: 1.5  # 输入几何路径的最大年龄，单位仿真 s。
+    max_result_age_s: 0.4  # 从起始状态到结果接收的最大允许延迟，单位仿真 s。
+    reference_reuse_s: 0.6  # 求解失败/晚到时旧参考最大起始年龄，单位仿真 s；障碍物变化或速度失配禁止复用。

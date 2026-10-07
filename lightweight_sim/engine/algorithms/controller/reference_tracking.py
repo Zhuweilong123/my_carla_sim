@@ -1,13 +1,17 @@
-"""Metric, branch-continuous reference adapter for the dynamic Riccati LQR."""
+"""Shared route projection and error calculation for lateral algorithms."""
 import math
 
-from ._lat_lqr_impl import LateralLQRController as _DynamicLateralLQRController
+from abc import abstractmethod
+
+from .base import LateralController
 from ..utils.route import RouteTracker, wrap_angle
 
 
-class LateralLQRController(_DynamicLateralLQRController):
-    def __init__(self, vehicle_para, Q=None, R=100.0, ts=0.05):
-        super().__init__(vehicle_para, Q=Q, R=R, ts=ts)
+class ProjectedLateralController(LateralController):
+    def __init__(self, ts=0.05):
+        super().__init__(ts=ts)
+        self.x_pre = self.y_pre = self.x_pro = self.y_pro = 0.0
+        self.last_ed = self.last_ephi = 0.0
         self.tracker = None
         self.route_progress = 0.0  # Legacy diagnostic: segment units.
         self.route_s = 0.0       # Unwrapped metres.
@@ -70,3 +74,7 @@ class LateralLQRController(_DynamicLateralLQRController):
         ephi_dot = r-kappa*s_dot
         self.last_ed, self.last_ephi = ed, ephi
         return self.control_from_error((ed, ed_dot, math.sin(ephi), ephi_dot), kappa, vx)
+
+    @abstractmethod
+    def control_from_error(self, error_state, kappa, vx):
+        """Solve the algorithm-specific steering command from tracking errors."""

@@ -27,16 +27,16 @@ GUI 将 Routing 拓扑结果、连续参考线和局部规划路径分别绘制�
 
 ## 参数
 
-ROS 参数在 `config/default.yaml` 的 `reference_line_node` 和 `planner_node` 命名空间配置，常用项包括：
+ROS 参数按节点分组；地图入口位于 `config/default.yaml`，下表的有效几何参数位于 `config/algorithms.yaml`，预留项位于 `config/compatibility.yaml`。完整加载顺序见[配置说明](../config/README.md)。
 
 | 参数 | 用途 |
 | --- | --- |
 | `sample_spacing_m` | 参考线采样间距 |
-| `max_lateral_deviation_m` | 平滑允许的最大横向偏移 |
+| `max_lateral_deviation_m` | 预留平滑偏移上限；当前仅校验/保存 |
 | `join_tolerance_m` | 相邻拓扑边允许的连接误差 |
-| `boundary_margin_m` | 参考线几何处理时使用的边界余量 |
+| `boundary_margin_m` | 预留边界余量；当前仅校验/保存 |
 | `max_reference_curvature_1pm` | 圆角几何曲率上限 |
 | `junction_angle_threshold_rad` | 识别需要处理的路口转角阈值 |
 | `routing_corridor_margin_m` | planner 对道路外边界保留的安全余量 |
 
-参数默认值以 `config/default.yaml` 为准。标准 launch 默认启动参考线节点；禁用 Routing 或参考线节点会使安全监督进入停车状态，而不会自动切换到另一条无关路线。
+参数值以 `config/` 下分层文件为准。标准 launch 默认启动参考线节点；禁用 Routing 或参考线节点会使安全监督进入停车状态，而不会自动切换到另一条无关路线。

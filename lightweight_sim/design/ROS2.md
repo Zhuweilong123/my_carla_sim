@@ -1,6 +1,8 @@
 # ROS 2 节点与接口
 
-本文描述轻量级仿真的当前 ROS 2 执行图。默认 launch 使用 `lightweight_sim/config/launch/lightweight_sim.launch.py`；可调参数集中在 `config/default.yaml`。消息定义属于独立包 `lightweight_sim_msgs/`。
+本文描述轻量级仿真的当前 ROS 2 执行图。默认 launch 使用 `lightweight_sim/config/launch/lightweight_sim.launch.py`；常用参数位于 `config/default.yaml`，其余按车辆、算法、系统与兼容用途分层，详见[配置说明](../config/README.md)。消息定义属于独立包 `lightweight_sim_msgs/`。
+
+六个配置文件均使用 `/**/节点名` 选择器，使相同配置在根命名空间和任意层级 namespace 下生效；节点之间不共享各自参数。控制模型的物理周期在新运行激活时从 `sim/context.physics_dt` 同步，兼容配置中的初始备用值无需与实际周期相等。
 
 ## 节点与数据流
 
@@ -10,6 +12,10 @@ simulator_node --routing/request-----------------------> routing_node
 routing_node --routing/route---------------------------> reference_line_node
 reference_line_node --routing/reference_line-----------> planner_node, controller_node, safe_stop_node
 planner_node --planned_path----------------------------> controller_node, safe_stop_node
+planner_node --planned_path----------------------------> speed_planner_node
+simulator_node --vehicle/state, obstacles, sim/context--> speed_planner_node
+reference_line_node --routing/reference_line-----------> speed_planner_node
+speed_planner_node --speed_profile---------------------> controller_node, safe_stop_node
 controller_node --control_command/cruise---------------+
 GUI/manual --control_command/manual--------------------+--> controller_manager
 safe_stop_node --safety/stop_request-------------------+          |
@@ -24,39 +30,94 @@ safe_stop_node --safety/stop_request-------------------+          |
 | `routing_node` | 加载内置或指定 JSON 地图，响应事件型路线请求和 `routing/compute_route` 服务 |
 | `reference_line_node` | 验证 RoutePlan 并生成连续车道参考线与道路边界 |
 | `planner_node` | 周期触发局部规划，消费 Routing 参考线和障碍物，发布最新 `planned_path` |
-| `controller_node` | 跟踪参考线/局部路径，发布巡航候选指令和 tracking metrics |
+| `speed_planner_node` | 消费固定几何路径，以 ST DP+QP 独立规划速度、加速度和 jerk |
+| `controller_node` | 配对几何路径和速度版本，横向跟踪路径，纵向以前馈 PID 跟踪速度，发布巡航候选指令和 tracking metrics |
+| `parking_controller_node` | 在泊车场景输入就绪后生成泊车轨迹并发布泊车控制候选 |
 | `controller_manager` | 仲裁巡航、手动、泊车候选；唯一发布最终 `control_command` |
 | `safe_stop_node` | 监视当前 run 的 Routing 参考线和规划新鲜度，异常时请求停车 |
 | `gui_node` | 可选 Pygame ROS 客户端；显示状态/地图/路径并通过服务控制同一个 simulator |
 
 Routing 请求是场景切换或重置时更新的事件，不是固定频率轨迹流。Routing 结果及参考线用于后续规划；ROS 2 节点通过请求/run 标识拒绝旧场景结果。缺少匹配参考线或新鲜局部路径时由安全监督请求制动，不回退到独立的 `/reference_path` topic。
 
-## 主要 Topics
+## Topics 与发布频率
 
-名称为相对名称时会受 launch namespace 影响；`/clock` 始终是全局话题。
+标准 launch 的业务接口共 20 个 topic，另有 `/parameter_events`、`/rosout` 两个 ROS 系统 topic。下表按默认空 namespace 展示完整名称；业务名称在代码中通常为相对名称，添加 namespace 后带相应前缀，`/clock` 始终是全局话题。GUI 未启动或对应节点被禁用时，并非所有接口都存在。
 
-| Topic | 消息 | 方向/用途 |
-| --- | --- | --- |
-| `/clock` | `rosgraph_msgs/Clock` | 仿真器发布仿真时钟 |
-| `vehicle/state` | `lightweight_sim_msgs/VehicleState` | 仿真器发布车辆位姿、速度、加速度和执行状态 |
-| `obstacles` | `lightweight_sim_msgs/ObstacleArray` | 仿真器发布障碍物状态 |
-| `sim/context` | `std_msgs/String` | 当前 run、场景、任务及车辆/道路上下文 |
-| `routing/request` | `lightweight_sim_msgs/RouteRequest` | 场景适配器发出的路线计算请求 |
-| `routing/route` | `lightweight_sim_msgs/RoutePlan` | Routing 发布的拓扑路线及路线几何 |
-| `routing/reference_line` | `lightweight_sim_msgs/ReferenceLine` | 参考线节点发布的车道中心线、边界及元数据 |
-| `planned_path` | `lightweight_sim_msgs/Path` | 局部规划器发布的当前短路径 |
-| `control_command/cruise` | `lightweight_sim_msgs/ControlCommand` | 巡航控制候选 |
-| `control_command/manual` | `lightweight_sim_msgs/ControlCommand` | 手动控制候选 |
-| `control_command/parking` | `lightweight_sim_msgs/ControlCommand` | 泊车控制候选 |
-| `safety/stop_request` | `std_msgs/Bool` | 安全监督的停车请求 |
-| `control_command` | `lightweight_sim_msgs/ControlCommand` | 仲裁后的最终执行指令 |
-| `control_mode`, `control_mode/status` | `lightweight_sim_msgs/ControlMode` | GUI/外部控制选择及仲裁状态 |
-| `tracking/metrics` | `std_msgs/String` | 控制跟踪诊断指标 |
-| `sim/status` | `lightweight_sim_msgs/SimulationStatus` | 仿真生命周期及终止状态 |
+频率依据当前源码及默认配置整理，属于配置频率或正常运行时的预期，不是实时测量结果。2026-10-01 梳理时，直连 ROS 图未发现在线业务节点，未获得实测 Hz；CLI daemon 缓存中仍有业务 topic 记录，不能据此认定节点在线。自定义消息类型省略 `lightweight_sim_msgs/msg/` 前缀。
 
-实际发布/订阅数量可用 `ros2 topic info -v <topic>` 检查；Routing 的服务型调用可用 `ros2 service list` 查看。
+| Topic | 消息类型 | 发布节点 | 主要订阅节点 | 发布频率／触发条件 |
+| --- | --- | --- | --- | --- |
+| `/vehicle/state` | `VehicleState` | simulator_node | planner_node、speed_planner_node、controller_node、simulator_gui、controller_manager、parking_controller_node | 20 Hz，由 `physics_dt=0.05` 决定；暂停时仍发布 |
+| `/obstacles` | `ObstacleArray` | simulator_node | planner_node、speed_planner_node、simulator_gui、parking_controller_node | 20 Hz，与车辆状态一起发布 |
+| `/clock` | `rosgraph_msgs/msg/Clock` | simulator_node | 使用仿真时间的节点 | 20 Hz；暂停时仍发消息，但时间值不再前进；`publish_clock=false` 时不发布 |
+| `/sim/status` | `SimulationStatus` | simulator_node | simulator_gui | 运行时约 20 Hz；启动、暂停、重置等事件额外发布；暂停后不持续周期发布 |
+| `/sim/context` | `std_msgs/msg/String` | simulator_node | planner_node、speed_planner_node、controller_node、simulator_gui、controller_manager、safe_stop_node、parking_controller_node | 事件触发：启动、重置、切换场景、应用场景编辑 |
+| `/routing/request` | `RouteRequest` | simulator_node | routing_node | 新运行／重置时发布；需有有效地图任务 |
+| `/routing/route` | `RoutePlan` | routing_node | reference_line_node、simulator_gui | 收到路线请求或调用路线计算服务后发布 |
+| `/routing/reference_line` | `ReferenceLine` | reference_line_node | planner_node、speed_planner_node、controller_node、safe_stop_node、simulator_gui | 处理新的 Routing 结果后发布 |
+| `/planned_path` | `Path` | planner_node、parking_controller_node | speed_planner_node、controller_node、safe_stop_node、simulator_gui | 巡航端规划完成后发布，请求目标 20 Hz；泊车端输入就绪后约 20 Hz |
+| `/control_command/cruise` | `ControlCommand` | controller_node | controller_manager | 正常约 20 Hz，每份新车辆状态计算一次；异常制动分支可能额外发布 |
+| `/control_command/parking` | `ControlCommand` | parking_controller_node | controller_manager | 泊车场景输入就绪后约 20 Hz |
+| `/control_command/manual` | `ControlCommand` | simulator_gui | controller_manager | 每个 GUI 绘制循环发布，目标约 60 Hz；自动模式也生成候选，是否采用由仲裁决定 |
+| `/control_command` | `ControlCommand` | controller_manager | simulator_node、simulator_gui | 定时器配置 50 Hz；实际受仿真时钟约束，见下文 |
+| `/tracking/metrics` | `std_msgs/msg/String` | controller_node | simulator_gui | 成功完成巡航控制计算后发布，正常约 20 Hz；等待路径或制动早退时不发布 |
+| `/control_mode` | `ControlMode` | simulator_gui／外部调用者 | controller_manager | GUI 1 Hz 心跳 + 操作事件立即发布；周期心跳使用仿真时间 |
+| `/control_mode/status` | `ControlMode` | controller_manager | simulator_gui | 启动、处理模式请求、新运行上下文时发布；GUI 持续请求时通常产生约 1 Hz 状态 |
+| `/safety/stop_request` | `std_msgs/msg/Bool` | safe_stop_node | controller_manager | 20 Hz，系统时间；无论是否要求停车，都作为安全心跳发布 |
+| `/speed_profile` | `SpeedProfile` | speed_planner_node | controller_node、safe_stop_node | 求解完成后发布，请求周期 0.1 s；按初始状态时间和路径版本执行 |
+| `/speed/diagnostics` | `std_msgs/msg/String` | speed_planner_node | 诊断工具 | 求解结果发布时记录状态、耗时和停车边界 |
+| `/speed/tracking` | `std_msgs/msg/String` | controller_node | 诊断工具 | 成功执行速度参考时记录目标速度/加速度和实际速度 |
+| `/parameter_events` | `rcl_interfaces/msg/ParameterEvent` | ROS 节点参数系统 | 参数监听工具／节点 | 参数事件触发，没有固定频率 |
+| `/rosout` | `rcl_interfaces/msg/Log` | 各节点日志系统 | 日志工具 | 日志事件触发，没有固定频率 |
+
+### 频率与时钟的区别
+
+车辆状态 20 Hz 与 GUI 60 FPS 是不同层次的频率。GUI 在相邻状态之间插值绘制，不会提高 `/vehicle/state` 的发布频率；`/control_command/manual` 则随实际 GUI 循环频率发布。
+
+`plan_period=0.05` 表示目标每 50 ms 提交规划请求，`result_poll_period=0.02` 表示配置每 20 ms 检查异步结果。规划尚未完成时不会继续提交新请求；只有取得结果、复用旧路径或发布空路径时才发送 `/planned_path`。实际路径频率受计算耗时、接管验证和调度影响，不能将轮询频率直接当作发布频率。
+
+`controller_manager.update_period=0.02` 与规划结果轮询名义上都是 50 Hz，但它们使用仿真时间，而 `/clock` 当前每 50 ms 才前进一次。根据当前时钟结构推断，这些定时器通常只能在时钟更新后执行，不能当作独立的 50 Hz 墙钟任务；ROS 定时器会跳过已经错过的周期。实际发布频率应在运行时测量，参见 [ROS 定时器实现](https://github.com/ros2/rcl/blob/rolling/rcl/src/rcl/timer.c)。
+
+暂停时，`/vehicle/state`、`/obstacles` 和 `/clock` 消息仍约 20 Hz 发布，但仿真时间冻结；依赖仿真时间的周期任务停止推进。安全监督使用系统时间，仍继续检查和发布 `/safety/stop_request`；GUI 绘制与手动候选发布仍可继续。
+
+`/planned_path` 同时由巡航规划节点和泊车节点创建发布者；泊车端只有泊车上下文及输入就绪后才发布。测量这个 topic 时，需要结合当前场景与发布者判断，不能仅看总 Hz。最终 `/control_command` 只有控制仲裁器一个写入者。
+
+物理步长和 GUI 帧率在 `config/default.yaml`；规划、控制、仲裁周期及 GUI 模式心跳在 `config/system.yaml`。泊车节点的 0.05 s 周期目前写在 `parking_module/parking_module/ros_node.py` 中。
+
+### 运行时检查
+
+```bash
+ros2 topic list --no-daemon --spin-time 2 -t
+ros2 topic info -v /planned_path
+ros2 topic hz /vehicle/state
+ros2 topic hz /planned_path
+ros2 topic hz /control_command
+ros2 topic hz /control_command/manual
+ros2 topic echo /sim/status --once
+```
+
+`topic hz` 测得的是该订阅者按墙钟统计的接收频率，会受 QoS、调度、仿真暂停和实时运行速度影响；事件触发 topic 没有持续 Hz 是正常行为。使用 namespace 时需替换 topic 前缀。Routing 的服务型调用可用 `ros2 service list` 查看。
+
+### 执行器历史反馈
+
+`sim/context.dynamic_max_substep_s` 携带仿真动力学积分的最大子步（默认 0.0025 s）。每次运行/重置时，控制节点以该值重建 LQR/MPC 的 `plant` 模型；`physics_dt` 决定控制周期，最大子步决定周期内的积分次数，两者必须同时匹配仿真端。兼容未提供该字段的上下文时采用共享默认值。
+
+`VehicleState` 的 `steering_angle` 是实际前轮角。`steering_history_valid` 表示该状态同时携带完整执行器历史；`steering_delay_queue` 按最早待执行命令在前的顺序，记录该物理步结束后的真实转向延迟队列，与位姿共享 `header.stamp`。首次尚未推进时按执行器初始角初始化；理想执行器或零延迟对应空队列。
+
+队列来自仿真器执行器，包含仲裁后实际执行的巡航、手动、泊车和安全制动指令。控制器在每个新状态上，先同步实际角和队列、记录该物理时间戳，再判断路径是否就绪或过期。缺少路径时继续制动，但不暂停历史同步；恢复路径无需重置运行。
+
+完整反馈允许在漏掉中间状态后重新同步。无完整反馈的直接控制输入仍按固定周期维护候选历史，并在无法确定丢失步骤时锁定制动；队列长度错误、非有限数值、转角越限或时间倒退也保留故障保护。同一状态时间戳只处理一次，不会因定时器重复调用多次推进队列。
+
+消息结构修改后需重建并重启所有使用该接口的节点，例如：
+
+```bash
+colcon build --packages-select lightweight_sim_msgs lightweight_sim parking_module
+source install/setup.bash
+```
 
 ## Services
+
+几何路径与独立 ST 速度规划的约束、消息、版本接管和前馈 PID 流程见 [独立速度规划设计](SPEED_PLANNING.md)。标准 launch 同时启用速度节点和速度就绪监督。
 
 - `routing/compute_route`（`lightweight_sim_msgs/srv/ComputeRoute`）：按请求同步计算路线。
 - `sim/reset`（`std_srvs/srv/Empty`）：重置当前仿真及场景运行标识。
@@ -75,10 +136,20 @@ SI 单位用于物理量：位置 m、速度 m/s、角度 rad、加速度 m/s²�
 
 在已安装 ROS 2 的 Linux/WSL 终端：
 
+默认 DP+QP 需要 ROS 节点实际使用的 Python 环境包含 SciPy 和 OSQP。Ubuntu/WSL 可执行：
+
+```bash
+sudo apt install python3-scipy python3-pip
+python3 -m pip install --user --break-system-packages "osqp>=1.0"
+python3 -c "import scipy, osqp; print(scipy.__version__, osqp.__version__)"
+```
+
+这里的 `--break-system-packages` 是 Ubuntu 系统 Python 安装用户包时的显式选项；若使用虚拟环境，请在构建及启动时使用同一环境。Windows Conda 的依赖不会提供给 WSL；`colcon build` 不会自动安装运行依赖。SciPy 已声明在 `package.xml`，可通过 rosdep 安装；OSQP 通过上述 pip 命令安装，版本要求同时写入 `requirements.txt` 和 `setup.py`。
+
 ```bash
 source /opt/ros/$ROS_DISTRO/setup.bash
 cd /mnt/d/AI_tools/vehicle_motion
-python3 -m pip install -r lightweight_sim/requirements.txt
+python3 -m pip install --user --break-system-packages -r lightweight_sim/requirements.txt
 colcon build
 source install/setup.bash
 ros2 launch lightweight_sim lightweight_sim.launch.py gui:=true

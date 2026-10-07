@@ -1,9 +1,12 @@
 """Longitudinal PID producing physical acceleration in m/s^2."""
 
 from collections import deque
+import math
+
+from .base import LongitudinalController
 
 
-class LongitudinalPIDController:
+class LongitudinalPIDController(LongitudinalController):
     """Speed controller with derivative damping and dynamic coupling rejection."""
 
     def __init__(
@@ -18,22 +21,35 @@ class LongitudinalPIDController:
         max_jerk=40.0,
         coupling_gain=0.5,
     ):
+        super().__init__(dt=dt, max_accel=max_accel, max_decel=max_decel)
         self.K_P = float(K_P)
         self.K_I = float(K_I)
         self.K_D = float(K_D)
-        self.dt = float(dt)
         self.error_threshold = float(error_threshold)
-        self.max_accel = float(max_accel)
-        self.max_decel = float(max_decel)
         self.max_jerk = float(max_jerk)
         self.coupling_gain = float(coupling_gain)
-        self.target_speed = 50.0
+        if (not all(math.isfinite(v) and v >= 0 for v in
+                    (self.K_P, self.K_I, self.K_D, self.error_threshold, self.coupling_gain))
+                or not math.isfinite(self.max_jerk) or self.max_jerk <= 0):
+            raise ValueError("PID gains/threshold must be non-negative and jerk positive, all finite")
         self.error_buffer = deque(maxlen=60)
         self._previous_error = None
         self._filtered_derivative = 0.0
         self._previous_accel = 0.0
 
-    def control(self, current_speed_ms, coupling_accel=0.0):
+    def control(self, current_speed_ms, coupling_accel=0.0, reference_accel=None,
+                actual_accel=None):
+        if not all(math.isfinite(float(v)) for v in
+                   (current_speed_ms, coupling_accel, reference_accel or 0.)):
+            raise ValueError('longitudinal input must be finite')
+        if actual_accel is not None:
+            if not math.isfinite(float(actual_accel)):
+                raise ValueError('measured acceleration must be finite')
+            # A protective stop clears speculative PID memory. Resume the
+            # slew limiter from the plant input, then retain command history
+            # during continuous tracking despite arbitration delivery latency.
+            if self._previous_error is None:
+                self._previous_accel = max(-self.max_decel, min(self.max_accel, float(actual_accel)))
         error_ms = self.target_speed / 3.6 - float(current_speed_ms)
         error_kmh = error_ms * 3.6
         self.error_buffer.append(error_kmh)
@@ -42,11 +58,16 @@ class LongitudinalPIDController:
             derivative = 0.0
         else:
             raw_derivative = (error_ms - self._previous_error) / self.dt
+            if reference_accel is not None:
+                # D acts on tracking acceleration error, avoiding a setpoint
+                # step kick while preserving nominal acceleration feedforward.
+                raw_derivative = float(reference_accel) - (float(current_speed_ms)-self._previous_speed)/self.dt
             self._filtered_derivative = (
                 0.7 * self._filtered_derivative + 0.3 * raw_derivative
             )
             derivative = self._filtered_derivative
         self._previous_error = error_ms
+        self._previous_speed = float(current_speed_ms)
 
         if abs(error_kmh) > self.error_threshold:
             integral = 0.0
@@ -58,10 +79,14 @@ class LongitudinalPIDController:
             self.K_P * error_ms
             + self.K_I * integral
             + self.K_D * derivative
+            + (float(reference_accel) if reference_accel is not None else 0.)
         )
         # EgoVehicle.dynamic_step uses vx_dot = accel + r * vy. Cancel the
         # lateral inertial coupling so the speed loop controls its target.
         requested_accel -= self.coupling_gain * float(coupling_accel)
+        if ((requested_accel > self.max_accel and error_ms > 0)
+                or (requested_accel < -self.max_decel and error_ms < 0)):
+            self.error_buffer.clear()
         requested_accel = max(
             -self.max_decel,
             min(self.max_accel, requested_accel),
@@ -74,9 +99,6 @@ class LongitudinalPIDController:
         )
         self._previous_accel = accel
         return accel
-
-    def set_target(self, speed_kmh):
-        self.target_speed = float(speed_kmh)
 
     def reset(self):
         self.error_buffer.clear()

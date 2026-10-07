@@ -42,7 +42,15 @@ setup(
         ("share/ament_index/resource_index/packages", [f"resource/{package_name}"]),
         (f"share/{package_name}", ["package.xml"]),
         (f"share/{package_name}/launch", ["config/launch/lightweight_sim.launch.py"]),
-        (f"share/{package_name}/config", ["config/default.yaml"]),
+        (f"share/{package_name}/config", [
+            "config/default.yaml",
+            "config/vehicle.yaml",
+            "config/algorithms.yaml",
+            "config/system.yaml",
+            "config/compatibility.yaml",
+            "config/baseline.yaml",
+            "config/README.md",
+        ]),
         (
             f"share/{package_name}/config/maps",
             [
@@ -55,12 +63,13 @@ setup(
             ],
         ),
     ],
-    install_requires=["setuptools", "numpy", "pygame-ce>=2.5"],
+    install_requires=["setuptools", "numpy", "scipy>=1.10", "osqp>=1.0", "pygame-ce>=2.5", "PyYAML>=6.0"],
     zip_safe=True,
     entry_points={
         "console_scripts": [
             "simulator_node = lightweight_sim.engine.ros_nodes.simulator_node:main",
             "planner_node = lightweight_sim.engine.ros_nodes.planner_node:main",
+            "speed_planner_node = lightweight_sim.engine.ros_nodes.speed_planner_node:main",
             "routing_node = lightweight_sim.engine.routing.routing_node:main",
             "reference_line_node = lightweight_sim.engine.reference_line.reference_line_node:main",
             "controller_node = lightweight_sim.engine.ros_nodes.controller_node:main",

@@ -6,11 +6,12 @@ import math
 
 from ..algorithms.planner.motion_planner import MotionPlanner
 from ..algorithms.utils.frenet import find_match_points
-from ..algorithms.utils.geometry import cal_heading_kappa
+from ..algorithms.utils.quintic import sample_quintic_path
 from ..runtime_config import DEFAULT_RUNTIME_CONFIG
+from ..simulator.data_types import VehicleParams
 
 
-class RouteAwareMotionPlanner(MotionPlanner):
+class CorridorMotionPlanner(MotionPlanner):
     """Use routing lane identity to make local detours return to the mission lane."""
 
     def __init__(
@@ -26,12 +27,13 @@ class RouteAwareMotionPlanner(MotionPlanner):
         corridor_margin_m: float = 1.1,
         horizon_points: int = 80,
         transition_distance_m: float = DEFAULT_RUNTIME_CONFIG.local_transition_distance_m,
+        sampling_resolution_m: float = DEFAULT_RUNTIME_CONFIG.local_path_sampling_resolution_m,
         collision_margin_m: float = 0.25,
         obstacle_longitudinal_min_m: float = -5.0,
         obstacle_longitudinal_max_m: float = 65.0,
         obstacle_lateral_clearance_m: float = 2.2,
-        vehicle_length_m: float = 4.0,
-        vehicle_width_m: float = 2.0,
+        vehicle_length_m: float = VehicleParams().length,
+        vehicle_width_m: float = VehicleParams().width,
     ) -> None:
         super().__init__(
             global_frenet_path,
@@ -40,6 +42,7 @@ class RouteAwareMotionPlanner(MotionPlanner):
             horizon_points=horizon_points,
             corridor_margin_m=corridor_margin_m,
             transition_distance_m=transition_distance_m,
+            sampling_resolution_m=sampling_resolution_m,
             obstacle_longitudinal_min_m=obstacle_longitudinal_min_m,
             obstacle_longitudinal_max_m=obstacle_longitudinal_max_m,
             obstacle_lateral_clearance_m=obstacle_lateral_clearance_m,
@@ -66,12 +69,64 @@ class RouteAwareMotionPlanner(MotionPlanner):
         self.vehicle_length_m = float(vehicle_length_m)
         self.vehicle_width_m = float(vehicle_width_m)
 
+    def _build_candidate(self, ref, indices, l0, target):
+        return sample_quintic_path(
+            ref, l0, target, self.transition_distance_m, self.sampling_resolution_m,
+            lateral_bounds=[self._corridor_bounds(index, point)
+                            for index, point in zip(indices, ref)],
+        )
+
+    def _trajectory_is_safe(self, candidate_path, obstacles):
+        """Separating-axis rectangle test using both bodies' axes."""
+        for px, py, heading, _ in candidate_path:
+            ego_axes = ((math.cos(heading), math.sin(heading)),
+                        (-math.sin(heading), math.cos(heading)))
+            for ox, oy, length, width, _, obstacle_heading in obstacles:
+                obstacle_axes = ((math.cos(obstacle_heading), math.sin(obstacle_heading)),
+                                 (-math.sin(obstacle_heading), math.cos(obstacle_heading)))
+                separated = False
+                for ax, ay in ego_axes + obstacle_axes:
+                    distance = abs((ox-px)*ax+(oy-py)*ay)
+                    ego_radius = (self.vehicle_length_m/2*abs(ax*ego_axes[0][0]+ay*ego_axes[0][1])
+                                  +self.vehicle_width_m/2*abs(ax*ego_axes[1][0]+ay*ego_axes[1][1]))
+                    obstacle_radius = (length/2*abs(ax*obstacle_axes[0][0]+ay*obstacle_axes[0][1])
+                                       +width/2*abs(ax*obstacle_axes[1][0]+ay*obstacle_axes[1][1]))
+                    if distance > ego_radius+obstacle_radius+self.collision_margin_m:
+                        separated = True
+                        break
+                if not separated:
+                    return False
+        return True
+
+    def _corridor_bounds(self, index, reference):
+        if not self.drivable_left_boundary:
+            usable = self.num_lanes * self.lane_width / 2.0 - self.corridor_margin_m
+            return -usable, usable
+        left = self.drivable_left_boundary[index]
+        right = self.drivable_right_boundary[index]
+        normal = (-math.sin(reference[2]), math.cos(reference[2]))
+        left_lateral = (left[0] - reference[0]) * normal[0] + (
+            left[1] - reference[1]
+        ) * normal[1]
+        right_lateral = (right[0] - reference[0]) * normal[0] + (
+            right[1] - reference[1]
+        ) * normal[1]
+        lower = min(left_lateral, right_lateral) + self.corridor_margin_m
+        upper = max(left_lateral, right_lateral) - self.corridor_margin_m
+        if lower > upper:
+            raise ValueError("drivable corridor is narrower than twice the margin")
+        return lower, upper
+
+
+class BaselinePathPlanner(CorridorMotionPlanner):
+    """Lane-target quintic candidate algorithm retained for comparisons."""
+
     def _plan(self, pred_loc, vehicle_loc, obstacles):
         path = self.global_path
         if len(path) < 2:
             return []
 
-        idx, _ = find_match_points([pred_loc], path, True, 0)
+        idx, projections = find_match_points([pred_loc], path, True, 0)
         start = max(0, int(idx[0]))
         closed = math.hypot(path[0][0] - path[-1][0], path[0][1] - path[-1][1]) < 1e-6
         cycle_size = len(path) - 1 if closed else len(path)
@@ -87,6 +142,9 @@ class RouteAwareMotionPlanner(MotionPlanner):
         ref = [path[index] for index in indices]
         if len(ref) < 2:
             return []
+        # Anchor the transition at the projected planning start, not a sparse
+        # reference vertex which can lie far behind the vehicle.
+        ref[0] = projections[0]
         theta = ref[0][2]
         normal = (-math.sin(theta), math.cos(theta))
         l0 = normal[0] * (vehicle_loc[0] - ref[0][0]) + normal[1] * (
@@ -169,77 +227,6 @@ class RouteAwareMotionPlanner(MotionPlanner):
         )
         return result
 
-    def _build_candidate(self, ref, indices, l0, target):
-        xy_points = []
-        travelled = 0.0
-        for local_index, (path_index, point) in enumerate(zip(indices, ref)):
-            if local_index > 0:
-                previous = ref[local_index - 1]
-                travelled += math.hypot(
-                    point[0] - previous[0], point[1] - previous[1]
-                )
-            ratio = max(0.0, min(1.0, travelled / self.transition_distance_m))
-            smooth = ratio * ratio * (3.0 - 2.0 * ratio)
-            lateral = l0 + (target - l0) * smooth
-            lower, upper = self._corridor_bounds(path_index, point)
-            lateral = max(lower, min(upper, lateral))
-            normal = (-math.sin(point[2]), math.cos(point[2]))
-            xy_points.append(
-                (point[0] + lateral * normal[0], point[1] + lateral * normal[1])
-            )
-        headings, curvatures = cal_heading_kappa(xy_points)
-        return [
-            (x, y, heading, curvature)
-            for (x, y), heading, curvature in zip(
-                xy_points, headings, curvatures
-            )
-        ]
 
-    def _trajectory_is_safe(self, candidate_path, obstacles):
-        ego_half_length = self.vehicle_length_m / 2.0
-        ego_half_width = self.vehicle_width_m / 2.0
-        for px, py, heading, _ in candidate_path:
-            tangent = (math.cos(heading), math.sin(heading))
-            normal = (-math.sin(heading), math.cos(heading))
-            for ox, oy, length, width, speed, obstacle_heading in obstacles:
-                del speed
-                dx = ox - px
-                dy = oy - py
-                longitudinal = abs(dx * tangent[0] + dy * tangent[1])
-                lateral = abs(dx * normal[0] + dy * normal[1])
-                heading_delta = obstacle_heading - heading
-                obstacle_half_length = (
-                    abs(math.cos(heading_delta)) * length / 2.0
-                    + abs(math.sin(heading_delta)) * width / 2.0
-                )
-                obstacle_half_width = (
-                    abs(math.sin(heading_delta)) * length / 2.0
-                    + abs(math.cos(heading_delta)) * width / 2.0
-                )
-                if (
-                    longitudinal
-                    <= ego_half_length + obstacle_half_length + self.collision_margin_m
-                    and lateral
-                    <= ego_half_width + obstacle_half_width + self.collision_margin_m
-                ):
-                    return False
-        return True
-
-    def _corridor_bounds(self, index, reference):
-        if not self.drivable_left_boundary:
-            usable = self.num_lanes * self.lane_width / 2.0 - self.corridor_margin_m
-            return -usable, usable
-        left = self.drivable_left_boundary[index]
-        right = self.drivable_right_boundary[index]
-        normal = (-math.sin(reference[2]), math.cos(reference[2]))
-        left_lateral = (left[0] - reference[0]) * normal[0] + (
-            left[1] - reference[1]
-        ) * normal[1]
-        right_lateral = (right[0] - reference[0]) * normal[0] + (
-            right[1] - reference[1]
-        ) * normal[1]
-        lower = min(left_lateral, right_lateral) + self.corridor_margin_m
-        upper = max(left_lateral, right_lateral) - self.corridor_margin_m
-        if lower > upper:
-            raise ValueError("drivable corridor is narrower than twice the margin")
-        return lower, upper
+# Compatibility for callers of the original candidate planner.
+RouteAwareMotionPlanner = BaselinePathPlanner

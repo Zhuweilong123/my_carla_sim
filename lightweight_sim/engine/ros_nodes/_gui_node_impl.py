@@ -1,5 +1,7 @@
 """ROS 2 adapter that connects simulator topics and services to the GUI view."""
 
+import time
+
 import rclpy
 from std_msgs.msg import String
 from lightweight_sim_msgs.msg import ControlCommand, ObstacleArray, Path as RosPath
@@ -77,6 +79,7 @@ class GuiNode(Node):
 
     def _on_state(self, message: RosVehicleState) -> None:
         self.snapshot.state = message_to_state(message)
+        self.view.update_display_state(self.snapshot.state)
 
     def _on_obstacles(self, message: ObstacleArray) -> None:
         self.snapshot.obstacles = [
@@ -216,11 +219,19 @@ class GuiNode(Node):
             return
         self.step_client.call_async(Trigger.Request())
 
+    def _process_ros_events(self):
+        # Drain bursts without letting transport starve rendering or input.
+        deadline = time.monotonic() + 0.004
+        for _ in range(16):
+            if time.monotonic() >= deadline:
+                break
+            rclpy.spin_once(self, timeout_sec=0.0)
+
     def run(self) -> None:
         self._shutdown_requested = False
         try:
             while rclpy.ok() and not self._shutdown_requested:
-                rclpy.spin_once(self, timeout_sec=0.0)
+                self._process_ros_events()
                 for action in self.view.poll_actions():
                     self._handle_action(action)
                 self.view.render(self.snapshot)

@@ -11,9 +11,7 @@ on:
       - "lightweight_sim/engine/**"
       - "lightweight_sim/visualization/**"
       - "lightweight_sim/scripts/ros2_smoke_test.sh"
-      - "lightweight_sim/tests/test_controller_manager.py"
-      - "lightweight_sim/tests/test_controller_speed_profile.py"
-      - "lightweight_sim/tests/test_ros_lifecycle.py"
+      - "lightweight_sim/tests/**"
       - "lightweight_sim_msgs/**"
       - "parking_module/**"
   pull_request:
@@ -26,9 +24,7 @@ on:
       - "lightweight_sim/engine/**"
       - "lightweight_sim/visualization/**"
       - "lightweight_sim/scripts/ros2_smoke_test.sh"
-      - "lightweight_sim/tests/test_controller_manager.py"
-      - "lightweight_sim/tests/test_controller_speed_profile.py"
-      - "lightweight_sim/tests/test_ros_lifecycle.py"
+      - "lightweight_sim/tests/**"
       - "lightweight_sim_msgs/**"
       - "parking_module/**"
   workflow_dispatch:
@@ -39,11 +35,41 @@ permissions:
 jobs:
   ros-integration:
     runs-on: ubuntu-latest
+    # Nine ROS processes share the runner. Small control/planning matrices
+    # should not each create a BLAS/OpenMP pool that delays ROS callbacks.
+    env:
+      OPENBLAS_NUM_THREADS: "1"
+      OMP_NUM_THREADS: "1"
+      MKL_NUM_THREADS: "1"
+      BLIS_NUM_THREADS: "1"
     container:
       image: ubuntu:resolute
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
+
+      # Preconfigure the repository so setup-ros skips its unauthenticated
+      # GitHub releases/latest lookup. Keep the version and checksum together.
+      - name: Install pinned ROS apt source
+        shell: bash
+        env:
+          ROS_APT_SOURCE_VERSION: "1.3.0"
+          ROS_APT_SOURCE_SHA256: e70bc980395f4a3b366b9c5e7f8f9b4d63a4064fb115f6ff3bc52f7faa02ef69
+        run: |
+          set -euo pipefail
+          apt-get update
+          apt-get install --no-install-recommends -y ca-certificates curl
+          source /etc/os-release
+          test "${UBUNTU_CODENAME:-${VERSION_CODENAME}}" = resolute
+          package="ros2-apt-source_${ROS_APT_SOURCE_VERSION}.resolute_all.deb"
+          url="https://github.com/ros-infrastructure/ros-apt-source/releases/download/${ROS_APT_SOURCE_VERSION}/${package}"
+          echo "Downloading ${url}"
+          curl --fail --show-error --location --retry 3 --retry-all-errors \
+            --retry-delay 2 --connect-timeout 20 --max-time 120 \
+            --output /tmp/ros2-apt-source.deb "${url}"
+          echo "${ROS_APT_SOURCE_SHA256}  /tmp/ros2-apt-source.deb" | sha256sum --check
+          dpkg -i /tmp/ros2-apt-source.deb
+          apt-get update
 
       - name: Set up ROS 2 Lyrical
         uses: ros-tooling/setup-ros@v0.7
@@ -58,7 +84,8 @@ jobs:
           rosdep install --from-paths lightweight_sim_msgs lightweight_sim parking_module \
             --ignore-src --rosdistro lyrical --skip-keys=ament_python -y
           apt-get update
-          apt-get install -y python3-venv
+          apt-get install -y python3-venv python3-pip
+          python3 -m pip install --user --break-system-packages "osqp>=1.0"
 
       - name: Install Python test dependencies
         run: |
@@ -74,13 +101,25 @@ jobs:
 
       - name: Run ROS-dependent pytest modules
         shell: bash
+        env:
+          LIGHTWEIGHT_SIM_ROS_ARCHIVE: ${{ github.workspace }}/ros-test-artifacts/acceptance
         run: |
           source /opt/ros/lyrical/setup.bash
           source install/setup.bash
+          mkdir -p ros-test-artifacts
           /tmp/lightweight-sim-ci/bin/python -m pytest -q \
             lightweight_sim/tests/test_controller_manager.py \
             lightweight_sim/tests/test_controller_speed_profile.py \
-            lightweight_sim/tests/test_ros_lifecycle.py
+            lightweight_sim/tests/test_speed_ros.py \
+            lightweight_sim/tests/test_ros_lifecycle.py \
+            --basetemp=ros-test-artifacts/pytest
+
+      - name: Upload ROS test diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ros-test-diagnostics
+          path: ros-test-artifacts/
 
       - name: Run ROS 2 launch smoke test
         shell: bash

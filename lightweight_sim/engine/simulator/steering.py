@@ -74,6 +74,12 @@ class SteeringActuator:
         self.rate_limited = False
         self.peak_rate_rad_s = 0.0
 
+    def history_snapshot(self, dt):
+        """Pending inputs at this state timestamp, independent of control mode."""
+        if self.queue is None:
+            return [self.angle]*self.params.delay_steps(dt)
+        return list(self.queue)
+
     def advance(self, dt):
         if self.period is None or not math.isfinite(dt) or dt <= 0:
             raise ValueError("begin_period must precede a positive actuator substep")
