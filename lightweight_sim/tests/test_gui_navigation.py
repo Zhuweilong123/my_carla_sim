@@ -1,5 +1,8 @@
 """Exercise public GUI navigation through the pygame event queue."""
 
+import math
+from types import SimpleNamespace
+
 import pygame
 import pytest
 
@@ -86,7 +89,13 @@ def test_middle_drag_ends_on_release_or_focus_loss_and_preserves_clicks(view):
     assert sum(action.kind == "toggle_pause" for action in actions) == 1
 
 
-def test_f_rejoins_vehicle_follow_and_new_scene_recenters(view):
+def test_f_rejoins_vehicle_follow_and_new_scene_recenters(view, monkeypatch):
+    from lightweight_sim.visualization import _ros_gui_impl
+
+    # Consecutive renders can share a clock tick on fast/coarse-clock systems.
+    # Advance a controlled GUI clock so follow smoothing has a known frame dt.
+    now = [view.started_at]
+    monkeypatch.setattr(_ros_gui_impl, 'time', SimpleNamespace(monotonic=lambda: now[0]))
     snapshot = GuiSnapshot(state=VehicleState(x=10, y=20))
     view.render(snapshot)
     view.camera.pan(60, 30)
@@ -97,8 +106,10 @@ def test_f_rejoins_vehicle_follow_and_new_scene_recenters(view):
     assert view.camera.follow_enabled is True
     assert (view.camera.cx, view.camera.cy) == (snapshot.state.x, snapshot.state.y)
     snapshot.state.x += 10
+    now[0] += 1 / 60
     view.render(snapshot)
-    assert view.camera.cx > 40
+    expected = 40 + 10 * -math.expm1(-(1 / 60) / .075)
+    assert view.camera.cx == pytest.approx(expected)
     view.camera.pan(60, 30)
     snapshot.status.scenario = "new_scene"
     view.render(snapshot)
