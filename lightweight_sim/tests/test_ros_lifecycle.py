@@ -13,6 +13,7 @@ import gzip
 import hashlib
 from dataclasses import asdict
 from pathlib import Path as FilePath
+from types import SimpleNamespace
 import pytest
 
 rclpy = pytest.importorskip("rclpy")
@@ -41,8 +42,44 @@ from lightweight_sim.engine.ros_nodes.message_conversions import message_to_stat
 from lightweight_sim.engine.simulator.data_types import ControlCommand
 from lightweight_sim.engine.analysis.evaluation import provenance, archive_sources
 from lightweight_sim.engine.analysis.tracking import TrackingMonitor
+from lightweight_sim.engine.algorithms.planner.handover import PathHandover
+from lightweight_sim.engine.simulator.data_types import VehicleState
 from parking_module.ros_node import ParkingControllerNode
 from parking_module.planning import HybridAStarPlanner, ReverseParkingPlanner
+
+
+@pytest.mark.parametrize("age,safe,reuse", [(.2, True, True), (.2, False, False), (.6, True, False)])
+def test_empty_local_result_reuses_only_fresh_safe_committed_path(age, safe, reuse):
+    handover = PathHandover()
+    handover.accept([(0., 0., 0., 0.), (20., 0., 0., 0.)], 10.)
+    published = []
+    node = SimpleNamespace(
+        planner=SimpleNamespace(poll_result=lambda: True, get_result=lambda: [],
+            validate_path=lambda path, obstacles: safe, last_status="qp_failed",
+            _previous_profile=None),
+        plan_pending=True, handover=handover, _request_time=10.,
+        _accepted_profile=object(), state=VehicleState(x=.1, vx=1.), obstacles=[],
+        get_clock=lambda: SimpleNamespace(now=lambda: SimpleNamespace(nanoseconds=int((10.+age)*1e9))),
+        get_parameter=lambda name: SimpleNamespace(value="dp_qp"),
+        get_logger=lambda: SimpleNamespace(warning=lambda message: None),
+    )
+
+    def publish(path, *, accepted=True):
+        published.append((path, accepted))
+        if accepted:
+            handover.accept(path, 10.+age)
+        node.plan_pending = False
+
+    node._publish_plan = publish
+    PlannerNode._poll_result(node)
+    assert len(published) == 1
+    assert bool(published[0][0]) is reuse
+    assert published[0][1] is not reuse
+    assert not node.plan_pending
+    if reuse:
+        assert handover.accepted_at == 10.
+        assert node.planner._previous_profile is node._accepted_profile
+        assert not handover.reusable(node.state, 10.6)
 
 
 def test_switching_to_reverse_parking_keeps_reverse_capable_engine():
@@ -461,8 +498,11 @@ def test_installed_launch_routes_and_diagnostics(tmp_path, steering_profile, ins
                 # stops. The unobstructed curve must keep moving after startup.
                 # ST planning starts with a bounded-jerk ramp after the initial
                 # readiness brake; allow that ramp to finish before checking.
-                assert min(math.hypot(s["vx"], s["vy"]) for s in states
-                           if s["timestamp"] > 4.0) > 0.5
+                slowest = min((s for s in states if s["timestamp"] > 4.0),
+                              key=lambda s: math.hypot(s["vx"], s["vy"]))
+                assert math.hypot(slowest["vx"], slowest["vy"]) > 0.5, (
+                    f"slowest_state={slowest}\n{diagnostics()}"
+                )
                 for previous, current in zip(states, states[1:]):
                     elapsed = current["timestamp"]-previous["timestamp"]
                     if elapsed > 0:

@@ -35,6 +35,13 @@ permissions:
 jobs:
   ros-integration:
     runs-on: ubuntu-latest
+    # Nine ROS processes share the runner. Small control/planning matrices
+    # should not each create a BLAS/OpenMP pool that delays ROS callbacks.
+    env:
+      OPENBLAS_NUM_THREADS: "1"
+      OMP_NUM_THREADS: "1"
+      MKL_NUM_THREADS: "1"
+      BLIS_NUM_THREADS: "1"
     container:
       image: ubuntu:resolute
     steps:

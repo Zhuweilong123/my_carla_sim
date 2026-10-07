@@ -340,6 +340,18 @@ class PlannerNode(Node):
         path = self.planner.get_result() or []
         now = self.get_clock().now().nanoseconds*1e-9
         self.handover.observe_latency(now, self._request_time)
+        if not path and str(self.get_parameter("local_planner_algorithm").value) == "dp_qp":
+            self.get_logger().warning(
+                f"local planner returned no path: {getattr(self.planner, 'last_status', 'unknown')}"
+            )
+            self.planner._previous_profile = self._accepted_profile
+            old = self.handover.reusable(self.state, now)
+            if old and self.planner.validate_path(old, self.obstacles):
+                # A single unsuccessful solve does not invalidate a committed,
+                # revalidated safe prefix. Its original acceptance age remains
+                # bounded, so repeated failures still cause a stop.
+                self._publish_plan(old, accepted=False)
+                return
         if path and str(self.get_parameter("local_planner_algorithm").value) == "dp_qp":
             candidate = self.handover.splice(path, self.state, now)
             if candidate is not None and not self.planner.validate_path(candidate, self.obstacles):
